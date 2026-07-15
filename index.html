@@ -109,7 +109,7 @@
 <div class="section level3">
 <h3 id="validated-data-sources">Validated data sources<a class="anchor" aria-label="anchor" href="#validated-data-sources"></a>
 </h3>
-<p><code>sysPrep</code>’s functions have been validated against records pulled from the following NSSP ESSENCE data sources:</p>
+<p><code>sysPrep</code>’s functions have been validated against records pulled from the following NSSP ESSENCE data sources. Both sources return ED visit and inpatient admission records, so all exported functions apply to either:</p>
 <table class="table">
 <colgroup>
 <col width="58%">
@@ -121,20 +121,15 @@
 <th>Full name</th>
 <th>Used by</th>
 </tr></thead>
-<tbody>
-<tr>
-<td><code>va_er</code></td>
-<td>Patient Location (Full Details)</td>
-<td>ED-based pulls: <code><a href="reference/dedupe.html">dedupe()</a></code>, <code><a href="reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="reference/classify_duplicates.html">classify_duplicates()</a></code>, <code><a href="reference/filter_care_setting.html">filter_care_setting()</a></code>, <code><a href="reference/review_facility_ed_visits.html">review_facility_ed_visits()</a></code>, <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>, <code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code>
+<tbody><tr>
+<td>
+<code>va_er</code>, <code>va_hosp</code>
 </td>
-</tr>
-<tr>
-<td><code>va_hosp</code></td>
-<td>Facility Location (Full Details)</td>
-<td>Inpatient/admission pulls supplied to <code><a href="reference/link_encounters.html">link_encounters()</a></code>
+<td>Patient Location (Full Details), Facility Location (Full Details)</td>
+<td>
+<code><a href="reference/dedupe.html">dedupe()</a></code>, <code><a href="reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="reference/classify_duplicates.html">classify_duplicates()</a></code>, <code><a href="reference/filter_care_setting.html">filter_care_setting()</a></code>, <code><a href="reference/review_facility_ed_visits.html">review_facility_ed_visits()</a></code>, <code><a href="reference/link_encounters.html">link_encounters()</a></code>, <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>, <code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code>
 </td>
-</tr>
-</tbody>
+</tr></tbody>
 </table>
 <p>Column names and expected value formats (e.g., <code>SITE_County</code> region strings, <code>HasBeenE</code>/<code>HasBeenAdmitted</code> flags) reflect these two data sources. Pulls from other ESSENCE data sources may require column renaming before use.</p>
 </div>

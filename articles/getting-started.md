@@ -64,12 +64,11 @@ address each of these problems into a reproducible, documented R
 pipeline.
 
 `sysPrep`’s functions have been validated against records pulled from
-the NSSP ESSENCE `va_er` (Patient Location, Full Details) data source,
-and
-[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-has additionally been validated against a supplemental `va_hosp`
-(Facility Location, Full Details) pull. Column names and value formats
-referenced throughout this package (e.g., `SITE_County` region strings,
+the NSSP ESSENCE `va_er` (Patient Location, Full Details) and `va_hosp`
+(Facility Location, Full Details) data sources. Both sources return ED
+visit and inpatient admission records, so all exported functions apply
+to either. Column names and value formats referenced throughout this
+package (e.g., `SITE_County` region strings,
 `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data sources.
 
 ## Installation

@@ -31,12 +31,13 @@ through their operational use in production surveillance workflows.
 ### Validated data sources
 
 `sysPrep`’s functions have been validated against records pulled from
-the following NSSP ESSENCE data sources:
+the following NSSP ESSENCE data sources. Both sources return ED visit
+and inpatient admission records, so all exported functions apply to
+either:
 
 | ESSENCE `datasource` code | Full name | Used by |
 |----|----|----|
-| `va_er` | Patient Location (Full Details) | ED-based pulls: [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md), [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md), [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md), [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md), [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md), [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
-| `va_hosp` | Facility Location (Full Details) | Inpatient/admission pulls supplied to [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md) |
+| `va_er`, `va_hosp` | Patient Location (Full Details), Facility Location (Full Details) | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md), [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md), [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md), [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md), [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md), [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md), [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
 
 Column names and expected value formats (e.g., `SITE_County` region
 strings, `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data

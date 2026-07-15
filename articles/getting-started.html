@@ -123,12 +123,13 @@ apply to address each of these problems into a reproducible, documented
 R pipeline.</p>
 <p><code>sysPrep</code>’s functions have been validated against records
 pulled from the NSSP ESSENCE <code>va_er</code> (Patient Location, Full
-Details) data source, and <code><a href="../reference/link_encounters.html">link_encounters()</a></code> has
-additionally been validated against a supplemental <code>va_hosp</code>
-(Facility Location, Full Details) pull. Column names and value formats
-referenced throughout this package (e.g., <code>SITE_County</code>
-region strings, <code>HasBeenE</code>/<code>HasBeenAdmitted</code>
-flags) reflect these two data sources.</p>
+Details) and <code>va_hosp</code> (Facility Location, Full Details) data
+sources. Both sources return ED visit and inpatient admission records,
+so all exported functions apply to either. Column names and value
+formats referenced throughout this package (e.g.,
+<code>SITE_County</code> region strings,
+<code>HasBeenE</code>/<code>HasBeenAdmitted</code> flags) reflect these
+two data sources.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
