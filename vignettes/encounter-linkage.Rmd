@@ -1,0 +1,258 @@
+---
+title: "Linking ED and Inpatient Records for Accurate Burden Estimation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Linking ED and Inpatient Records for Accurate Burden Estimation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>"
+)
+library(sysPrep)
+library(dplyr)
+```
+
+## The Care Pathway Artifact Problem
+
+Standard ESSENCE surveillance queries filtered to `HasBeenE = 1` return visits
+where a patient received emergency department care. This is the appropriate
+filter for ED-based syndromic surveillance -- but it has a structural
+consequence that practitioners rarely account for: it cannot return visits
+where `HasBeenE = 0` and `HasBeenAdmitted = 1`. These are **direct
+admissions** -- patients admitted to inpatient units without ED triage.
+
+Direct admissions are not a data quality problem. They represent a real
+clinical pathway in which a patient, typically through a physician referral or
+a pre-arranged admission, bypasses the emergency department entirely and is
+admitted directly to a medical, surgical, or telemetry unit. From a public
+health surveillance perspective, the question is whether changes in the
+proportion of patients following this pathway can be misidentified as changes
+in disease burden.
+
+They can. During opioid overdose surveillance in Kentucky, an apparent
+near-linear decline in emergency department opioid overdose visit volume was
+observed over a multi-year period. Detailed investigation revealed that a
+substantial portion of this apparent trend was attributable to a systematic
+shift in hospital admission practices: facilities in certain markets had begun
+directly admitting opioid overdose patients -- routing them to telemetry units
+without ED triage -- in response to changes in reimbursement structures and
+clinical protocols. From a `HasBeenE = 1` query perspective, these patients
+were invisible. The observed "decline" was, in part, a care pathway artifact
+rather than a true reduction in overdose incidence.
+
+The policy implications are serious. An apparent decline in overdose burden
+might reduce intervention prioritization, divert resources away from
+prevention programs, and lead surveillance reports to understate the severity
+of an ongoing crisis -- at precisely the time the actual burden may be stable
+or increasing.
+
+`link_encounters()` addresses this by combining an ED pull with a separately
+queried inpatient pull, then constructing unified care episodes that count
+each patient interaction once regardless of which pathway they followed.
+
+> **Could you address this by filtering to `HasBeenAdmitted = 1` instead?**
+> A query filtered to `HasBeenAdmitted = 1` returns all admitted visits --
+> including those with `HasBeenE = 1`, which are already present in the ED
+> pull. Using only the inpatient pull would miss all ED visits that did not
+> result in admission, which represent the majority of emergency encounters.
+> `link_encounters()` resolves this by binding both pulls and marking the
+> ED row as the index encounter for visits that appear in both.
+
+## Patient Class Derivation
+
+`link_encounters()` supports two methods for determining patient class from
+ESSENCE data. The preferred method uses `C_Patient_Class_List`; the fallback
+uses `HasBeen_` indicator flags.
+
+### Preferred: `C_Patient_Class_List`
+
+`C_Patient_Class_List` is an ESSENCE-computed field that contains an
+alphabetic, deduplicated list of all `C_Patient_Class` values present across
+all messages sharing the same ESSENCE ID. For a patient who was registered in
+the ED (`E`) and subsequently admitted (`I`), the field contains `"EI"`.
+
+The patient class codes follow the HL7 Patient Class standard as adopted by
+the Public Health Information Network (PHIN). The full value set is maintained
+by the [CDC PHIN Vocabulary Access and Distribution System (PHIN VADS)](https://phinvads.cdc.gov/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A):
+
+| Code | Patient class |
+|------|--------------|
+| `E`  | ED |
+| `I`  | Inpatient |
+| `D`  | Direct Admit |
+| `V`  | Observation |
+| `O`  | Outpatient |
+| `B`  | Obstetrics |
+| `P`  | Preadmit |
+| `R`  | Recurring |
+
+`C_Patient_Class_List` is strictly more informative than `HasBeen_` pivoting
+for one important reason: it is computed across all messages for the visit
+before deduplication, meaning the full care pathway history is preserved
+regardless of which row `dedupe()` retained. A `HasBeen_` flag on a
+deduplicated record reflects only the flags present on the retained row; if
+`keep = "first"` was used and the first row happened to predate an inpatient
+admission update, the admission flag may be absent even though the patient was
+eventually admitted. `C_Patient_Class_List` does not have this limitation.
+
+When `C_Patient_Class_List` is present in `ed_data`, `link_encounters()` uses
+it automatically and informs the user. No `HasBeen_` fields are required.
+
+### Fallback: `HasBeen_` flag pivot
+
+When `C_Patient_Class_List` is not present, `link_encounters()` falls back to
+pivoting the binary `HasBeen_` flag columns. The two most relevant flags for
+encounter linkage are:
+
+| `HasBeenE` | `HasBeenAdmitted` | Clinical interpretation |
+|-----------|-------------------|------------------------|
+| `1` | `0` | ED visit, discharged or left without being admitted |
+| `1` | `1` | ED visit that escalated to inpatient admission |
+| `0` | `1` | Direct admission -- no ED visit in this encounter |
+| `0` | `0` | Not applicable (neither ED nor inpatient) |
+
+A `HasBeenE = 1` filtered query returns rows in the first two patterns only.
+The third pattern -- direct admissions -- requires a separate `HasBeenAdmitted
+= 1` query to capture.
+
+`HasBeenI` is an alternative inpatient flag available in some ESSENCE
+installations. When both `HasBeenAdmitted` and `HasBeenI` are present,
+`link_encounters()` uses `HasBeenAdmitted` preferentially because it is
+discharge-disposition aware: it captures ED visits that resulted in inpatient
+admission via discharge disposition codes, which `HasBeenI` may not flag in
+all ESSENCE configurations.
+
+## Single-Pull Linkage
+
+Even without a separate inpatient pull, `link_encounters()` adds analytical
+value by pivoting the `HasBeen_` flag columns to long format. A visit with
+`HasBeenE = 1` and `HasBeenAdmitted = 1` produces two rows -- one labeled
+`"ED"` and one labeled `"Admitted"` -- along with episode metadata that
+supports burden counting.
+
+```{r prepare}
+# Deduplicate and filter before linking
+ed_clean <- essence_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last") |>
+  filter_care_setting(
+    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+  )
+```
+
+```{r single-pull}
+episodes <- link_encounters(ed_clean)
+
+dplyr::glimpse(episodes)
+```
+
+```{r patient-class-counts}
+# Distribution of patient class rows
+dplyr::count(episodes, patient_class)
+```
+
+Four episode metadata columns are added to every row:
+
+**`.episode_id`** -- A character key combining facility and visit identifier,
+shared across all rows belonging to the same encounter. Used internally to
+group rows into episodes and available for joining or filtering downstream.
+
+**`.patient_class_sequence`** -- A sorted, collapsed string of all patient
+classes in the episode. A visit with both ED and Admitted rows has
+`.patient_class_sequence = "Admitted->ED"`. A visit with only an ED row has
+`.patient_class_sequence = "ED"`. This column enables filtering to specific
+episode types (e.g., `filter(.patient_class_sequence == "Admitted->ED")` to
+isolate escalating visits).
+
+**`.episode_n_rows`** -- The number of rows in the episode. Single-class
+episodes have `.episode_n_rows = 1`; ED + Admitted episodes have
+`.episode_n_rows = 2`.
+
+**`.index_encounter`** -- `TRUE` on the ED row when both ED and Admitted rows
+are present; `TRUE` on the single row for ED-only or Direct Admit-only
+episodes. Filtering to `.index_encounter == TRUE` yields exactly one row per
+clinical encounter -- the appropriate denominator for unduplicated burden counts.
+
+```{r burden-single}
+# Unduplicated episode count (one row per encounter)
+episodes |>
+  dplyr::filter(.index_encounter) |>
+  dplyr::count(.patient_class_sequence, sort = TRUE)
+```
+
+## Two-Pull Linkage
+
+To capture direct admissions, run a second ESSENCE query filtered to
+`HasBeenAdmitted = 1` (or `HasBeenI = 1`), deduplicate it separately, and
+supply it as `inpatient_admission_data`. Rows with `HasBeenE = 1` in the
+inpatient pull are automatically removed to prevent double-counting -- these
+visits are already present in the ED pull.
+
+```{r two-pull, eval = FALSE}
+# Query ESSENCE for HasBeenAdmitted = 1 separately, then:
+inpatient_clean <- essence_inpatient |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last")
+
+episodes_full <- link_encounters(ed_clean, inpatient_clean)
+
+# Direct admissions are now visible
+dplyr::filter(episodes_full, patient_class == "Direct Admit")
+```
+
+When `inpatient_admission_data` is supplied, `link_encounters()` removes rows
+with `HasBeenE = 1` from that pull (informing you of how many were dropped)
+and labels the remaining rows as `patient_class = "Direct Admit"`. These rows
+are then bound to the long-format ED data and receive `.index_encounter = TRUE`
+because they represent an encounter with no corresponding ED row.
+
+## Burden Estimation from Linked Data
+
+The recommended approach for unduplicated burden estimation is to filter to
+`.index_encounter == TRUE` and count:
+
+```{r burden}
+burden <- episodes |>
+  dplyr::filter(.index_encounter) |>
+  dplyr::count(.patient_class_sequence, sort = TRUE)
+
+burden
+```
+
+This yields one count per clinical encounter. Visits that generated both ED
+and Admitted rows are counted once (from the ED row, which is the index
+encounter for that episode). Visits that generated only an ED row are counted
+once. With two-pull linkage, direct admissions add their own counts without
+inflating the ED rows.
+
+The `.patient_class_sequence` breakdown is informative for understanding the
+severity composition of the case count:
+
+- `"ED"` -- Emergency department visit without inpatient admission
+- `"Admitted->ED"` -- Emergency department visit that escalated to inpatient
+  admission (counted from the ED row)
+- `"Direct Admit"` -- Inpatient admission without ED encounter (only visible
+  with two-pull linkage)
+
+For most ESSENCE-based incidence analyses, the sum across all `.patient_class_sequence`
+categories at `.index_encounter == TRUE` is the appropriate unduplicated
+encounter count.
+
+## Connection to Cluster Detection
+
+If using linked encounter data as input to spatial cluster detection algorithms
+(e.g., SaTScan, the `gsClusterDetect` package, or custom Kulldorff scan
+implementations), filter to `.index_encounter == TRUE` before aggregating
+counts to geographic units. Failing to do so would count multi-class episodes
+twice -- once for the ED row and once for the Admitted row -- inflating cluster
+statistics.
+
+```{r cluster-prep, eval = FALSE}
+# Prepare for spatial analysis: one row per encounter, with geographic field
+episodes |>
+  dplyr::filter(.index_encounter) |>
+  assign_treating_geography() |>
+  dplyr::count(region)
+```

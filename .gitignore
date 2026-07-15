@@ -1,0 +1,25 @@
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+inst/doc
+/doc/
+/Meta/
+*.o
+*.so
+*.dll
+.DS_Store
+Thumbs.db
+/data-raw/*.csv
+/data-raw/*.xlsx
+revdep/
+Rplots.pdf
+
+# Claude Code session state and development guides
+.claude/
+CLAUDE.md
+**/CLAUDE.md
+
+# Built pkgdown site -- CI (pkgdown.yaml) rebuilds and deploys this to the
+# gh-pages branch; it should never be committed to source branches.
+/docs/

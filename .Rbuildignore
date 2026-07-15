@@ -1,0 +1,17 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^data-raw$
+^\.github$
+^_pkgdown\.yml$
+^pkgdown$
+^docs$
+^CLAUDE\.md$
+^tests/CLAUDE\.md$
+^vignettes/CLAUDE\.md$
+^cran-comments\.md$
+^revdep$
+^\.gitkeep$
+^data/\.gitkeep$
+^\.claude$
+^LICENSE\.md$
+^\.superpowers$

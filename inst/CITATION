@@ -1,0 +1,14 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "sysPrep: Preprocessing Methods for NSSP ESSENCE Syndromic Surveillance Data",
+  author   = person(
+    given   = "Andrew",
+    family  = "Farrey",
+    role    = c("aut", "cre"),
+    email   = "afarrey11@gmail.com",
+    comment = c(ORCID = "0000-0003-4279-0998")
+  ),
+  year     = format(Sys.Date(), "%Y"),
+  note     = sprintf("R package version %s", meta$Version),
+  url      = "https://github.com/andrew-farrey/sysPrep"
+)
