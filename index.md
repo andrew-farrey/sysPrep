@@ -48,10 +48,6 @@ renaming before use.
 
 ``` r
 
-# CRAN (when available)
-install.packages("sysPrep")
-
-# Development version
 # install.packages("remotes")
 remotes::install_github("andrew-farrey/sysPrep")
 ```

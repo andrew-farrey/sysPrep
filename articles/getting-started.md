@@ -75,10 +75,6 @@ package (e.g., `SITE_County` region strings,
 
 ``` r
 
-# CRAN (when available)
-install.packages("sysPrep")
-
-# Development version
 remotes::install_github("andrew-farrey/sysPrep")
 ```
 
