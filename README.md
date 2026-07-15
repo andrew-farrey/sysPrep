@@ -1,7 +1,6 @@
 # sysPrep <img src="man/figures/logo.png" align="right" height="138" alt="sysPrep logo" />
 
 <!-- badges: start -->
-[![CRAN status](https://www.r-pkg.org/badges/version/sysPrep)](https://CRAN.R-project.org/package=sysPrep)
 [![R-CMD-check](https://github.com/andrew-farrey/sysPrep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/andrew-farrey/sysPrep/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/gh/andrew-farrey/sysPrep/branch/main/graph/badge.svg)](https://app.codecov.io/gh/andrew-farrey/sysPrep?branch=main)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -52,10 +51,6 @@ from other ESSENCE data sources may require column renaming before use.
 ## Installation
 
 ```r
-# CRAN (when available)
-install.packages("sysPrep")
-
-# Development version
 # install.packages("remotes")
 remotes::install_github("andrew-farrey/sysPrep")
 ```

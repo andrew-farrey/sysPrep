@@ -84,10 +84,6 @@ reflect these two data sources.
 ## Installation
 
 ```{r install, eval = FALSE}
-# CRAN (when available)
-install.packages("sysPrep")
-
-# Development version
 remotes::install_github("andrew-farrey/sysPrep")
 ```
 
