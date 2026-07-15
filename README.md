@@ -38,12 +38,12 @@ operational use in production surveillance workflows.
 ### Validated data sources
 
 `sysPrep`'s functions have been validated against records pulled from the
-following NSSP ESSENCE data sources:
+following NSSP ESSENCE data sources. Both sources return ED visit and
+inpatient admission records, so all exported functions apply to either:
 
 | ESSENCE `datasource` code | Full name | Used by |
 |----------------------------|-----------|---------|
-| `va_er` | Patient Location (Full Details) | ED-based pulls: `dedupe()`, `summarize_duplicates()`, `classify_duplicates()`, `filter_care_setting()`, `review_facility_ed_visits()`, `assign_treating_geography()`, `assign_facility_geography()` |
-| `va_hosp` | Facility Location (Full Details) | Inpatient/admission pulls supplied to `link_encounters()` |
+| `va_er`, `va_hosp` | Patient Location (Full Details), Facility Location (Full Details) | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()`, `filter_care_setting()`, `review_facility_ed_visits()`, `link_encounters()`, `assign_treating_geography()`, `assign_facility_geography()` |
 
 Column names and expected value formats (e.g., `SITE_County` region strings,
 `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data sources. Pulls
