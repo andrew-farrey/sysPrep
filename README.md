@@ -24,7 +24,7 @@ cluster/anomaly detection if left unaddressed:
 
 | Problem | Functions |
 |---------|-----------|
-| **Duplicate records** -- multiple rows per visit due to retransmissions, midnight date changes, patient ID corrections, and class transitions | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()` |
+| **Duplicate records** -- multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()` |
 | **Non-emergency providers** -- facilities without EDs and FSEDs with incorrect types included in pulls | `filter_care_setting()`, `review_facility_ed_visits()` |
 | **Invisible direct admissions** -- HasBeenE = 1 queries structurally exclude patients admitted without ED triage | `link_encounters()` |
 | **Out-of-state and unknown-residence visits** -- discarding these understates facility burden | `assign_treating_geography()`, `assign_facility_geography()` |
@@ -34,7 +34,7 @@ inconsistently when they choose to apply them at all. `sysPrep` formalizes
 them into a reproducible, documented pipeline, developed through their
 operational use in production surveillance workflows.
 
-### Validated data sources
+### Validated Data Sources
 
 `sysPrep`'s functions have been validated against records pulled from the
 following NSSP ESSENCE data sources. Both sources return ED visit and
@@ -86,13 +86,13 @@ For encounter linkage with a separate inpatient pull:
 ed_clean        <- essence_ed        |> dedupe(order_by = Arrived_Date_Time)
 inpatient_clean <- essence_inpatient |> dedupe(order_by = Arrived_Date_Time)
 
-# Link into care episodes (captures direct admissions)
+# Link into care episodes (captures direct admissions);
+# one merged row per true encounter by default
 episodes <- link_encounters(ed_clean, inpatient_clean)
 
-# Unduplicated episode count
+# Distribution of care pathways
 episodes |>
-  dplyr::filter(.index_encounter) |>
-  dplyr::count(patient_class_sequence)
+  dplyr::count(.patient_class_sequence, sort = TRUE)
 ```
 
 ## Documentation
