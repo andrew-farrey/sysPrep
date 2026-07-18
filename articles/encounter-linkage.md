@@ -127,12 +127,20 @@ may not flag in all ESSENCE configurations.
 
 ## Single-Pull Linkage
 
-Even without a separate inpatient pull,
+By default (`return_format = "collapsed"`),
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-adds analytical value by pivoting the `HasBeen_` flag columns to long
-format. A visit with `HasBeenE = 1` and `HasBeenAdmitted = 1` produces
-two rows – one labeled `"ED"` and one labeled `"Admitted"` – along with
-episode metadata that supports burden counting.
+merges each episode’s rows into a single composite row rather than
+returning long-format duplicates that must be filtered afterward. A
+visit with `HasBeenE = 1` and `HasBeenAdmitted = 1` is still detected
+internally as two rows – one representing the ED contact, one
+representing the inpatient escalation – but those rows are reconciled
+into one merged row: `HasBeen_` flags are taken as the max across the
+episode’s rows, and fields named in `merge_fields` (`CCDD`,
+`CCDDParsed`, `CCDDCategory_flat`, `C_Death`, `Discharge_Disposition`,
+and `DispositionCategory` by default) are reconciled using a strategy
+suited to that field, so information recorded only on the inpatient row
+is not silently discarded when the ED row is kept as the surviving
+primary row.
 
 ``` r
 
@@ -177,17 +185,17 @@ dplyr::glimpse(episodes)
 #> $ .index_encounter        <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE…
 ```
 
+`nrow(episodes)` is already the unduplicated encounter count – no
+additional filtering step is required with the default collapsed output:
+
 ``` r
 
-# Distribution of patient class rows
-dplyr::count(episodes, patient_class)
-#> # A tibble: 1 × 2
-#>   patient_class     n
-#>   <chr>         <int>
-#> 1 ED              160
+nrow(episodes)
+#> [1] 160
 ```
 
-Four episode metadata columns are added to every row:
+Four episode metadata columns are added to every row, regardless of
+`return_format`:
 
 **`.episode_id`** – A character key combining facility and visit
 identifier, shared across all rows belonging to the same encounter. Used
@@ -195,27 +203,67 @@ internally to group rows into episodes and available for joining or
 filtering downstream.
 
 **`.patient_class_sequence`** – A sorted, collapsed string of all
-patient classes in the episode. A visit with both ED and Admitted rows
-has `.patient_class_sequence = "Admitted->ED"`. A visit with only an ED
-row has `.patient_class_sequence = "ED"`. This column enables filtering
-to specific episode types (e.g.,
+patient classes present in the episode before merging. An episode built
+from both an ED row and an Admitted row has
+`.patient_class_sequence = "Admitted->ED"`. An episode built from a
+single ED row has `.patient_class_sequence = "ED"`. This column enables
+filtering to specific episode types (e.g.,
 `filter(.patient_class_sequence == "Admitted->ED")` to isolate
-escalating visits).
+escalating visits) even though the underlying rows have already been
+merged.
 
-**`.episode_n_rows`** – The number of rows in the episode. Single-class
-episodes have `.episode_n_rows = 1`; ED + Admitted episodes have
-`.episode_n_rows = 2`.
+**`.episode_n_rows`** – The number of original rows the episode was
+built from before merging. Episodes with no escalation have
+`.episode_n_rows = 1`; ED + Admitted episodes collapsed from two
+original rows have `.episode_n_rows = 2`.
 
-**`.index_encounter`** – `TRUE` on the ED row when both ED and Admitted
-rows are present; `TRUE` on the single row for ED-only or Direct
-Admit-only episodes. Filtering to `.index_encounter == TRUE` yields
-exactly one row per clinical encounter – the appropriate denominator for
-unduplicated burden counts.
+**`.index_encounter`** – In collapsed output (the default), always
+`TRUE`, since every row already represents exactly one merged encounter;
+the column is retained for schema consistency with the diagnostic
+long-format output described below, not because a filtering step is
+required.
 
 ``` r
 
-# Unduplicated episode count (one row per encounter)
+# Distribution of care pathways -- already one row per encounter
 episodes |>
+  dplyr::count(.patient_class_sequence, sort = TRUE)
+#> # A tibble: 2 × 2
+#>   .patient_class_sequence     n
+#>   <chr>                   <int>
+#> 1 ED                        124
+#> 2 Admitted->ED               36
+```
+
+### Inspecting the Raw Linkage Mechanism: `return_format = "long"`
+
+Set `return_format = "long"` to see the pre-merge rows directly – for
+example, to audit which fields differed between the ED and inpatient
+records before they were reconciled, or to understand the linkage
+mechanism itself. No merge is applied in this mode.
+
+``` r
+
+episodes_long <- link_encounters(ed_clean, return_format = "long")
+#> Using `HasBeen_` flags for patient class derivation. For more granular and
+#> informative output, add `C_Patient_Class_List` to your ESSENCE API pull fields.
+
+dplyr::count(episodes_long, patient_class)
+#> # A tibble: 2 × 2
+#>   patient_class     n
+#>   <chr>         <int>
+#> 1 Admitted         36
+#> 2 ED              160
+```
+
+In long format, `.index_encounter` marks the row that survives a “one
+row per episode” filter – `TRUE` on the ED row when both ED and Admitted
+rows are present, or on the single row for ED-only or Direct Admit-only
+episodes:
+
+``` r
+
+episodes_long |>
   dplyr::filter(.index_encounter) |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
 #> # A tibble: 2 × 2
@@ -224,6 +272,10 @@ episodes |>
 #> 1 ED                        124
 #> 2 Admitted->ED               36
 ```
+
+This matches the collapsed-format encounter count above, since the same
+rows are merged into (or, in long format, selected as) the encounter of
+record.
 
 ## Two-Pull Linkage
 
@@ -248,20 +300,21 @@ dplyr::filter(episodes_full, patient_class == "Direct Admit")
 When `inpatient_admission_data` is supplied,
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 removes rows with `HasBeenE = 1` from that pull (informing you of how
-many were dropped) and labels the remaining rows as
-`patient_class = "Direct Admit"`. These rows are then bound to the
-long-format ED data and receive `.index_encounter = TRUE` because they
-represent an encounter with no corresponding ED row.
+many were dropped) and labels the remaining rows
+`patient_class = "Direct Admit"` before merging. A direct-admit visit
+that shares no facility x visit_id with an ED row has no rows to merge
+with, so it survives collapsing as its own single-row episode with
+`.patient_class_sequence = "Direct Admit"`.
 
 ## Burden Estimation from Linked Data
 
-The recommended approach for unduplicated burden estimation is to filter
-to `.index_encounter == TRUE` and count:
+With the default collapsed output, unduplicated burden estimation is
+just a count – no `.index_encounter` filter is needed, since every row
+already represents one merged encounter:
 
 ``` r
 
 burden <- episodes |>
-  dplyr::filter(.index_encounter) |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
 
 burden
@@ -273,38 +326,42 @@ burden
 ```
 
 This yields one count per clinical encounter. Visits that generated both
-ED and Admitted rows are counted once (from the ED row, which is the
-index encounter for that episode). Visits that generated only an ED row
-are counted once. With two-pull linkage, direct admissions add their own
-counts without inflating the ED rows.
+an ED signal and an Admitted signal are merged into a single row (using
+the ED row as primary) and counted once. Visits that generated only an
+ED signal are counted once. With two-pull linkage, direct admissions add
+their own counts without inflating the ED rows.
 
 The `.patient_class_sequence` breakdown is informative for understanding
 the severity composition of the case count:
 
 - `"ED"` – Emergency department visit without inpatient admission
 - `"Admitted->ED"` – Emergency department visit that escalated to
-  inpatient admission (counted from the ED row)
+  inpatient admission (merged into a single row, primary values from the
+  ED row)
 - `"Direct Admit"` – Inpatient admission without ED encounter (only
   visible with two-pull linkage)
 
 For most ESSENCE-based incidence analyses, the sum across all
-`.patient_class_sequence` categories at `.index_encounter == TRUE` is
-the appropriate unduplicated encounter count.
+`.patient_class_sequence` categories in the (already unduplicated)
+collapsed output is the appropriate unduplicated encounter count.
 
 ## Connection to Cluster Detection
 
 If using linked encounter data as input to spatial cluster detection
 algorithms (e.g., SaTScan, the `gsClusterDetect` package, or custom
-Kulldorff scan implementations), filter to `.index_encounter == TRUE`
-before aggregating counts to geographic units. Failing to do so would
-count multi-class episodes twice – once for the ED row and once for the
-Admitted row – inflating cluster statistics.
+Kulldorff scan implementations), the default collapsed output is already
+one row per encounter, so no additional deduplication filter is needed
+before aggregating counts to geographic units:
 
 ``` r
 
-# Prepare for spatial analysis: one row per encounter, with geographic field
+# Prepare for spatial analysis: already one row per encounter
 episodes |>
-  dplyr::filter(.index_encounter) |>
   assign_treating_geography() |>
   dplyr::count(region)
 ```
+
+If you instead requested `return_format = "long"` for diagnostic
+purposes, filter to `.index_encounter == TRUE` first – otherwise
+multi-class episodes would be counted twice, once per pre-merge row,
+inflating cluster statistics.

@@ -240,13 +240,21 @@ inpatient admission via discharge disposition codes, which
 <div class="section level2">
 <h2 id="single-pull-linkage">Single-Pull Linkage<a class="anchor" aria-label="anchor" href="#single-pull-linkage"></a>
 </h2>
-<p>Even without a separate inpatient pull,
-<code><a href="../reference/link_encounters.html">link_encounters()</a></code> adds analytical value by pivoting the
-<code>HasBeen_</code> flag columns to long format. A visit with
-<code>HasBeenE = 1</code> and <code>HasBeenAdmitted = 1</code> produces
-two rows – one labeled <code>"ED"</code> and one labeled
-<code>"Admitted"</code> – along with episode metadata that supports
-burden counting.</p>
+<p>By default (<code>return_format = "collapsed"</code>),
+<code><a href="../reference/link_encounters.html">link_encounters()</a></code> merges each episode’s rows into a single
+composite row rather than returning long-format duplicates that must be
+filtered afterward. A visit with <code>HasBeenE = 1</code> and
+<code>HasBeenAdmitted = 1</code> is still detected internally as two
+rows – one representing the ED contact, one representing the inpatient
+escalation – but those rows are reconciled into one merged row:
+<code>HasBeen_</code> flags are taken as the max across the episode’s
+rows, and fields named in <code>merge_fields</code> (<code>CCDD</code>,
+<code>CCDDParsed</code>, <code>CCDDCategory_flat</code>,
+<code>C_Death</code>, <code>Discharge_Disposition</code>, and
+<code>DispositionCategory</code> by default) are reconciled using a
+strategy suited to that field, so information recorded only on the
+inpatient row is not silently discarded when the ED row is kept as the
+surviving primary row.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Deduplicate and filter before linking</span></span>
 <span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span>
@@ -284,39 +292,72 @@ burden counting.</p>
 <span><span class="co">#&gt; $ .patient_class_sequence <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "ED"<span style="color: #949494;">, </span>"ED"<span style="color: #949494;">, </span>"Admitted-&gt;ED"<span style="color: #949494;">, </span>"ED"<span style="color: #949494;">, </span>"ED"<span style="color: #949494;">, </span>"ED"<span style="color: #949494;">, </span>…</span></span>
 <span><span class="co">#&gt; $ .episode_n_rows         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> 1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1…</span></span>
 <span><span class="co">#&gt; $ .index_encounter        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span> TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE…</span></span></code></pre></div>
+<p><code>nrow(episodes)</code> is already the unduplicated encounter
+count – no additional filtering step is required with the default
+collapsed output:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Distribution of patient class rows</span></span>
-<span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">episodes</span>, <span class="va">patient_class</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
-<span><span class="co">#&gt;   patient_class     n</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED              160</span></span></code></pre></div>
-<p>Four episode metadata columns are added to every row:</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">episodes</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 160</span></span></code></pre></div>
+<p>Four episode metadata columns are added to every row, regardless of
+<code>return_format</code>:</p>
 <p><strong><code>.episode_id</code></strong> – A character key combining
 facility and visit identifier, shared across all rows belonging to the
 same encounter. Used internally to group rows into episodes and
 available for joining or filtering downstream.</p>
 <p><strong><code>.patient_class_sequence</code></strong> – A sorted,
-collapsed string of all patient classes in the episode. A visit with
-both ED and Admitted rows has
-<code>.patient_class_sequence = "Admitted-&gt;ED"</code>. A visit with
-only an ED row has <code>.patient_class_sequence = "ED"</code>. This
-column enables filtering to specific episode types (e.g.,
+collapsed string of all patient classes present in the episode before
+merging. An episode built from both an ED row and an Admitted row has
+<code>.patient_class_sequence = "Admitted-&gt;ED"</code>. An episode
+built from a single ED row has
+<code>.patient_class_sequence = "ED"</code>. This column enables
+filtering to specific episode types (e.g.,
 <code>filter(.patient_class_sequence == "Admitted-&gt;ED")</code> to
-isolate escalating visits).</p>
-<p><strong><code>.episode_n_rows</code></strong> – The number of rows in
-the episode. Single-class episodes have
-<code>.episode_n_rows = 1</code>; ED + Admitted episodes have
+isolate escalating visits) even though the underlying rows have already
+been merged.</p>
+<p><strong><code>.episode_n_rows</code></strong> – The number of
+original rows the episode was built from before merging. Episodes with
+no escalation have <code>.episode_n_rows = 1</code>; ED + Admitted
+episodes collapsed from two original rows have
 <code>.episode_n_rows = 2</code>.</p>
-<p><strong><code>.index_encounter</code></strong> – <code>TRUE</code> on
-the ED row when both ED and Admitted rows are present; <code>TRUE</code>
-on the single row for ED-only or Direct Admit-only episodes. Filtering
-to <code>.index_encounter == TRUE</code> yields exactly one row per
-clinical encounter – the appropriate denominator for unduplicated burden
-counts.</p>
+<p><strong><code>.index_encounter</code></strong> – In collapsed output
+(the default), always <code>TRUE</code>, since every row already
+represents exactly one merged encounter; the column is retained for
+schema consistency with the diagnostic long-format output described
+below, not because a filtering step is required.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Unduplicated episode count (one row per encounter)</span></span>
+<code class="sourceCode R"><span><span class="co"># Distribution of care pathways -- already one row per encounter</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt;   .patient_class_sequence     n</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        124</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="inspecting-the-raw-linkage-mechanism-return_format-long">Inspecting the Raw Linkage Mechanism:
+<code>return_format = "long"</code><a class="anchor" aria-label="anchor" href="#inspecting-the-raw-linkage-mechanism-return_format-long"></a>
+</h3>
+<p>Set <code>return_format = "long"</code> to see the pre-merge rows
+directly – for example, to audit which fields differed between the ED
+and inpatient records before they were reconciled, or to understand the
+linkage mechanism itself. No merge is applied in this mode.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">episodes_long</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/link_encounters.html">link_encounters</a></span><span class="op">(</span><span class="va">ed_clean</span>, return_format <span class="op">=</span> <span class="st">"long"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Using `HasBeen_` flags for patient class derivation. For more granular and</span></span>
+<span><span class="co">#&gt; informative output, add `C_Patient_Class_List` to your ESSENCE API pull fields.</span></span>
+<span></span>
+<span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">episodes_long</span>, <span class="va">patient_class</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt;   patient_class     n</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Admitted         36</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ED              160</span></span></code></pre></div>
+<p>In long format, <code>.index_encounter</code> marks the row that
+survives a “one row per episode” filter – <code>TRUE</code> on the ED
+row when both ED and Admitted rows are present, or on the single row for
+ED-only or Direct Admit-only episodes:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">episodes_long</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
@@ -324,6 +365,10 @@ counts.</p>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        124</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span></code></pre></div>
+<p>This matches the collapsed-format encounter count above, since the
+same rows are merged into (or, in long format, selected as) the
+encounter of record.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="two-pull-linkage">Two-Pull Linkage<a class="anchor" aria-label="anchor" href="#two-pull-linkage"></a>
@@ -335,7 +380,7 @@ deduplicate it separately, and supply it as
 <code>HasBeenE = 1</code> in the inpatient pull are automatically
 removed to prevent double-counting – these visits are already present in
 the ED pull.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Query ESSENCE for HasBeenAdmitted = 1 separately, then:</span></span>
 <span><span class="va">inpatient_clean</span> <span class="op">&lt;-</span> <span class="va">essence_inpatient</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span></span>
@@ -347,20 +392,20 @@ the ED pull.</p>
 <p>When <code>inpatient_admission_data</code> is supplied,
 <code><a href="../reference/link_encounters.html">link_encounters()</a></code> removes rows with
 <code>HasBeenE = 1</code> from that pull (informing you of how many were
-dropped) and labels the remaining rows as
-<code>patient_class = "Direct Admit"</code>. These rows are then bound
-to the long-format ED data and receive
-<code>.index_encounter = TRUE</code> because they represent an encounter
-with no corresponding ED row.</p>
+dropped) and labels the remaining rows
+<code>patient_class = "Direct Admit"</code> before merging. A
+direct-admit visit that shares no facility x visit_id with an ED row has
+no rows to merge with, so it survives collapsing as its own single-row
+episode with <code>.patient_class_sequence = "Direct Admit"</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="burden-estimation-from-linked-data">Burden Estimation from Linked Data<a class="anchor" aria-label="anchor" href="#burden-estimation-from-linked-data"></a>
 </h2>
-<p>The recommended approach for unduplicated burden estimation is to
-filter to <code>.index_encounter == TRUE</code> and count:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<p>With the default collapsed output, unduplicated burden estimation is
+just a count – no <code>.index_encounter</code> filter is needed, since
+every row already represents one merged encounter:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">burden</span> <span class="op">&lt;-</span> <span class="va">episodes</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">burden</span></span>
@@ -370,10 +415,10 @@ filter to <code>.index_encounter == TRUE</code> and count:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        124</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span></code></pre></div>
 <p>This yields one count per clinical encounter. Visits that generated
-both ED and Admitted rows are counted once (from the ED row, which is
-the index encounter for that episode). Visits that generated only an ED
-row are counted once. With two-pull linkage, direct admissions add their
-own counts without inflating the ED rows.</p>
+both an ED signal and an Admitted signal are merged into a single row
+(using the ED row as primary) and counted once. Visits that generated
+only an ED signal are counted once. With two-pull linkage, direct
+admissions add their own counts without inflating the ED rows.</p>
 <p>The <code>.patient_class_sequence</code> breakdown is informative for
 understanding the severity composition of the case count:</p>
 <ul>
@@ -382,32 +427,34 @@ understanding the severity composition of the case count:</p>
 admission</li>
 <li>
 <code>"Admitted-&gt;ED"</code> – Emergency department visit that
-escalated to inpatient admission (counted from the ED row)</li>
+escalated to inpatient admission (merged into a single row, primary
+values from the ED row)</li>
 <li>
 <code>"Direct Admit"</code> – Inpatient admission without ED
 encounter (only visible with two-pull linkage)</li>
 </ul>
 <p>For most ESSENCE-based incidence analyses, the sum across all
-<code>.patient_class_sequence</code> categories at
-<code>.index_encounter == TRUE</code> is the appropriate unduplicated
-encounter count.</p>
+<code>.patient_class_sequence</code> categories in the (already
+unduplicated) collapsed output is the appropriate unduplicated encounter
+count.</p>
 </div>
 <div class="section level2">
 <h2 id="connection-to-cluster-detection">Connection to Cluster Detection<a class="anchor" aria-label="anchor" href="#connection-to-cluster-detection"></a>
 </h2>
 <p>If using linked encounter data as input to spatial cluster detection
 algorithms (e.g., SaTScan, the <code>gsClusterDetect</code> package, or
-custom Kulldorff scan implementations), filter to
-<code>.index_encounter == TRUE</code> before aggregating counts to
-geographic units. Failing to do so would count multi-class episodes
-twice – once for the ED row and once for the Admitted row – inflating
-cluster statistics.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Prepare for spatial analysis: one row per encounter, with geographic field</span></span>
+custom Kulldorff scan implementations), the default collapsed output is
+already one row per encounter, so no additional deduplication filter is
+needed before aggregating counts to geographic units:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Prepare for spatial analysis: already one row per encounter</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">region</span><span class="op">)</span></span></code></pre></div>
+<p>If you instead requested <code>return_format = "long"</code> for
+diagnostic purposes, filter to <code>.index_encounter == TRUE</code>
+first – otherwise multi-class episodes would be counted twice, once per
+pre-merge row, inflating cluster statistics.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

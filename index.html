@@ -79,7 +79,7 @@
 <tbody>
 <tr>
 <td>
-<strong>Duplicate records</strong> – multiple rows per visit due to retransmissions, midnight date changes, patient ID corrections, and class transitions</td>
+<strong>Duplicate records</strong> – multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions</td>
 <td>
 <code><a href="reference/dedupe.html">dedupe()</a></code>, <code><a href="reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="reference/classify_duplicates.html">classify_duplicates()</a></code>
 </td>
@@ -107,7 +107,7 @@
 </table>
 <p>These preprocessing steps are applied by practitioners manually and inconsistently when they choose to apply them at all. <code>sysPrep</code> formalizes them into a reproducible, documented pipeline, developed through their operational use in production surveillance workflows.</p>
 <div class="section level3">
-<h3 id="validated-data-sources">Validated data sources<a class="anchor" aria-label="anchor" href="#validated-data-sources"></a>
+<h3 id="validated-data-sources">Validated Data Sources<a class="anchor" aria-label="anchor" href="#validated-data-sources"></a>
 </h3>
 <p><code>sysPrep</code>’s functions have been validated against records pulled from the following NSSP ESSENCE data sources. Both sources return ED visit and inpatient admission records, so all exported functions apply to either:</p>
 <table class="table">
@@ -170,13 +170,13 @@
 <span><span class="va">ed_clean</span>        <span class="op">&lt;-</span> <span class="va">essence_ed</span>        <span class="op">|&gt;</span> <span class="fu"><a href="reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span><span class="op">)</span></span>
 <span><span class="va">inpatient_clean</span> <span class="op">&lt;-</span> <span class="va">essence_inpatient</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Link into care episodes (captures direct admissions)</span></span>
+<span><span class="co"># Link into care episodes (captures direct admissions);</span></span>
+<span><span class="co"># one merged row per true encounter by default</span></span>
 <span><span class="va">episodes</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/link_encounters.html">link_encounters</a></span><span class="op">(</span><span class="va">ed_clean</span>, <span class="va">inpatient_clean</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Unduplicated episode count</span></span>
+<span><span class="co"># Distribution of care pathways</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">patient_class_sequence</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
