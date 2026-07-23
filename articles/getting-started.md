@@ -68,7 +68,7 @@ the NSSP ESSENCE `va_er` (Patient Location, Full Details) and `va_hosp`
 (Facility Location, Full Details) data sources. Both sources return ED
 visit and inpatient admission records, so all exported functions apply
 to either. Column names and value formats referenced throughout this
-package (e.g., `SITE_County` region strings,
+package (e.g., `{SITE}_{REGION}` region strings,
 `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data sources.
 
 ## Installation

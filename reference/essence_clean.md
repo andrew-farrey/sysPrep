@@ -33,7 +33,7 @@ names are in snake_case (post
 
 - hospital_region:
 
-  Character. Facility county in `SITE_County` format.
+  Character. Facility ESSENCE Region in `{SITE}_{REGION}` format.
 
 - hospital_zip:
 
@@ -70,9 +70,9 @@ names are in snake_case (post
 
 - region:
 
-  Character. Patient county of residence in `SITE_County` format.
-  Out-of-state and `OTHER_REGION` visits have been reassigned to the
-  treating facility's county by
+  Character. Patient ESSENCE Region of residence in `{SITE}_{REGION}`
+  format. Out-of-state and `OTHER_REGION` visits have been reassigned to
+  the treating facility's Region by
   [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
 
 - zip_code:

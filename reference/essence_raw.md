@@ -35,7 +35,7 @@ A data frame with approximately 190 rows and 16 columns:
 
 - HospitalRegion:
 
-  Character. Facility county in `SITE_County` format (e.g.,
+  Character. Facility ESSENCE Region in `{SITE}_{REGION}` format (e.g.,
   `"KY_Jefferson"`).
 
 - HospitalZip:
@@ -81,8 +81,8 @@ A data frame with approximately 190 rows and 16 columns:
 
 - Region:
 
-  Character. Patient county of residence in `SITE_County` format.
-  Includes out-of-state values (e.g., `"TN_Davidson"`) and
+  Character. Patient ESSENCE Region of residence in `{SITE}_{REGION}`
+  format. Includes out-of-state values (e.g., `"TN_Davidson"`) and
   `"OTHER_REGION"` entries to demonstrate
   [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
 

@@ -171,10 +171,11 @@ with.</p>
 <div class="section level2">
 <h2 id="the-region-field-format">The <code>Region</code> Field Format<a class="anchor" aria-label="anchor" href="#the-region-field-format"></a>
 </h2>
-<p>ESSENCE encodes county-level geography in the format
-<code>SITE_County</code>, where <code>SITE</code> is the site
-abbreviation (e.g., <code>"KY"</code>) and <code>County</code> is the
-county name (e.g., <code>"Jefferson"</code>). Some site names contain
+<p>ESSENCE encodes geography in the format <code>{SITE}_{REGION}</code>,
+where <code>SITE</code> is the NSSP Site Short Name (e.g.,
+<code>"KY"</code>) and <code>REGION</code> is the ESSENCE Region – a
+county name derived from a zip-code-to-county lookup table maintained by
+ESSENCE (e.g., <code>"Jefferson"</code>). Some site names contain
 additional underscores (e.g., multi-word state abbreviations used in
 certain NSSP configurations), so the site prefix is defined as all
 characters before the <strong>last</strong> underscore in the

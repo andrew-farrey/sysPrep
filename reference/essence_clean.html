@@ -68,8 +68,8 @@ column names are in snake_case (post <code><a href="https://sfirke.github.io/jan
 providers have been removed; FSED corrections applied.</p></dd>
 
 <dt>hospital_region</dt>
-<dd><p>Character. Facility county in <code>SITE_County</code>
-format.</p></dd>
+<dd><p>Character. Facility ESSENCE Region in
+<code>{SITE}_{REGION}</code> format.</p></dd>
 
 <dt>hospital_zip</dt>
 <dd><p>Character. Facility zip code.</p></dd>
@@ -99,9 +99,9 @@ One unique value per visit after deduplication.</p></dd>
 inpatient admission.</p></dd>
 
 <dt>region</dt>
-<dd><p>Character. Patient county of residence in <code>SITE_County</code>
-format. Out-of-state and <code>OTHER_REGION</code> visits have been
-reassigned to the treating facility's county by
+<dd><p>Character. Patient ESSENCE Region of residence in
+<code>{SITE}_{REGION}</code> format. Out-of-state and <code>OTHER_REGION</code> visits have
+been reassigned to the treating facility's Region by
 <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>.</p></dd>
 
 <dt>zip_code</dt>

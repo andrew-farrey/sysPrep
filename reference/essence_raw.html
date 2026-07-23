@@ -69,8 +69,8 @@ intentional misclassifications for two FSEDs (<code>"Urgent Care"</code>) to
 demonstrate <code><a href="filter_care_setting.html">filter_care_setting()</a></code> correction logic.</p></dd>
 
 <dt>HospitalRegion</dt>
-<dd><p>Character. Facility county in <code>SITE_County</code>
-format (e.g., <code>"KY_Jefferson"</code>).</p></dd>
+<dd><p>Character. Facility ESSENCE Region in
+<code>{SITE}_{REGION}</code> format (e.g., <code>"KY_Jefferson"</code>).</p></dd>
 
 <dt>HospitalZip</dt>
 <dd><p>Character. Facility zip code.</p></dd>
@@ -108,9 +108,10 @@ consistent with a <code>HasBeenE = 1</code> filtered ESSENCE pull.</p></dd>
 inpatient admission (discharge-disposition aware).</p></dd>
 
 <dt>Region</dt>
-<dd><p>Character. Patient county of residence in <code>SITE_County</code>
-format. Includes out-of-state values (e.g., <code>"TN_Davidson"</code>) and
-<code>"OTHER_REGION"</code> entries to demonstrate <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>.</p></dd>
+<dd><p>Character. Patient ESSENCE Region of residence in
+<code>{SITE}_{REGION}</code> format. Includes out-of-state values
+(e.g., <code>"TN_Davidson"</code>) and <code>"OTHER_REGION"</code> entries to demonstrate
+<code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>.</p></dd>
 
 <dt>ZipCode</dt>
 <dd><p>Character. Patient zip code. May be <code>NA</code> for

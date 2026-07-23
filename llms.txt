@@ -39,7 +39,7 @@ either:
 |----|----|----|
 | `va_er`, `va_hosp` | Patient Location (Full Details), Facility Location (Full Details) | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md), [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md), [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md), [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md), [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md), [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md), [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
 
-Column names and expected value formats (e.g., `SITE_County` region
+Column names and expected value formats (e.g., `{SITE}_{REGION}` region
 strings, `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data
 sources. Pulls from other ESSENCE data sources may require column
 renaming before use.

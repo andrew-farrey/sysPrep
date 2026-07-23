@@ -157,10 +157,12 @@ incidence-based burden from a single geographic field.</p>
 <h3 id="site-prefix-detection">Site prefix detection<a class="anchor" aria-label="anchor" href="#site-prefix-detection"></a></h3>
 
 
-<p>The <code>Region</code> field uses the format <code>SITE_County</code>, where <code>SITE</code> is a
-site abbreviation and <code>County</code> is the county name. Because some site
-names contain multiple underscores, the prefix is all characters before
-the <strong>last</strong> underscore. A visit is classified as out-of-state when its
+<p>The <code>Region</code> field uses the format <code>{SITE}_{REGION}</code>, where <code>SITE</code> is
+the NSSP Site Short Name and <code>REGION</code> is the ESSENCE Region – a county
+name derived from a zip-code-to-county lookup table maintained by
+ESSENCE. Because some site names contain multiple underscores, the
+prefix is all characters before the <strong>last</strong> underscore. A visit is
+classified as out-of-state when its
 <code>Region</code> does not begin with <code>paste0(site, "_")</code>, or when <code>Region</code> is
 <code>"OTHER_REGION"</code> or <code>NA</code>. For example, with <code>site = "KY"</code>:</p><ul><li><p><code>"KY_Jefferson"</code> -&gt; in-state, unchanged</p></li>
 <li><p><code>"TN_Davidson"</code> -&gt; out-of-state, region assigned from <code>HospitalRegion</code></p></li>
