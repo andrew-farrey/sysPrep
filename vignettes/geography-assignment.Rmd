@@ -109,9 +109,10 @@ your research question, is facility-location in nature to begin with.
 
 ## The `Region` Field Format
 
-ESSENCE encodes county-level geography in the format `SITE_County`, where
-`SITE` is the site abbreviation (e.g., `"KY"`) and `County` is the county
-name (e.g., `"Jefferson"`). Some site names contain additional underscores
+ESSENCE encodes geography in the format `{SITE}_{REGION}`, where `SITE` is
+the NSSP Site Short Name (e.g., `"KY"`) and `REGION` is the ESSENCE Region --
+a county name derived from a zip-code-to-county lookup table maintained by
+ESSENCE (e.g., `"Jefferson"`). Some site names contain additional underscores
 (e.g., multi-word state abbreviations used in certain NSSP configurations), so
 the site prefix is defined as all characters before the **last** underscore in
 the string.

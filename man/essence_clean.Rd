@@ -12,8 +12,8 @@ column names are in snake_case (post \code{\link[janitor:clean_names]{janitor::c
 \item{hospital}{Integer. Synthetic numeric facility identifier.}
 \item{facility_type}{Character. ESSENCE facility type. Non-ED
 providers have been removed; FSED corrections applied.}
-\item{hospital_region}{Character. Facility county in \code{SITE_County}
-format.}
+\item{hospital_region}{Character. Facility ESSENCE Region in
+\verb{\{SITE\}_\{REGION\}} format.}
 \item{hospital_zip}{Character. Facility zip code.}
 \item{visit_id}{Character. Synthetic visit identifier, unique within
 a facility.}
@@ -25,9 +25,9 @@ One unique value per visit after deduplication.}
 \item{has_been_e}{Integer. \code{1} for all records (ED pull).}
 \item{has_been_admitted}{Integer. \code{1} if the visit resulted in
 inpatient admission.}
-\item{region}{Character. Patient county of residence in \code{SITE_County}
-format. Out-of-state and \code{OTHER_REGION} visits have been
-reassigned to the treating facility's county by
+\item{region}{Character. Patient ESSENCE Region of residence in
+\verb{\{SITE\}_\{REGION\}} format. Out-of-state and \code{OTHER_REGION} visits have
+been reassigned to the treating facility's Region by
 \code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
 \item{zip_code}{Character. Patient zip code (reassigned for
 out-of-state visits).}

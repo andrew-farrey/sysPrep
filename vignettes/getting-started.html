@@ -349,11 +349,20 @@ Epidemics (<a href="https://www.cdc.gov/nssp/">ESSENCE</a>) provides
 near-real-time access to emergency department visit data from
 participating facilities across the United States. Epidemiologists use
 ESSENCE to monitor disease trends, detect spatial clusters, and evaluate
-the impact of public health interventions – but the raw data returned by
-the ESSENCE API requires preprocessing before these analyses can proceed
-reliably.</p>
+the impact of public health interventions.</p>
+<p><code>sysPrep</code>’s preprocessing steps are <strong>not
+required</strong> to run these analyses – many surveillance questions
+tolerate the raw data quality issues below without materially changing
+conclusions. Applying them is most worthwhile for <strong>small-count,
+high-impact case definitions</strong>, where minimizing false-positive
+clusters/anomalies and preserving external validity matter most (for
+example, before feeding visit-level data into SaTScan or a similar
+spatial scan tool for cluster/anomaly detection). This is the context in
+which these methods were developed: applied opioid overdose surveillance
+and cluster detection using NSSP ESSENCE data.</p>
 <p>Four categories of data quality problems are present in virtually
-every ESSENCE pull:</p>
+every ESSENCE pull, and can bias case counts or distort cluster/anomaly
+detection if left unaddressed:</p>
 <p><strong>Duplicate records.</strong> A single clinical encounter may
 appear as multiple rows in the same pull. Retransmissions occur when a
 facility resubmits a record after updating fields such as a lab result
@@ -390,20 +399,17 @@ apply to address each of these problems into a reproducible, documented
 R pipeline.</p>
 <p><code>sysPrep</code>’s functions have been validated against records
 pulled from the NSSP ESSENCE <code>va_er</code> (Patient Location, Full
-Details) data source, and <code>link_encounters()</code> has
-additionally been validated against a supplemental <code>va_hosp</code>
-(Facility Location, Full Details) pull. Column names and value formats
-referenced throughout this package (e.g., <code>SITE_County</code>
-region strings, <code>HasBeenE</code>/<code>HasBeenAdmitted</code>
-flags) reflect these two data sources.</p>
+Details) and <code>va_hosp</code> (Facility Location, Full Details) data
+sources. Both sources return ED visit and inpatient admission records,
+so all exported functions apply to either. Column names and value
+formats referenced throughout this package (e.g.,
+<code>{SITE}_{REGION}</code> region strings,
+<code>HasBeenE</code>/<code>HasBeenAdmitted</code> flags) reflect these
+two data sources.</p>
 </div>
 <div id="installation" class="section level2">
 <h2>Installation</h2>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># CRAN (when available)</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;sysPrep&quot;</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co"># Development version</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;andrew-farrey/sysPrep&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;andrew-farrey/sysPrep&quot;</span>)</span></code></pre></div>
 </div>
 <div id="the-synthetic-dataset" class="section level2">
 <h2>The Synthetic Dataset</h2>
@@ -493,44 +499,60 @@ is preserved unchanged. Setting
 <code>preserve_original_geographies = TRUE</code> retains the
 pre-reassignment values in <code>original_region</code> and
 <code>original_zip_code</code> for audit purposes.</p>
+<p>Each of these functions reports what it did via informational console
+messages – useful during interactive exploration, but often unwanted
+when the pipeline runs inside a rendered R Markdown report or other
+non-interactive context. Pass <code>verbose = FALSE</code> to suppress
+these messages; warnings and errors are always shown regardless, so real
+data quality issues are never silently hidden:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>clean_quiet <span class="ot">&lt;-</span> essence_raw <span class="sc">|&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="fu">dedupe</span>(<span class="at">order_by =</span> Arrived_Date_Time, <span class="at">keep =</span> <span class="st">&quot;last&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="fu">filter_care_setting</span>(</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    <span class="at">fix_facility_type_vector =</span> <span class="fu">c</span>(<span class="st">&quot;Hillside FSED&quot;</span>, <span class="st">&quot;Downtown Emergency Services&quot;</span>),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="at">verbose =</span> <span class="cn">FALSE</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="fu">assign_treating_geography</span>(</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="at">preserve_original_geographies =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>    <span class="at">verbose =</span> <span class="cn">FALSE</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  )</span></code></pre></div>
 </div>
 <div id="what-changed" class="section level2">
 <h2>What Changed?</h2>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Raw rows:   &quot;</span>, <span class="fu">nrow</span>(essence_raw), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="co">#&gt; Raw rows:    191</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Clean rows: &quot;</span>, <span class="fu">nrow</span>(clean), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#&gt; Clean rows:  160</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Rows removed at each step:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co">#&gt; Rows removed at each step:</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Duplicates removed:         &quot;</span>,</span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>    <span class="fu">nrow</span>(essence_raw) <span class="sc">-</span> <span class="fu">nrow</span>(<span class="fu">dedupe</span>(essence_raw, <span class="at">order_by =</span> Arrived_Date_Time)), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co">#&gt;   Duplicates removed:          11</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>after_dedup <span class="ot">&lt;-</span> essence_raw <span class="sc">|&gt;</span></span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>  <span class="fu">dedupe</span>(<span class="at">order_by =</span> Arrived_Date_Time, <span class="at">keep =</span> <span class="st">&quot;last&quot;</span>)</span>
-<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>after_filter <span class="ot">&lt;-</span> after_dedup <span class="sc">|&gt;</span></span>
-<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>  <span class="fu">filter_care_setting</span>(</span>
-<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>    <span class="at">fix_facility_type_vector =</span> <span class="fu">c</span>(<span class="st">&quot;Hillside FSED&quot;</span>, <span class="st">&quot;Downtown Emergency Services&quot;</span>)</span>
-<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>  )</span>
-<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="co">#&gt; The following `FacilityType` values are not in `keep_types` and will be excluded:</span></span>
-<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="co">#&gt;   - Medical Specialty</span></span>
-<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a><span class="co">#&gt;   - Primary Care</span></span>
-<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Non-ED providers excluded:  &quot;</span>,</span>
-<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a>    <span class="fu">nrow</span>(after_dedup) <span class="sc">-</span> <span class="fu">nrow</span>(after_filter), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="co">#&gt;   Non-ED providers excluded:   20</span></span>
-<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">New columns added by assign_treating_geography():</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a><span class="co">#&gt; New columns added by assign_treating_geography():</span></span>
-<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot; &quot;</span>, <span class="fu">paste</span>(<span class="fu">setdiff</span>(<span class="fu">names</span>(clean), <span class="fu">names</span>(essence_raw)), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a><span class="co">#&gt;   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, arrived_date_time, has_been_e, has_been_admitted, region, zip_code, sex, c_patient_age, original_region, original_zip_code, .out_of_state</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># How many visits had geography reassigned?</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>dplyr<span class="sc">::</span><span class="fu">count</span>(clean, .out_of_state)</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 2</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt;   .out_of_state     n</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#&gt;   &lt;lgl&gt;         &lt;int&gt;</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; 1 FALSE           133</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt; 2 TRUE             27</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Raw rows:   &quot;</span>, <span class="fu">nrow</span>(essence_raw), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co">#&gt; Raw rows:    191</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Clean rows: &quot;</span>, <span class="fu">nrow</span>(clean), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt; Clean rows:  160</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Rows removed at each step:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt; Rows removed at each step:</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Duplicates removed:         &quot;</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>    <span class="fu">nrow</span>(essence_raw) <span class="sc">-</span> <span class="fu">nrow</span>(<span class="fu">dedupe</span>(essence_raw, <span class="at">order_by =</span> Arrived_Date_Time)), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co">#&gt;   Duplicates removed:          11</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>after_dedup <span class="ot">&lt;-</span> essence_raw <span class="sc">|&gt;</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="fu">dedupe</span>(<span class="at">order_by =</span> Arrived_Date_Time, <span class="at">keep =</span> <span class="st">&quot;last&quot;</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>after_filter <span class="ot">&lt;-</span> after_dedup <span class="sc">|&gt;</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="fu">filter_care_setting</span>(</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>    <span class="at">fix_facility_type_vector =</span> <span class="fu">c</span>(<span class="st">&quot;Hillside FSED&quot;</span>, <span class="st">&quot;Downtown Emergency Services&quot;</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  )</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="co">#&gt; The following `FacilityType` values are not in `keep_types` and will be excluded:</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co">#&gt;   - Medical Specialty</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a><span class="co">#&gt;   - Primary Care</span></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Non-ED providers excluded:  &quot;</span>,</span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>    <span class="fu">nrow</span>(after_dedup) <span class="sc">-</span> <span class="fu">nrow</span>(after_filter), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="co">#&gt;   Non-ED providers excluded:   20</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">New columns added by assign_treating_geography():</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a><span class="co">#&gt; New columns added by assign_treating_geography():</span></span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot; &quot;</span>, <span class="fu">paste</span>(<span class="fu">setdiff</span>(<span class="fu">names</span>(clean), <span class="fu">names</span>(essence_raw)), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a><span class="co">#&gt;   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, arrived_date_time, has_been_e, has_been_admitted, region, zip_code, sex, c_patient_age, .out_of_state, original_region, original_zip_code</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># How many visits had geography reassigned?</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>dplyr<span class="sc">::</span><span class="fu">count</span>(clean, .out_of_state)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 2</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt;   .out_of_state     n</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt;   &lt;lgl&gt;         &lt;int&gt;</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 1 FALSE           133</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt; 2 TRUE             27</span></span></code></pre></div>
 <p>The <code>.out_of_state</code> column marks visits where
 <code>Region</code> was reassigned from an out-of-state county or
 <code>OTHER_REGION</code> to the treating facility’s county. The

@@ -84,10 +84,12 @@ incidence-based burden from a single geographic field.
 
 \subsection{Site prefix detection}{
 
-The \code{Region} field uses the format \code{SITE_County}, where \code{SITE} is a
-site abbreviation and \code{County} is the county name. Because some site
-names contain multiple underscores, the prefix is all characters before
-the \strong{last} underscore. A visit is classified as out-of-state when its
+The \code{Region} field uses the format \verb{\{SITE\}_\{REGION\}}, where \code{SITE} is
+the NSSP Site Short Name and \code{REGION} is the ESSENCE Region -- a county
+name derived from a zip-code-to-county lookup table maintained by
+ESSENCE. Because some site names contain multiple underscores, the
+prefix is all characters before the \strong{last} underscore. A visit is
+classified as out-of-state when its
 \code{Region} does not begin with \code{paste0(site, "_")}, or when \code{Region} is
 \code{"OTHER_REGION"} or \code{NA}. For example, with \code{site = "KY"}:
 \itemize{

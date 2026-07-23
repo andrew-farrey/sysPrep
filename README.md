@@ -44,7 +44,7 @@ inpatient admission records, so all exported functions apply to either:
 |----------------------------|-----------|---------|
 | `va_er`, `va_hosp` | Patient Location (Full Details), Facility Location (Full Details) | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()`, `filter_care_setting()`, `review_facility_ed_visits()`, `link_encounters()`, `assign_treating_geography()`, `assign_facility_geography()` |
 
-Column names and expected value formats (e.g., `SITE_County` region strings,
+Column names and expected value formats (e.g., `{SITE}_{REGION}` region strings,
 `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data sources. Pulls
 from other ESSENCE data sources may require column renaming before use.
 

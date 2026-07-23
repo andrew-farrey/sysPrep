@@ -13,8 +13,8 @@ A data frame with approximately 190 rows and 16 columns:
 \item{FacilityType}{Character. ESSENCE facility type. Includes
 intentional misclassifications for two FSEDs (\code{"Urgent Care"}) to
 demonstrate \code{\link[=filter_care_setting]{filter_care_setting()}} correction logic.}
-\item{HospitalRegion}{Character. Facility county in \code{SITE_County}
-format (e.g., \code{"KY_Jefferson"}).}
+\item{HospitalRegion}{Character. Facility ESSENCE Region in
+\verb{\{SITE\}_\{REGION\}} format (e.g., \code{"KY_Jefferson"}).}
 \item{HospitalZip}{Character. Facility zip code.}
 \item{Visit_ID}{Character. Synthetic visit identifier, unique within
 a facility. Multiple rows with the same \verb{HospitalName x Visit_ID}
@@ -34,9 +34,10 @@ emergency visit. All records in this dataset have \code{HasBeenE = 1},
 consistent with a \code{HasBeenE = 1} filtered ESSENCE pull.}
 \item{HasBeenAdmitted}{Integer. \code{1} if the visit resulted in
 inpatient admission (discharge-disposition aware).}
-\item{Region}{Character. Patient county of residence in \code{SITE_County}
-format. Includes out-of-state values (e.g., \code{"TN_Davidson"}) and
-\code{"OTHER_REGION"} entries to demonstrate \code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
+\item{Region}{Character. Patient ESSENCE Region of residence in
+\verb{\{SITE\}_\{REGION\}} format. Includes out-of-state values
+(e.g., \code{"TN_Davidson"}) and \code{"OTHER_REGION"} entries to demonstrate
+\code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
 \item{ZipCode}{Character. Patient zip code. May be \code{NA} for
 \code{OTHER_REGION} records.}
 \item{Sex}{Character. \code{"M"}, \code{"F"}, or \code{"U"} (unknown).}

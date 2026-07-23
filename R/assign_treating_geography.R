@@ -20,10 +20,12 @@
 #' incidence-based burden from a single geographic field.
 #'
 #' ## Site prefix detection
-#' The `Region` field uses the format `SITE_County`, where `SITE` is a
-#' site abbreviation and `County` is the county name. Because some site
-#' names contain multiple underscores, the prefix is all characters before
-#' the **last** underscore. A visit is classified as out-of-state when its
+#' The `Region` field uses the format `{SITE}_{REGION}`, where `SITE` is
+#' the NSSP Site Short Name and `REGION` is the ESSENCE Region -- a county
+#' name derived from a zip-code-to-county lookup table maintained by
+#' ESSENCE. Because some site names contain multiple underscores, the
+#' prefix is all characters before the **last** underscore. A visit is
+#' classified as out-of-state when its
 #' `Region` does not begin with `paste0(site, "_")`, or when `Region` is
 #' `"OTHER_REGION"` or `NA`. For example, with `site = "KY"`:
 #' - `"KY_Jefferson"` -> in-state, unchanged

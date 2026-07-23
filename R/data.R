@@ -17,8 +17,8 @@
 #'   \item{FacilityType}{Character. ESSENCE facility type. Includes
 #'     intentional misclassifications for two FSEDs (`"Urgent Care"`) to
 #'     demonstrate [filter_care_setting()] correction logic.}
-#'   \item{HospitalRegion}{Character. Facility county in `SITE_County`
-#'     format (e.g., `"KY_Jefferson"`).}
+#'   \item{HospitalRegion}{Character. Facility ESSENCE Region in
+#'     `{SITE}_{REGION}` format (e.g., `"KY_Jefferson"`).}
 #'   \item{HospitalZip}{Character. Facility zip code.}
 #'   \item{Visit_ID}{Character. Synthetic visit identifier, unique within
 #'     a facility. Multiple rows with the same `HospitalName x Visit_ID`
@@ -38,9 +38,10 @@
 #'     consistent with a `HasBeenE = 1` filtered ESSENCE pull.}
 #'   \item{HasBeenAdmitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission (discharge-disposition aware).}
-#'   \item{Region}{Character. Patient county of residence in `SITE_County`
-#'     format. Includes out-of-state values (e.g., `"TN_Davidson"`) and
-#'     `"OTHER_REGION"` entries to demonstrate [assign_treating_geography()].}
+#'   \item{Region}{Character. Patient ESSENCE Region of residence in
+#'     `{SITE}_{REGION}` format. Includes out-of-state values
+#'     (e.g., `"TN_Davidson"`) and `"OTHER_REGION"` entries to demonstrate
+#'     [assign_treating_geography()].}
 #'   \item{ZipCode}{Character. Patient zip code. May be `NA` for
 #'     `OTHER_REGION` records.}
 #'   \item{Sex}{Character. `"M"`, `"F"`, or `"U"` (unknown).}
@@ -95,8 +96,8 @@
 #'   \item{hospital}{Integer. Synthetic numeric facility identifier.}
 #'   \item{facility_type}{Character. ESSENCE facility type. Non-ED
 #'     providers have been removed; FSED corrections applied.}
-#'   \item{hospital_region}{Character. Facility county in `SITE_County`
-#'     format.}
+#'   \item{hospital_region}{Character. Facility ESSENCE Region in
+#'     `{SITE}_{REGION}` format.}
 #'   \item{hospital_zip}{Character. Facility zip code.}
 #'   \item{visit_id}{Character. Synthetic visit identifier, unique within
 #'     a facility.}
@@ -108,9 +109,9 @@
 #'   \item{has_been_e}{Integer. `1` for all records (ED pull).}
 #'   \item{has_been_admitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission.}
-#'   \item{region}{Character. Patient county of residence in `SITE_County`
-#'     format. Out-of-state and `OTHER_REGION` visits have been
-#'     reassigned to the treating facility's county by
+#'   \item{region}{Character. Patient ESSENCE Region of residence in
+#'     `{SITE}_{REGION}` format. Out-of-state and `OTHER_REGION` visits have
+#'     been reassigned to the treating facility's Region by
 #'     [assign_treating_geography()].}
 #'   \item{zip_code}{Character. Patient zip code (reassigned for
 #'     out-of-state visits).}
