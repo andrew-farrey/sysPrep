@@ -203,7 +203,7 @@ list of all \code{C_Patient_Class} values present across messages sharing the
 same ESSENCE ID (e.g., \code{"E"}, \code{"EI"}, \code{"EIO"}). When present, it is used
 in place of the \code{HasBeen_} pivot, since it distinguishes patient classes
 (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
-Preadmit/Recurring) that the \code{HasBeen_} flags do not represent. For more
+Pre-admit/Recurring) that the \code{HasBeen_} flags do not represent. For more
 granular and informative output, add \code{C_Patient_Class_List} to your
 ESSENCE API pull fields. Splitting each character maps to the HL7/PHIN
 standard:\tabular{ll}{

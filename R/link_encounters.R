@@ -126,7 +126,7 @@
 #' same ESSENCE ID (e.g., `"E"`, `"EI"`, `"EIO"`). When present, it is used
 #' in place of the `HasBeen_` pivot, since it distinguishes patient classes
 #' (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
-#' Preadmit/Recurring) that the `HasBeen_` flags do not represent. For more
+#' Pre-admit/Recurring) that the `HasBeen_` flags do not represent. For more
 #' granular and informative output, add `C_Patient_Class_List` to your
 #' ESSENCE API pull fields. Splitting each character maps to the HL7/PHIN
 #' standard:
