@@ -288,7 +288,7 @@ list of all <code>C_Patient_Class</code> values present across messages sharing 
 same ESSENCE ID (e.g., <code>"E"</code>, <code>"EI"</code>, <code>"EIO"</code>). When present, it is used
 in place of the <code>HasBeen_</code> pivot, since it distinguishes patient classes
 (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
-Preadmit/Recurring) that the <code>HasBeen_</code> flags do not represent. For more
+Pre-admit/Recurring) that the <code>HasBeen_</code> flags do not represent. For more
 granular and informative output, add <code>C_Patient_Class_List</code> to your
 ESSENCE API pull fields. Splitting each character maps to the HL7/PHIN
 standard:</p><table class="table table"><tr><td>Code</td><td>Patient class</td></tr><tr><td><code>E</code></td><td>ED</td></tr><tr><td><code>I</code></td><td>Inpatient</td></tr><tr><td><code>D</code></td><td>Direct Admit</td></tr><tr><td><code>V</code></td><td>Observation</td></tr><tr><td><code>O</code></td><td>Outpatient</td></tr><tr><td><code>B</code></td><td>Obstetrics</td></tr><tr><td><code>P</code></td><td>Preadmit</td></tr><tr><td><code>R</code></td><td>Recurring</td></tr></table></div>
