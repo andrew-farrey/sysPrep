@@ -142,6 +142,35 @@
 #' | `P`  | Preadmit |
 #' | `R`  | Recurring |
 #'
+#' ## Chronological ordering of `.patient_class_sequence`
+#' `.patient_class_sequence` reflects the actual order encounters occurred
+#' in, not alphabetical order -- e.g. `"Direct Admit->ED"` when the
+#' direct-admit record's timestamp precedes the ED record's, which is the
+#' reverse of what typically indicates Gap 2's encounter-continuity issue
+#' (an ED visit that transitions into a direct-admit readmission, not a
+#' direct admit that precedes an ED visit). Ordering uses the first
+#' available field, per row, in this priority:
+#' \enumerate{
+#'   \item **`C_Patient_Class_MDT_Updates`** (requires `C_Patient_Class_List`).
+#'     A concatenated list of timestamps positionally aligned with
+#'     `C_Patient_Class_List`, giving the exact moment each class was
+#'     assigned -- the only field that can order two classes assigned
+#'     within a single record (e.g. `"EI"`). Rows where the two lists'
+#'     lengths disagree fall back to the next tier.
+#'   \item **`C_Visit_Date_Time`**. Applied per record -- all classes
+#'     derived from one record share that record's timestamp, so this only
+#'     differentiates classes across separate records sharing the same
+#'     `facility_col` x `visit_col` key (i.e. the ED record vs. the
+#'     direct-admit record in Gap 2, or in the two-pull approach).
+#'   \item **`Date` + `Time`** (both required). Combined into a timestamp
+#'     when neither field above is present.
+#' }
+#' If none of these fields are present (or none can be parsed) anywhere in
+#' the data, `link_encounters()` warns once and `.patient_class_sequence`
+#' falls back to alphabetical order for every episode. Within a single
+#' episode, if only some classes have a usable timestamp, timed classes are
+#' ordered first and untimed classes are appended last.
+#'
 #' ## Episode metadata columns
 #' Present regardless of `return_format`. In collapsed output, these
 #' describe the episode the collapsed row was built from (e.g.
@@ -151,7 +180,8 @@
 #'   \item{`.episode_id`}{A character key combining `facility_col` and
 #'     `visit_col`, shared across all rows belonging to the same care episode.}
 #'   \item{`.patient_class_sequence`}{All patient classes for the episode
-#'     sorted and collapsed, e.g., `"Direct Admit->ED"`.}
+#'     in chronological order and collapsed, e.g., `"Direct Admit->ED"`
+#'     when the direct admit occurred first -- see Details.}
 #'   \item{`.episode_n_rows`}{Number of original rows the episode was built
 #'     from before merging.}
 #'   \item{`.index_encounter`}{In long format, `TRUE` on the row that
@@ -281,6 +311,12 @@ link_encounters <- function(ed_data,
   use_pc_list <- !is.null(pc_list_col)
   pc_list_str <- if (use_pc_list) rlang::as_string(pc_list_col) else NA_character_
 
+  # Detect C_Patient_Class_MDT_Updates (optional, per-class timestamps used
+  # to chronologically order `.patient_class_sequence` -- see below) ----
+  mdt_col     <- resolve_col_optional(ed_data, rlang::sym("C_Patient_Class_MDT_Updates"))
+  use_mdt     <- use_pc_list && !is.null(mdt_col)
+  mdt_col_str <- if (use_mdt) rlang::as_string(mdt_col) else NA_character_
+
   # When C_Patient_Class_List is absent, use the standard HasBeen_ flags ----
   if (!use_pc_list) {
 
@@ -374,19 +410,54 @@ link_encounters <- function(ed_data,
       )
     }
 
+    # Split C_Patient_Class_List into one element per patient class ----
+    pc_split_list <- lapply(as.character(ed_data[[pc_list_str]]), function(x) {
+      if (is.na(x) || x == "") return(NA_character_)
+      # Label form has a comma or lowercase letters; code form is all caps
+      if (grepl(",", x, fixed = TRUE) || grepl("[a-z]", x)) {
+        trimws(strsplit(x, ",", fixed = TRUE)[[1]])
+      } else {
+        strsplit(x, "", fixed = TRUE)[[1]]
+      }
+    })
+
+    # Pair C_Patient_Class_MDT_Updates timestamps positionally with the
+    # C_Patient_Class_List split above -- each element gives the moment that
+    # class was assigned, enabling true chronological ordering within a
+    # single record (e.g. "EI" where E and I were assigned at different
+    # times). Rows where the two lists' lengths disagree can't be reliably
+    # paired and fall back to C_Visit_Date_Time/Date+Time below instead ----
+    if (use_mdt) {
+      mdt_raw_list <- lapply(as.character(ed_data[[mdt_col_str]]), function(x) {
+        if (is.na(x) || x == "") return(character(0))
+        trimws(strsplit(x, ",", fixed = TRUE)[[1]])
+      })
+      mismatched <- mapply(
+        function(pc, mdt) length(mdt) != length(pc),
+        pc_split_list, mdt_raw_list
+      )
+      n_mismatch <- sum(mismatched)
+      if (n_mismatch > 0L) {
+        rlang::warn(
+          paste0(
+            n_mismatch, " row(s) had a mismatched number of ",
+            "`C_Patient_Class_List` and `C_Patient_Class_MDT_Updates` ",
+            "values -- chronological ordering for these rows falls back to ",
+            "`C_Visit_Date_Time` or `Date`+`Time` if available."
+          )
+        )
+      }
+      mdt_split_list <- Map(
+        function(pc, mdt, mismatch) if (mismatch) rep(NA_character_, length(pc)) else mdt,
+        pc_split_list, mdt_raw_list, mismatched
+      )
+    } else {
+      mdt_split_list <- lapply(pc_split_list, function(pc) rep(NA_character_, length(pc)))
+    }
+
     ed_long <- ed_data |>
-      dplyr::mutate(
-        pc_split = lapply(as.character(.data[[pc_list_str]]), function(x) {
-          if (is.na(x) || x == "") return(NA_character_)
-          # Label form has a comma or lowercase letters; code form is all caps
-          if (grepl(",", x, fixed = TRUE) || grepl("[a-z]", x)) {
-            trimws(strsplit(x, ",", fixed = TRUE)[[1]])
-          } else {
-            strsplit(x, "", fixed = TRUE)[[1]]
-          }
-        })
-      ) |>
-      tidyr::unnest(cols = "pc_split") |>
+      dplyr::mutate(pc_split = pc_split_list, mdt_split = mdt_split_list) |>
+      tidyr::unnest(cols = c("pc_split", "mdt_split")) |>
       dplyr::mutate(
         patient_class = dplyr::case_when(
           # Short code form (single uppercase letters)
@@ -408,9 +479,10 @@ link_encounters <- function(ed_data,
           pc_split == "Preadmit"     ~ "Preadmit",
           pc_split == "Recurring"    ~ "Recurring",
           TRUE                       ~ pc_split
-        )
+        ),
+        .class_time = suppressWarnings(as.POSIXct(mdt_split))
       ) |>
-      dplyr::select(-pc_split)
+      dplyr::select(-pc_split, -mdt_split)
 
   } else {
 
@@ -488,6 +560,52 @@ link_encounters <- function(ed_data,
     ed_long <- dplyr::bind_rows(ed_long, inpatient_admission_data)
   }
 
+  # Fall back to C_Visit_Date_Time, then Date+Time, for any row whose
+  # .class_time wasn't already set from C_Patient_Class_MDT_Updates above --
+  # this also covers the HasBeen_-flag derivation path (which has no
+  # C_Patient_Class_MDT_Updates equivalent) and inpatient_admission_data
+  # rows in the two-pull path ----
+  if (!(".class_time" %in% names(ed_long))) {
+    ed_long$.class_time <- as.POSIXct(rep(NA_character_, nrow(ed_long)))
+  }
+
+  has_vdt  <- "c_visit_date_time" %in% names(ed_long)
+  has_date <- "date" %in% names(ed_long)
+  has_time <- "time" %in% names(ed_long)
+
+  if (has_vdt) {
+    ed_long <- dplyr::mutate(
+      ed_long,
+      .class_time = dplyr::if_else(
+        is.na(.class_time),
+        suppressWarnings(as.POSIXct(c_visit_date_time)),
+        .class_time
+      )
+    )
+  } else if (has_date && has_time) {
+    ed_long <- dplyr::mutate(
+      ed_long,
+      .class_time = dplyr::if_else(
+        is.na(.class_time),
+        suppressWarnings(as.POSIXct(paste(date, time))),
+        .class_time
+      )
+    )
+  }
+
+  if (!any(!is.na(ed_long$.class_time))) {
+    rlang::warn(
+      paste0(
+        "No `C_Patient_Class_MDT_Updates`, `C_Visit_Date_Time`, or ",
+        "`Date`+`Time` fields were found (or could be parsed) for ",
+        "chronological ordering. `.patient_class_sequence` reflects ",
+        "alphabetical order rather than the actual order encounters ",
+        "occurred. Include one of these fields in your ESSENCE pull for ",
+        "accurate encounter sequencing."
+      )
+    )
+  }
+
   # Build episode metadata ----
   result <- ed_long |>
     dplyr::mutate(
@@ -499,15 +617,15 @@ link_encounters <- function(ed_data,
     ) |>
     dplyr::group_by(.data[[fac_col_str]], .data[[visit_col_str]]) |>
     dplyr::mutate(
-      .patient_class_sequence = paste(
-        sort(unique(patient_class)),
-        collapse = "->"
+      .patient_class_sequence = compute_patient_class_sequence(
+        patient_class, .class_time
       ),
       .episode_n_rows  = dplyr::n(),
       .index_encounter = patient_class == "ED" |
         (patient_class != "ED" & dplyr::n() == 1L)
     ) |>
-    dplyr::ungroup()
+    dplyr::ungroup() |>
+    dplyr::select(-.class_time)
 
   if (return_format == "collapsed") {
     result <- result |>
@@ -517,6 +635,32 @@ link_encounters <- function(ed_data,
   }
 
   if (clean_names) clean_names_safe(result) else result
+}
+
+# compute_patient_class_sequence() ----
+# Orders an episode's distinct patient classes by the earliest .class_time
+# each class occurs at, e.g. "Direct Admit->ED" when the direct-admit
+# record's timestamp precedes the ED record's. Falls back to alphabetical
+# order (matching legacy behavior) when no usable timestamp exists for the
+# episode at all; classes with no timestamp sort after timed classes when
+# some but not all classes in the episode have one.
+compute_patient_class_sequence <- function(patient_class, class_time) {
+  classes <- unique(patient_class)
+  classes <- classes[!is.na(classes)]
+  if (length(classes) == 0L) return(NA_character_)
+
+  min_time <- do.call(c, lapply(classes, function(cl) {
+    times <- class_time[!is.na(patient_class) & patient_class == cl]
+    if (all(is.na(times))) return(as.POSIXct(NA))
+    min(times, na.rm = TRUE)
+  }))
+
+  if (all(is.na(min_time))) {
+    return(paste(sort(classes), collapse = "->"))
+  }
+
+  ord <- order(min_time, classes, na.last = TRUE)
+  paste(classes[ord], collapse = "->")
 }
 
 # merge_concat() ----

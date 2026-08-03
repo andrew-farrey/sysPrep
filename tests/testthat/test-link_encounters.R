@@ -63,13 +63,101 @@ test_that("link_encounters() .index_encounter = TRUE on ED row of multi-class ep
   expect_false(any(admitted_rows$.index_encounter))
 })
 
-test_that("link_encounters() .patient_class_sequence is sorted and collapsed", {
+test_that("link_encounters() .patient_class_sequence breaks ties alphabetically when classes share one C_Visit_Date_Time", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(HasBeenAdmitted = 1L)
   result <- link_encounters(data)
   multi_rows <- dplyr::filter(result, .episode_n_rows > 1L)
-  # sort(c("ED", "Admitted")) = c("Admitted", "ED") alphabetically
+  # ED and Admitted come from the same row/timestamp here, so they tie and
+  # fall back to alphabetical order as the tiebreak.
   expect_true(all(multi_rows$.patient_class_sequence == "Admitted->ED"))
+})
+
+test_that("link_encounters() .patient_class_sequence reflects true order via C_Visit_Date_Time when the direct admit precedes the ED record", {
+  ed_row <- tibble::tibble(
+    HospitalName      = "Central Medical Center",
+    Visit_ID          = "V00000001",
+    HasBeenE          = 1L,
+    HasBeenAdmitted   = 0L,
+    C_Visit_Date_Time = as.POSIXct("2023-01-01 08:00:00")
+  )
+  direct_row <- tibble::tibble(
+    HospitalName      = "Central Medical Center",
+    Visit_ID          = "V00000001",
+    HasBeenE          = 0L,
+    HasBeenAdmitted   = 1L,
+    C_Visit_Date_Time = as.POSIXct("2023-01-01 06:00:00")
+  )
+  result <- suppressMessages(
+    link_encounters(ed_row, direct_row, return_format = "long")
+  )
+  expect_true(all(result$.patient_class_sequence == "Direct Admit->ED"))
+})
+
+test_that("link_encounters() .patient_class_sequence uses C_Patient_Class_MDT_Updates to order classes within one record", {
+  data <- tibble::tibble(
+    HospitalName                 = "Central Medical Center",
+    Visit_ID                     = "V00000001",
+    C_Patient_Class_List         = "EI",
+    C_Patient_Class_MDT_Updates  = "2023-01-01 10:00:00,2023-01-01 08:00:00"
+  )
+  result <- suppressMessages(
+    link_encounters(data, return_format = "long")
+  )
+  # "I" was assigned at 08:00, before "E" at 10:00
+  expect_true(all(result$.patient_class_sequence == "Inpatient->ED"))
+})
+
+test_that("link_encounters() .patient_class_sequence falls back to Date+Time when C_Visit_Date_Time is absent", {
+  ed_row <- tibble::tibble(
+    HospitalName    = "Central Medical Center",
+    Visit_ID        = "V00000001",
+    HasBeenE        = 1L,
+    HasBeenAdmitted = 0L,
+    Date            = as.Date("2023-01-01"),
+    Time            = "09:00:00"
+  )
+  direct_row <- tibble::tibble(
+    HospitalName    = "Central Medical Center",
+    Visit_ID        = "V00000001",
+    HasBeenE        = 0L,
+    HasBeenAdmitted = 1L,
+    Date            = as.Date("2023-01-01"),
+    Time            = "07:00:00"
+  )
+  result <- suppressMessages(
+    link_encounters(ed_row, direct_row, return_format = "long")
+  )
+  expect_true(all(result$.patient_class_sequence == "Direct Admit->ED"))
+})
+
+test_that("link_encounters() warns and falls back to alphabetical order when no timestamp field is usable", {
+  data <- tibble::tibble(
+    HospitalName    = "Central Medical Center",
+    Visit_ID        = "V00000001",
+    HasBeenE        = 1L,
+    HasBeenAdmitted = 1L
+  )
+  expect_warning(
+    result <- suppressMessages(link_encounters(data, return_format = "long")),
+    "chronological ordering"
+  )
+  expect_true(all(result$.patient_class_sequence == "Admitted->ED"))
+})
+
+test_that("link_encounters() warns and falls back to record-level timestamp on mismatched C_Patient_Class_MDT_Updates length", {
+  data <- tibble::tibble(
+    HospitalName                 = "Central Medical Center",
+    Visit_ID                     = "V00000001",
+    C_Patient_Class_List         = "EI",
+    C_Patient_Class_MDT_Updates  = "2023-01-01 10:00:00",
+    C_Visit_Date_Time            = as.POSIXct("2023-01-01 09:00:00")
+  )
+  expect_warning(
+    result <- suppressMessages(link_encounters(data, return_format = "long")),
+    "mismatched number"
+  )
+  expect_true("patient_class" %in% names(result))
 })
 
 test_that("link_encounters() works with inpatient_admission_data = NULL", {
@@ -250,6 +338,48 @@ test_that("merge_field_value() aborts on an unknown strategy", {
     ),
     "Unknown merge strategy"
   )
+})
+
+# compute_patient_class_sequence() ----
+
+test_that("compute_patient_class_sequence() orders classes by ascending class_time", {
+  result <- compute_patient_class_sequence(
+    patient_class = c("ED", "Direct Admit"),
+    class_time    = as.POSIXct(c("2023-01-01 08:00:00", "2023-01-01 06:00:00"))
+  )
+  expect_equal(result, "Direct Admit->ED")
+})
+
+test_that("compute_patient_class_sequence() breaks ties alphabetically", {
+  result <- compute_patient_class_sequence(
+    patient_class = c("ED", "Admitted"),
+    class_time    = as.POSIXct(c("2023-01-01 08:00:00", "2023-01-01 08:00:00"))
+  )
+  expect_equal(result, "Admitted->ED")
+})
+
+test_that("compute_patient_class_sequence() falls back to alphabetical order when all class_time are NA", {
+  result <- compute_patient_class_sequence(
+    patient_class = c("ED", "Direct Admit"),
+    class_time    = as.POSIXct(c(NA, NA))
+  )
+  expect_equal(result, "Direct Admit->ED")
+})
+
+test_that("compute_patient_class_sequence() puts classes with no timestamp last when some classes have one", {
+  result <- compute_patient_class_sequence(
+    patient_class = c("ED", "Direct Admit"),
+    class_time    = as.POSIXct(c("2023-01-01 08:00:00", NA))
+  )
+  expect_equal(result, "ED->Direct Admit")
+})
+
+test_that("compute_patient_class_sequence() collapses repeated classes to one entry", {
+  result <- compute_patient_class_sequence(
+    patient_class = c("ED", "ED", "Direct Admit"),
+    class_time    = as.POSIXct(c("2023-01-01 08:00:00", "2023-01-01 09:00:00", "2023-01-01 10:00:00"))
+  )
+  expect_equal(result, "ED->Direct Admit")
 })
 
 # primary row selection and episode collapsing tests ----

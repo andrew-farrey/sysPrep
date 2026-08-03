@@ -220,6 +220,37 @@ standard:\tabular{ll}{
 
 }
 
+\subsection{Chronological ordering of \code{.patient_class_sequence}}{
+
+\code{.patient_class_sequence} reflects the actual order encounters occurred
+in, not alphabetical order -- e.g. \code{"Direct Admit->ED"} when the
+direct-admit record's timestamp precedes the ED record's, which is the
+reverse of what typically indicates Gap 2's encounter-continuity issue
+(an ED visit that transitions into a direct-admit readmission, not a
+direct admit that precedes an ED visit). Ordering uses the first
+available field, per row, in this priority:
+\enumerate{
+\item \strong{\code{C_Patient_Class_MDT_Updates}} (requires \code{C_Patient_Class_List}).
+A concatenated list of timestamps positionally aligned with
+\code{C_Patient_Class_List}, giving the exact moment each class was
+assigned -- the only field that can order two classes assigned
+within a single record (e.g. \code{"EI"}). Rows where the two lists'
+lengths disagree fall back to the next tier.
+\item \strong{\code{C_Visit_Date_Time}}. Applied per record -- all classes
+derived from one record share that record's timestamp, so this only
+differentiates classes across separate records sharing the same
+\code{facility_col} x \code{visit_col} key (i.e. the ED record vs. the
+direct-admit record in Gap 2, or in the two-pull approach).
+\item \strong{\code{Date} + \code{Time}} (both required). Combined into a timestamp
+when neither field above is present.
+}
+If none of these fields are present (or none can be parsed) anywhere in
+the data, \code{link_encounters()} warns once and \code{.patient_class_sequence}
+falls back to alphabetical order for every episode. Within a single
+episode, if only some classes have a usable timestamp, timed classes are
+ordered first and untimed classes are appended last.
+}
+
 \subsection{Episode metadata columns}{
 
 Present regardless of \code{return_format}. In collapsed output, these
@@ -230,7 +261,8 @@ merged into it).
 \item{\code{.episode_id}}{A character key combining \code{facility_col} and
 \code{visit_col}, shared across all rows belonging to the same care episode.}
 \item{\code{.patient_class_sequence}}{All patient classes for the episode
-sorted and collapsed, e.g., \code{"Direct Admit->ED"}.}
+in chronological order and collapsed, e.g., \code{"Direct Admit->ED"}
+when the direct admit occurred first -- see Details.}
 \item{\code{.episode_n_rows}}{Number of original rows the episode was built
 from before merging.}
 \item{\code{.index_encounter}}{In long format, \code{TRUE} on the row that

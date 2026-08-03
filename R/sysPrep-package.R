@@ -24,11 +24,12 @@ utils::globalVariables(c(
   ".n_complete", ".pair_key", ".episode_id", ".out_of_state",
   ".original_facility_type", ".date_change", ".pid_change", ".class_change",
   ".q1", ".q3", ".iqr", ".outlier_low", ".outlier_high",
-  ".outlier_flag", ".outlier_direction",
+  ".outlier_flag", ".outlier_direction", ".class_time",
   # Other bare column references in dplyr contexts
   "dup_type", "corrected_facility_type", "patient_class", "present",
-  # Intermediate column created by strsplit + unnest in link_encounters()
-  "pc_split",
+  "c_visit_date_time", "date", "time",
+  # Intermediate columns created by strsplit + unnest in link_encounters()
+  "pc_split", "mdt_split",
   # Base function used without package prefix in clean_names_safe()
   "setNames"
 ))

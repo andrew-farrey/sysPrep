@@ -114,16 +114,18 @@ base_visits <- base_visits |>
     )
   )
 
-# Arrived_Date_Time: NSSP receipt timestamp (slight lag after Date) ----
+# C_Visit_Date_Time: actual clinical encounter timestamp ----
+# Arrived_Date_Time: NSSP receipt timestamp (slight lag after the visit) ----
 base_visits <- base_visits |>
   dplyr::mutate(
-    Arrived_Date_Time = as.POSIXct(
+    C_Visit_Date_Time = as.POSIXct(
       paste0(Date, " ", sprintf("%02d:%02d:%02d",
                                 sample(0:23, n_clean, replace = TRUE),
                                 sample(0:59, n_clean, replace = TRUE),
                                 sample(0:59, n_clean, replace = TRUE))),
       tz = "America/New_York"
-    ) + sample(0:7200, n_clean, replace = TRUE)
+    ),
+    Arrived_Date_Time = C_Visit_Date_Time + sample(0:7200, n_clean, replace = TRUE)
   )
 
 # ── Add non-ED provider visits (to be filtered by filter_care_setting()) ─────
@@ -142,6 +144,7 @@ non_ed_visits <- tibble::tibble(
   C_Patient_Age       = sample(18:85, n_non_ed, replace = TRUE),
   Region              = sample(ky_regions, n_non_ed, replace = TRUE),
   ZipCode             = sample(ky_zips,    n_non_ed, replace = TRUE),
+  C_Visit_Date_Time   = as.POSIXct(paste0(Date, " 12:00:00"), tz = "America/New_York"),
   Arrived_Date_Time   = as.POSIXct(
     paste0(sample(seq(as.Date("2023-01-01"), as.Date("2023-12-31"), by = "day"),
                   n_non_ed, replace = TRUE), " 12:00:00"),
@@ -213,7 +216,7 @@ essence_raw <- dplyr::bind_rows(
   dplyr::select(
     HospitalName, Hospital, FacilityType, HospitalRegion, HospitalZip,
     Visit_ID, C_BioSense_ID, C_Unique_Patient_ID,
-    Date, Arrived_Date_Time,
+    Date, C_Visit_Date_Time, Arrived_Date_Time,
     HasBeenE, HasBeenAdmitted, C_Patient_Class,
     Region, ZipCode, Sex, C_Patient_Age
   )

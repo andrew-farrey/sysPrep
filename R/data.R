@@ -9,7 +9,7 @@
 #' All facility names, visit identifiers, patient identifiers, and geographic
 #' values are entirely synthetic. No real patient or facility data are included.
 #'
-#' @format A data frame with approximately 190 rows and 16 columns:
+#' @format A data frame with approximately 190 rows and 18 columns:
 #' \describe{
 #'   \item{HospitalName}{Character. Synthetic facility name.}
 #'   \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -30,6 +30,9 @@
 #'     (MRN equivalent in Kentucky). Multiple values per `Visit_ID`
 #'     indicate `pid_change` duplication.}
 #'   \item{Date}{Date. Visit date.}
+#'   \item{C_Visit_Date_Time}{POSIXct. Timestamp of the actual clinical
+#'     encounter. Used by [link_encounters()] to chronologically order
+#'     `.patient_class_sequence` when linking ED and direct-admit records.}
 #'   \item{Arrived_Date_Time}{POSIXct. Timestamp when NSSP received the
 #'     record. Use as `order_by` in [dedupe()] to retain the most recently
 #'     transmitted version of each record.}
@@ -89,7 +92,7 @@
 #' demonstrate the expected output of the package workflow and to serve as
 #' a reference for function output structure.
 #'
-#' @format A data frame with approximately 160 rows and 19 columns. All
+#' @format A data frame with approximately 160 rows and 21 columns. All
 #'   column names are in snake_case (post [janitor::clean_names()]).
 #' \describe{
 #'   \item{hospital_name}{Character. Synthetic facility name.}
@@ -105,6 +108,8 @@
 #'     One unique value per visit after deduplication.}
 #'   \item{c_unique_patient_id}{Character. Synthetic patient identifier.}
 #'   \item{date}{Date. Visit date.}
+#'   \item{c_visit_date_time}{POSIXct. Timestamp of the actual clinical
+#'     encounter.}
 #'   \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 #'   \item{has_been_e}{Integer. `1` for all records (ED pull).}
 #'   \item{has_been_admitted}{Integer. `1` if the visit resulted in

@@ -5,7 +5,7 @@
 \alias{essence_clean}
 \title{Synthetic cleaned ESSENCE-like ED visit data}
 \format{
-A data frame with approximately 160 rows and 19 columns. All
+A data frame with approximately 160 rows and 21 columns. All
 column names are in snake_case (post \code{\link[janitor:clean_names]{janitor::clean_names()}}).
 \describe{
 \item{hospital_name}{Character. Synthetic facility name.}
@@ -21,6 +21,8 @@ a facility.}
 One unique value per visit after deduplication.}
 \item{c_unique_patient_id}{Character. Synthetic patient identifier.}
 \item{date}{Date. Visit date.}
+\item{c_visit_date_time}{POSIXct. Timestamp of the actual clinical
+encounter.}
 \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 \item{has_been_e}{Integer. \code{1} for all records (ED pull).}
 \item{has_been_admitted}{Integer. \code{1} if the visit resulted in

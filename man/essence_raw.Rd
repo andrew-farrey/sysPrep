@@ -5,7 +5,7 @@
 \alias{essence_raw}
 \title{Synthetic raw ESSENCE-like ED visit data}
 \format{
-A data frame with approximately 190 rows and 16 columns:
+A data frame with approximately 190 rows and 18 columns:
 \describe{
 \item{HospitalName}{Character. Synthetic facility name.}
 \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -26,6 +26,9 @@ duplication.}
 (MRN equivalent in Kentucky). Multiple values per \code{Visit_ID}
 indicate \code{pid_change} duplication.}
 \item{Date}{Date. Visit date.}
+\item{C_Visit_Date_Time}{POSIXct. Timestamp of the actual clinical
+encounter. Used by \code{\link[=link_encounters]{link_encounters()}} to chronologically order
+\code{.patient_class_sequence} when linking ED and direct-admit records.}
 \item{Arrived_Date_Time}{POSIXct. Timestamp when NSSP received the
 record. Use as \code{order_by} in \code{\link[=dedupe]{dedupe()}} to retain the most recently
 transmitted version of each record.}

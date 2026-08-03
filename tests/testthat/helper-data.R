@@ -30,6 +30,7 @@ make_essence_data <- function(n = 10L,
     FacilityType  = "Emergency Care",
     Date          = seq(as.Date("2023-01-01"), by = "day", length.out = n)
   )
+  d$C_Visit_Date_Time <- as.POSIXct(paste(d$Date, "08:00:00"))
 
   if (include_biosense) {
     d$C_BioSense_ID <- sprintf("BS%010d", seq_len(n))
@@ -103,6 +104,7 @@ make_readmit_merge_data <- function() {
     Visit_ID                = "V00000001",
     FacilityType             = "Emergency Care",
     Date                     = as.Date("2023-01-01"),
+    C_Visit_Date_Time        = as.POSIXct("2023-01-01 08:00:00"),
     C_BioSense_ID            = "BS0000000001",
     C_Unique_Patient_ID      = "P00000001",
     HasBeenE                 = 1L,
@@ -121,6 +123,7 @@ make_readmit_merge_data <- function() {
     Visit_ID                = "V00000001",
     FacilityType             = "Emergency Care",
     Date                     = as.Date("2023-01-01"),
+    C_Visit_Date_Time        = as.POSIXct("2023-01-01 14:00:00"),
     C_BioSense_ID            = "BS0000000002",
     C_Unique_Patient_ID      = "P00000001",
     HasBeenE                 = 0L,
