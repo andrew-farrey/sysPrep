@@ -99,12 +99,13 @@ test_that("link_encounters() .patient_class_sequence uses C_Patient_Class_MDT_Up
     HospitalName                 = "Central Medical Center",
     Visit_ID                     = "V00000001",
     C_Patient_Class_List         = "EI",
-    C_Patient_Class_MDT_Updates  = "2023-01-01 10:00:00,2023-01-01 08:00:00"
+    C_Patient_Class_MDT_Updates  =
+      "{1};2023-01-01 10:00:00.000;|{2};2023-01-01 08:00:00.000;"
   )
   result <- suppressMessages(
     link_encounters(data, return_format = "long")
   )
-  # "I" was assigned at 08:00, before "E" at 10:00
+  # position 2 ("I") was assigned at 08:00, before position 1 ("E") at 10:00
   expect_true(all(result$.patient_class_sequence == "Inpatient->ED"))
 })
 
@@ -145,19 +146,60 @@ test_that("link_encounters() warns and falls back to alphabetical order when no 
   expect_true(all(result$.patient_class_sequence == "Admitted->ED"))
 })
 
-test_that("link_encounters() warns and falls back to record-level timestamp on mismatched C_Patient_Class_MDT_Updates length", {
+test_that("link_encounters() parses a 3-class C_Patient_Class_MDT_Updates value in list order", {
+  data <- tibble::tibble(
+    HospitalName                 = "Central Medical Center",
+    Visit_ID                     = "V00000001",
+    C_Patient_Class_List         = "BEI",
+    C_Patient_Class_MDT_Updates  = paste0(
+      "{1};2026-06-08 16:38:09.000;",
+      "|{2};2026-06-08 21:23:16.000;",
+      "|{3};2026-06-08 21:29:51.000;"
+    )
+  )
+  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  expect_true(all(result$.patient_class_sequence == "Obstetrics->ED->Inpatient"))
+})
+
+test_that("link_encounters() falls back to a position's C_Visit_Date_Time when its MDT segment is missing", {
   data <- tibble::tibble(
     HospitalName                 = "Central Medical Center",
     Visit_ID                     = "V00000001",
     C_Patient_Class_List         = "EI",
-    C_Patient_Class_MDT_Updates  = "2023-01-01 10:00:00",
+    # Only position 1 ("E") has a segment -- position 2 ("I") has none
+    C_Patient_Class_MDT_Updates  = "{1};2023-01-01 10:00:00.000;",
     C_Visit_Date_Time            = as.POSIXct("2023-01-01 09:00:00")
+  )
+  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  expect_true("patient_class" %in% names(result))
+  expect_false(any(is.na(result$.patient_class_sequence)))
+})
+
+test_that("link_encounters() warns and falls back when C_Patient_Class_MDT_Updates doesn't match the expected format", {
+  data <- tibble::tibble(
+    HospitalName                = "Central Medical Center",
+    Visit_ID                    = "V00000001",
+    C_Patient_Class_List        = "EI",
+    C_Patient_Class_MDT_Updates = "not-a-date,also-not-a-date",
+    C_Visit_Date_Time           = as.POSIXct("2023-01-01 09:00:00")
   )
   expect_warning(
     result <- suppressMessages(link_encounters(data, return_format = "long")),
-    "mismatched number"
+    "could not be parsed"
   )
-  expect_true("patient_class" %in% names(result))
+  expect_false(any(is.na(result$.patient_class_sequence)))
+})
+
+test_that("link_encounters() parses ISO 8601 'T'-separated timestamps inside C_Patient_Class_MDT_Updates segments", {
+  data <- tibble::tibble(
+    HospitalName                = "Central Medical Center",
+    Visit_ID                    = "V00000001",
+    C_Patient_Class_List        = "EI",
+    C_Patient_Class_MDT_Updates =
+      "{1};2023-01-01T10:00:00;|{2};2023-01-01T08:00:00;"
+  )
+  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  expect_true(all(result$.patient_class_sequence == "Inpatient->ED"))
 })
 
 test_that("link_encounters() works with inpatient_admission_data = NULL", {
@@ -338,6 +380,44 @@ test_that("merge_field_value() aborts on an unknown strategy", {
     ),
     "Unknown merge strategy"
   )
+})
+
+# safe_as_posixct() ----
+
+test_that("safe_as_posixct() parses standard space-separated timestamps", {
+  result <- safe_as_posixct("2023-01-01 08:00:00")
+  expect_equal(result, as.POSIXct("2023-01-01 08:00:00"))
+})
+
+test_that("safe_as_posixct() parses ISO 8601 'T'-separated timestamps", {
+  result <- safe_as_posixct("2023-01-01T08:00:00")
+  expect_equal(result, as.POSIXct("2023-01-01 08:00:00"))
+})
+
+test_that("safe_as_posixct() strips a trailing 'Z' before parsing", {
+  result <- safe_as_posixct("2023-01-01T08:00:00Z")
+  expect_equal(result, as.POSIXct("2023-01-01 08:00:00"))
+})
+
+test_that("safe_as_posixct() returns NA instead of erroring on unparseable values", {
+  expect_no_error(result <- safe_as_posixct("not-a-date"))
+  expect_true(is.na(result))
+})
+
+test_that("safe_as_posixct() returns NA for NA and empty string input", {
+  result <- safe_as_posixct(c(NA_character_, ""))
+  expect_true(all(is.na(result)))
+})
+
+test_that("safe_as_posixct() passes already-POSIXct input through unchanged", {
+  input <- as.POSIXct("2023-01-01 08:00:00")
+  expect_equal(safe_as_posixct(input), input)
+})
+
+test_that("safe_as_posixct() handles a mix of valid and unparseable values in one vector", {
+  result <- safe_as_posixct(c("2023-01-01T08:00:00", "garbage"))
+  expect_equal(result[1], as.POSIXct("2023-01-01 08:00:00"))
+  expect_true(is.na(result[2]))
 })
 
 # compute_patient_class_sequence() ----

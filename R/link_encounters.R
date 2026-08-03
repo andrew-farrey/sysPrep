@@ -421,36 +421,35 @@ link_encounters <- function(ed_data,
       }
     })
 
-    # Pair C_Patient_Class_MDT_Updates timestamps positionally with the
-    # C_Patient_Class_List split above -- each element gives the moment that
-    # class was assigned, enabling true chronological ordering within a
-    # single record (e.g. "EI" where E and I were assigned at different
-    # times). Rows where the two lists' lengths disagree can't be reliably
-    # paired and fall back to C_Visit_Date_Time/Date+Time below instead ----
+    # Pair C_Patient_Class_MDT_Updates timestamps with the C_Patient_Class_List
+    # split above. ESSENCE encodes this as pipe-delimited "{position};
+    # timestamp;" segments, one per patient class, where `position` is the
+    # 1-based character position in C_Patient_Class_List -- e.g.
+    # "{1};2026-06-19 16:00:06.000;|{2};2026-06-19 17:55:10.000;" for
+    # C_Patient_Class_List = "EI" gives "E" (position 1) a timestamp of
+    # 16:00:06 and "I" (position 2) a timestamp of 17:55:10. Positions with
+    # no matching segment (or a segment that doesn't match this encoding)
+    # fall back to C_Visit_Date_Time/Date+Time below instead ----
     if (use_mdt) {
-      mdt_raw_list <- lapply(as.character(ed_data[[mdt_col_str]]), function(x) {
-        if (is.na(x) || x == "") return(character(0))
-        trimws(strsplit(x, ",", fixed = TRUE)[[1]])
-      })
-      mismatched <- mapply(
-        function(pc, mdt) length(mdt) != length(pc),
-        pc_split_list, mdt_raw_list
-      )
-      n_mismatch <- sum(mismatched)
-      if (n_mismatch > 0L) {
+      mdt_raw_list   <- as.character(ed_data[[mdt_col_str]])
+      n_classes_vec  <- vapply(pc_split_list, length, integer(1))
+      mdt_split_list <- Map(parse_mdt_updates, mdt_raw_list, n_classes_vec)
+
+      n_unparsed <- sum(mapply(
+        function(mdt, parsed) !is.na(mdt) && mdt != "" && all(is.na(parsed)),
+        mdt_raw_list, mdt_split_list
+      ))
+      if (n_unparsed > 0L) {
         rlang::warn(
           paste0(
-            n_mismatch, " row(s) had a mismatched number of ",
-            "`C_Patient_Class_List` and `C_Patient_Class_MDT_Updates` ",
-            "values -- chronological ordering for these rows falls back to ",
-            "`C_Visit_Date_Time` or `Date`+`Time` if available."
+            n_unparsed, " row(s) had a non-empty `C_Patient_Class_MDT_Updates` ",
+            "value that could not be parsed in the expected ",
+            "`{position};timestamp;` format -- chronological ordering for ",
+            "these rows falls back to `C_Visit_Date_Time` or `Date`+`Time` ",
+            "if available."
           )
         )
       }
-      mdt_split_list <- Map(
-        function(pc, mdt, mismatch) if (mismatch) rep(NA_character_, length(pc)) else mdt,
-        pc_split_list, mdt_raw_list, mismatched
-      )
     } else {
       mdt_split_list <- lapply(pc_split_list, function(pc) rep(NA_character_, length(pc)))
     }
@@ -480,7 +479,7 @@ link_encounters <- function(ed_data,
           pc_split == "Recurring"    ~ "Recurring",
           TRUE                       ~ pc_split
         ),
-        .class_time = suppressWarnings(as.POSIXct(mdt_split))
+        .class_time = safe_as_posixct(mdt_split)
       ) |>
       dplyr::select(-pc_split, -mdt_split)
 
@@ -578,7 +577,7 @@ link_encounters <- function(ed_data,
       ed_long,
       .class_time = dplyr::if_else(
         is.na(.class_time),
-        suppressWarnings(as.POSIXct(c_visit_date_time)),
+        safe_as_posixct(c_visit_date_time),
         .class_time
       )
     )
@@ -587,7 +586,7 @@ link_encounters <- function(ed_data,
       ed_long,
       .class_time = dplyr::if_else(
         is.na(.class_time),
-        suppressWarnings(as.POSIXct(paste(date, time))),
+        safe_as_posixct(paste(date, time)),
         .class_time
       )
     )
@@ -635,6 +634,64 @@ link_encounters <- function(ed_data,
   }
 
   if (clean_names) clean_names_safe(result) else result
+}
+
+# parse_mdt_updates() ----
+# Parses ESSENCE's C_Patient_Class_MDT_Updates encoding: pipe-delimited
+# "{position};timestamp;" segments, one per patient class, where `position`
+# is the 1-based character position in the corresponding
+# C_Patient_Class_List value (e.g. "{1};2026-06-19 16:00:06.000;
+# |{2};2026-06-19 17:55:10.000;" for C_Patient_Class_List = "EI"). Returns a
+# character vector of length `n_classes` giving the timestamp string at each
+# position, NA where no segment matches that position (e.g. a class that was
+# never explicitly updated) or the segment doesn't match this encoding.
+parse_mdt_updates <- function(mdt_str, n_classes) {
+  out <- rep(NA_character_, n_classes)
+  if (is.na(mdt_str) || mdt_str == "") return(out)
+
+  segments <- strsplit(mdt_str, "|", fixed = TRUE)[[1]]
+  for (seg in segments) {
+    seg <- trimws(seg)
+    if (!nzchar(seg)) next
+    m <- regmatches(seg, regexec("^\\{(\\d+)\\}\\s*;\\s*([^;]+)", seg))[[1]]
+    if (length(m) == 3L) {
+      idx <- suppressWarnings(as.integer(m[2]))
+      if (!is.na(idx) && idx >= 1L && idx <= n_classes) {
+        out[idx] <- trimws(m[3])
+      }
+    }
+  }
+  out
+}
+
+# safe_as_posixct() ----
+# Parses a character vector of timestamps for chronological ordering
+# purposes. A single malformed or non-standard-format value must not abort
+# the whole vectorized parse (as.POSIXct() throws rather than warns when a
+# string matches none of its tryFormats) -- unparseable values become NA
+# instead, so ordering degrades gracefully to the next tier for just that
+# row rather than erroring out link_encounters() entirely. Recognizes
+# space- and "T"-separated ISO 8601-style timestamps (with or without a
+# trailing "Z") in addition to base R's defaults.
+safe_as_posixct <- function(x) {
+  if (inherits(x, "POSIXct")) return(x)
+
+  formats <- c(
+    "%Y-%m-%dT%H:%M:%OS", "%Y-%m-%d %H:%M:%OS",
+    "%Y-%m-%dT%H:%M",     "%Y-%m-%d %H:%M",
+    "%Y-%m-%d",
+    "%m/%d/%Y %H:%M:%OS", "%m/%d/%Y"
+  )
+
+  do.call(c, lapply(as.character(x), function(v) {
+    if (is.na(v) || v == "") return(as.POSIXct(NA_character_))
+    v_clean <- sub("Z$", "", trimws(v))
+    parsed  <- tryCatch(
+      as.POSIXct(v_clean, tryFormats = formats),
+      error = function(e) as.POSIXct(NA_character_)
+    )
+    if (is.na(parsed)) as.POSIXct(NA_character_) else parsed
+  }))
 }
 
 # compute_patient_class_sequence() ----
