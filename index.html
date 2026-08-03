@@ -66,7 +66,8 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p><code>sysPrep</code> provides formalized preprocessing methods for syndromic surveillance data from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (<a href="https://www.cdc.gov/nssp/" class="external-link">ESSENCE</a>) API.</p>
-<p>These methods are <strong>not required</strong> to perform case counting, cluster detection, or anomaly detection with ESSENCE data – many surveillance questions tolerate the data quality issues below without materially affecting conclusions. They are most valuable for <strong>small-count, high-impact case definitions</strong>, where external validity and minimizing false-positive clusters/anomalies matter most. Raw ESSENCE data pulls can present four categories of data quality issues that bias case counts or distort cluster/anomaly detection if left unaddressed:</p>
+<p>In Kentucky, these preprocessing steps were necessary to keep ESSENCE-based overdose surveillance competitive with EMS-based data sources (e.g., ODMAP, Biospatial) – without them, ESSENCE pulls were neither complete nor timely enough to compete as an anomaly detection source. They also removed a recurring source of false-positive clusters: duplicate visit records were driving cluster detections that reflected data artifacts rather than true anomalies, at a real cost in analyst time spent investigating them.</p>
+<p>These methods are <strong>not required</strong> to perform case counting, cluster detection, or anomaly detection with ESSENCE data. Many surveillance questions tolerate the data quality issues <code>sysPrep</code> addresses without materially affecting conclusions. They are most valuable for <strong>small-count, high-impact case definitions</strong>, where external validity and minimizing false-positive clusters/anomalies matter most. Raw ESSENCE data pulls can present four categories of data quality issues that bias case counts or distort cluster/anomaly detection if left unaddressed:</p>
 <table class="table">
 <colgroup>
 <col width="45%">
@@ -79,33 +80,33 @@
 <tbody>
 <tr>
 <td>
-<strong>Duplicate records</strong> – multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions</td>
+<strong>Duplicate Records</strong> – multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions</td>
 <td>
 <code><a href="reference/dedupe.html">dedupe()</a></code>, <code><a href="reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="reference/classify_duplicates.html">classify_duplicates()</a></code>
 </td>
 </tr>
 <tr>
 <td>
-<strong>Non-emergency providers</strong> – facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency <code>FacilityType</code>, included in pulls</td>
+<strong>Non-Emergency Providers</strong> – facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency <code>FacilityType</code>, included in pulls</td>
 <td>
 <code><a href="reference/filter_care_setting.html">filter_care_setting()</a></code>, <code><a href="reference/review_facility_ed_visits.html">review_facility_ed_visits()</a></code>
 </td>
 </tr>
 <tr>
 <td>
-<strong>Invisible direct admissions</strong> – HasBeenE = 1 queries structurally exclude patients admitted without ED triage</td>
+<strong>Invisible Direct Admission Encounters</strong> – HasBeenE = 1 queries structurally exclude patients admitted without ED triage</td>
 <td><code><a href="reference/link_encounters.html">link_encounters()</a></code></td>
 </tr>
 <tr>
 <td>
-<strong>Out-of-state and unknown-residence visits</strong> – discarding these understates facility burden</td>
+<strong>Out-of-State and OTHER_REGION (unknown residence) Visits</strong> – discarding these understates facility burden</td>
 <td>
 <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>, <code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code>
 </td>
 </tr>
 </tbody>
 </table>
-<p>These preprocessing steps are applied by practitioners manually and inconsistently when they choose to apply them at all. <code>sysPrep</code> formalizes them into a reproducible, documented pipeline, developed through their operational use in production surveillance workflows.</p>
+<p><code>sysPrep</code> synthesizes these methods into a reproducible, documented pipeline – a foundation other ESSENCE practitioners can adopt, evaluate, or adapt to their own data.</p>
 <div class="section level3">
 <h3 id="validated-data-sources">Validated Data Sources<a class="anchor" aria-label="anchor" href="#validated-data-sources"></a>
 </h3>
@@ -202,7 +203,7 @@
 <li><p><strong><a href="https://cli.r-lib.org/" class="external-link"><code>cli</code></a></strong> (Gábor Csárdi) – the rich formatted output for the <code>print.essence_dup_summary()</code> and <code>print.essence_dup_classified()</code> S3 methods.</p></li>
 <li><p><strong><a href="https://github.com/CDCgov/Rnssp" class="external-link"><code>Rnssp</code></a></strong> (Gbedegnon Roseric Azondekon, Michael Sheppard, and the CDC BioSense team) – the upstream package that handles NSSP ESSENCE API authentication and data retrieval. <code>sysPrep</code> would have no data to preprocess without it.</p></li>
 </ul>
-<p>The methods formalized in <code>sysPrep</code> were developed through applied opioid overdose surveillance and cluster detection work using NSSP ESSENCE data.</p>
+<p>The methods formalized in <code>sysPrep</code> were developed through applied drug overdose surveillance and cluster detection work using NSSP ESSENCE data.</p>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
