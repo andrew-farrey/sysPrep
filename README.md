@@ -8,31 +8,40 @@
 
 ## Overview
 
-`sysPrep` provides formalized preprocessing methods for syndromic surveillance
-data from the National Syndromic Surveillance Program (NSSP) Electronic
-Surveillance System for the Early Notification of Community-based Epidemics
-([ESSENCE](https://www.cdc.gov/nssp/)) API.
+`sysPrep` provides formalized preprocessing methods for syndromic
+surveillance data from the National Syndromic Surveillance Program (NSSP)
+Electronic Surveillance System for the Early Notification of
+Community-based Epidemics ([ESSENCE](https://www.cdc.gov/nssp/)) API.
+
+In Kentucky, these preprocessing steps were necessary to keep
+ESSENCE-based overdose surveillance competitive with EMS-based data
+sources (e.g., ODMAP, Biospatial) -- without them, ESSENCE pulls were
+neither complete nor timely enough to compete as an anomaly detection
+source. They also removed a recurring source of false-positive clusters:
+duplicate visit records were driving cluster detections that reflected
+data artifacts rather than true anomalies, at a real cost in analyst
+time spent investigating them.
 
 These methods are **not required** to perform case counting, cluster
-detection, or anomaly detection with ESSENCE data -- many surveillance
-questions tolerate the data quality issues below without materially affecting
-conclusions. They are most valuable for **small-count, high-impact case
-definitions**, where external validity and minimizing false-positive
-clusters/anomalies matter most. Raw ESSENCE data pulls can present four
-categories of data quality issues that bias case counts or distort
-cluster/anomaly detection if left unaddressed:
+detection, or anomaly detection with ESSENCE data. Many surveillance
+questions tolerate the data quality issues `sysPrep` addresses without
+materially affecting conclusions. They are most valuable for
+**small-count, high-impact case definitions**, where external validity
+and minimizing false-positive clusters/anomalies matter most. Raw
+ESSENCE data pulls can present four categories of data quality issues
+that bias case counts or distort cluster/anomaly detection if left
+unaddressed:
 
 | Problem | Functions |
 |---------|-----------|
-| **Duplicate records** -- multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()` |
-| **Non-emergency providers** -- facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency `FacilityType`, included in pulls | `filter_care_setting()`, `review_facility_ed_visits()` |
-| **Invisible direct admissions** -- HasBeenE = 1 queries structurally exclude patients admitted without ED triage | `link_encounters()` |
-| **Out-of-state and unknown-residence visits** -- discarding these understates facility burden | `assign_treating_geography()`, `assign_facility_geography()` |
+| **Duplicate Records** -- multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()` |
+| **Non-Emergency Providers** -- facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency `FacilityType`, included in pulls | `filter_care_setting()`, `review_facility_ed_visits()` |
+| **Invisible Direct Admission Encounters** -- HasBeenE = 1 queries structurally exclude patients admitted without ED triage | `link_encounters()` |
+| **Out-of-State and OTHER_REGION (unknown residence) Visits** -- discarding these understates facility burden | `assign_treating_geography()`, `assign_facility_geography()` |
 
-These preprocessing steps are applied by practitioners manually and
-inconsistently when they choose to apply them at all. `sysPrep` formalizes
-them into a reproducible, documented pipeline, developed through their
-operational use in production surveillance workflows.
+`sysPrep` synthesizes these methods into a reproducible, documented
+pipeline -- a foundation other ESSENCE practitioners can adopt, evaluate,
+or adapt to their own data.
 
 ### Validated Data Sources
 
@@ -142,7 +151,7 @@ explicit credit:
   package that handles NSSP ESSENCE API authentication and data retrieval.
   `sysPrep` would have no data to preprocess without it.
 
-The methods formalized in `sysPrep` were developed through applied opioid
+The methods formalized in `sysPrep` were developed through applied drug
 overdose surveillance and cluster detection work using NSSP ESSENCE data.
 
 ## Citation
