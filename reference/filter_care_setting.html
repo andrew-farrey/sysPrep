@@ -304,7 +304,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Urgent Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 140 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 140 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Lakeside Commun…     <span style="text-decoration: underline;">1</span>004 Emergency Ca… KY_Boone        41042        V715156…</span>
@@ -318,10 +318,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 130 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># ED-only cohort</span></span></span>
 <span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span> <span class="fu">filter_care_setting</span><span class="op">(</span>keep_types <span class="op">=</span> <span class="st">"Emergency Care"</span><span class="op">)</span></span></span>
@@ -329,7 +329,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Urgent Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 140 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 140 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Lakeside Commun…     <span style="text-decoration: underline;">1</span>004 Emergency Ca… KY_Boone        41042        V715156…</span>
@@ -343,10 +343,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 130 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Preview what would be filtered before committing</span></span></span>
 <span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
@@ -381,7 +381,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> The following `FacilityType` values are not in `keep_types` and will be excluded:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 171 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 171 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Lakeside Commun…     <span style="text-decoration: underline;">1</span>004 Emergency Ca… KY_Boone        41042        V715156…</span>
@@ -395,10 +395,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 161 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Regex fallback for catching FSEDs by name pattern</span></span></span>
 <span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
@@ -410,7 +410,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Urgent Care</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 158 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 158 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Lakeside Commun…     <span style="text-decoration: underline;">1</span>004 Emergency Ca… KY_Boone        41042        V715156…</span>
@@ -424,10 +424,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 148 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># ID-based corrections -- durable across facility name changes/rebranding</span></span></span>
 <span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
@@ -435,7 +435,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> The following `FacilityType` values are not in `keep_types` and will be excluded:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 171 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 171 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Lakeside Commun…     <span style="text-decoration: underline;">1</span>004 Emergency Ca… KY_Boone        41042        V715156…</span>
@@ -449,10 +449,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 161 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># ID and name corrections can be combined</span></span></span>
 <span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
@@ -463,7 +463,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> The following `FacilityType` values are not in `keep_types` and will be excluded:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 171 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 171 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Lakeside Commun…     <span style="text-decoration: underline;">1</span>004 Emergency Ca… KY_Boone        41042        V715156…</span>
@@ -477,10 +477,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 161 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Full pipeline</span></span></span>
 <span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
@@ -491,7 +491,7 @@ count outliers after filtering.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> The following `FacilityType` values are not in `keep_types` and will be excluded:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 160 × 16</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 160 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
@@ -505,10 +505,10 @@ count outliers after filtering.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 150 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, arrived_date_time &lt;dttm&gt;, has_been_e &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_admitted &lt;int&gt;, region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   c_patient_age &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

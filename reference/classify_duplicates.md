@@ -187,10 +187,8 @@ to remove duplicates after review.
 ``` r
 # Default list return
 essence_raw |> classify_duplicates()
-#> `c_patient_class` not found in data. Patient class change detection will be skipped. To enable, include `c_patient_class` as a field in your ESSENCE API pull. All other duplication types will still be classified.
 #> 
 #> ── ESSENCE Duplicate Classification ────────────────────────────────────────────
-#> ℹ Patient class change detection was unavailable (`c_patient_class` absent).
 #> 
 #> ── Overall ──
 #> 
@@ -222,7 +220,6 @@ essence_raw |> classify_duplicates()
 essence_raw |>
   classify_duplicates(return_format = "tibble") |>
   dplyr::filter(dup_type == "visit_date_change")
-#> `c_patient_class` not found in data. Patient class change detection will be skipped. To enable, include `c_patient_class` as a field in your ESSENCE API pull. All other duplication types will still be classified.
 #> # A tibble: 3 × 8
 #>   hospital_name   visit_id n_rows n_biosense_ids n_dates n_pid n_patient_classes
 #>   <chr>           <chr>     <int>          <int>   <int> <int>             <int>
@@ -239,8 +236,7 @@ essence_raw |>
     classify_duplicates(essence_raw, return_format = "tibble"),
     by = c("hospital_name", "visit_id")
   )
-#> `c_patient_class` not found in data. Patient class change detection will be skipped. To enable, include `c_patient_class` as a field in your ESSENCE API pull. All other duplication types will still be classified.
-#> # A tibble: 191 × 22
+#> # A tibble: 191 × 24
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -254,9 +250,10 @@ essence_raw |>
 #>  9 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
 #> # ℹ 181 more rows
-#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>, n_rows <int>, n_biosense_ids <int>, n_dates <int>,
-#> #   n_pid <int>, n_patient_classes <int>, dup_type <chr>
+#> # ℹ 18 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>, n_rows <int>,
+#> #   n_biosense_ids <int>, n_dates <int>, n_pid <int>, n_patient_classes <int>,
+#> #   dup_type <chr>
 ```

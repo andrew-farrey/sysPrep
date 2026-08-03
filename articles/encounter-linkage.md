@@ -163,7 +163,7 @@ episodes <- link_encounters(ed_clean)
 
 dplyr::glimpse(episodes)
 #> Rows: 160
-#> Columns: 19
+#> Columns: 21
 #> $ .episode_id             <chr> "Central Medical Center_V10085501", "Central M…
 #> $ hospital_name           <chr> "Central Medical Center", "Central Medical Cen…
 #> $ hospital                <int> 1001, 1001, 1001, 1001, 1001, 1001, 1001, 1001…
@@ -174,7 +174,9 @@ dplyr::glimpse(episodes)
 #> $ c_bio_sense_id          <chr> "202301121001P74942483", "202309291001P7771715…
 #> $ c_unique_patient_id     <chr> "P74942483", "P77717150", "P16845892", "P98662…
 #> $ date                    <date> 2023-01-12, 2023-09-29, 2023-07-15, 2023-06-1…
+#> $ c_visit_date_time       <dttm> 2023-01-12 17:47:39, 2023-09-29 20:06:22, 202…
 #> $ arrived_date_time       <dttm> 2023-01-12 17:57:47, 2023-09-29 20:29:47, 202…
+#> $ c_patient_class         <chr> "E", "E", "E", "E", "E", "E", "E", "E", "E", "…
 #> $ region                  <chr> "TN_Davidson", "KY_Kenton", "KY_Campbell", "OH…
 #> $ zip_code                <chr> "37040", "41011", "41011", "45001", "43215", "…
 #> $ sex                     <chr> "F", "F", "F", "F", "M", "F", "M", "M", "U", "…
@@ -202,12 +204,21 @@ identifier, shared across all rows belonging to the same encounter. Used
 internally to group rows into episodes and available for joining or
 filtering downstream.
 
-**`.patient_class_sequence`** – A sorted, collapsed string of all
-patient classes present in the episode before merging. An episode built
-from both an ED row and an Admitted row has
-`.patient_class_sequence = "Admitted->ED"`. An episode built from a
-single ED row has `.patient_class_sequence = "ED"`. This column enables
-filtering to specific episode types (e.g.,
+**`.patient_class_sequence`** – A collapsed string of the patient
+classes present in the episode, in the order they actually occurred
+(using `C_Visit_Date_Time`, `Date`+`Time`, or
+`C_Patient_Class_MDT_Updates` when available – see
+[`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)).
+A single-pull ED record with both `HasBeenE = 1` and
+`HasBeenAdmitted = 1` set has no way to distinguish when each flag was
+assigned, so its two classes tie and fall back to alphabetical order:
+`.patient_class_sequence = "Admitted->ED"`. Two-pull linkage, where the
+ED and direct-admit records are genuinely separate rows with their own
+timestamps, can instead reflect a true reversal – e.g.
+`"Direct Admit->ED"` when the direct-admit record’s timestamp precedes
+the ED record’s. An episode built from a single ED row has
+`.patient_class_sequence = "ED"`. This column enables filtering to
+specific episode types (e.g.,
 `filter(.patient_class_sequence == "Admitted->ED")` to isolate
 escalating visits) even though the underlying rows have already been
 merged.

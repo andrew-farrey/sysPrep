@@ -252,7 +252,7 @@ essence_raw |> filter_care_setting()
 #>   - Primary Care
 #>   - Urgent Care
 #>   - Medical Specialty
-#> # A tibble: 140 × 16
+#> # A tibble: 140 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -266,10 +266,10 @@ essence_raw |> filter_care_setting()
 #>  9 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> 10 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
 #> # ℹ 130 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # ED-only cohort
 essence_raw |> filter_care_setting(keep_types = "Emergency Care")
@@ -277,7 +277,7 @@ essence_raw |> filter_care_setting(keep_types = "Emergency Care")
 #>   - Primary Care
 #>   - Urgent Care
 #>   - Medical Specialty
-#> # A tibble: 140 × 16
+#> # A tibble: 140 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -291,10 +291,10 @@ essence_raw |> filter_care_setting(keep_types = "Emergency Care")
 #>  9 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> 10 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
 #> # ℹ 130 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Preview what would be filtered before committing
 essence_raw |>
@@ -329,7 +329,7 @@ essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
 #>   - Medical Specialty
-#> # A tibble: 171 × 16
+#> # A tibble: 171 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -343,10 +343,10 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
 #> 10 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> # ℹ 161 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Regex fallback for catching FSEDs by name pattern
 essence_raw |>
@@ -358,7 +358,7 @@ essence_raw |>
 #>   - Primary Care
 #>   - Medical Specialty
 #>   - Urgent Care
-#> # A tibble: 158 × 16
+#> # A tibble: 158 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -372,10 +372,10 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
 #> 10 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> # ℹ 148 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # ID-based corrections -- durable across facility name changes/rebranding
 essence_raw |>
@@ -383,7 +383,7 @@ essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
 #>   - Medical Specialty
-#> # A tibble: 171 × 16
+#> # A tibble: 171 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -397,10 +397,10 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
 #> 10 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> # ℹ 161 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # ID and name corrections can be combined
 essence_raw |>
@@ -411,7 +411,7 @@ essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
 #>   - Medical Specialty
-#> # A tibble: 171 × 16
+#> # A tibble: 171 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
@@ -425,10 +425,10 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
 #> 10 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> # ℹ 161 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Full pipeline
 essence_raw |>
@@ -439,7 +439,7 @@ essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Medical Specialty
 #>   - Primary Care
-#> # A tibble: 160 × 16
+#> # A tibble: 160 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -453,8 +453,8 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 150 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 ```

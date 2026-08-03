@@ -136,7 +136,7 @@ to understand duplication mechanisms.
 ``` r
 # Default: one row per HospitalName x Visit_ID, first row as received
 essence_raw |> dedupe()
-#> # A tibble: 180 × 16
+#> # A tibble: 180 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V110090…
@@ -150,14 +150,14 @@ essence_raw |> dedupe()
 #>  9 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V536810…
 #> 10 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V555654…
 #> # ℹ 170 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Retain earliest record by visit date
 essence_raw |> dedupe(order_by = Date, keep = "first")
-#> # A tibble: 180 × 16
+#> # A tibble: 180 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V110090…
@@ -171,14 +171,14 @@ essence_raw |> dedupe(order_by = Date, keep = "first")
 #>  9 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V536810…
 #> 10 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V555654…
 #> # ℹ 170 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Retain most recently transmitted record (best for rolling pulls)
 essence_raw |> dedupe(order_by = Arrived_Date_Time, keep = "last")
-#> # A tibble: 180 × 16
+#> # A tibble: 180 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V110090…
@@ -192,14 +192,14 @@ essence_raw |> dedupe(order_by = Arrived_Date_Time, keep = "last")
 #>  9 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V536810…
 #> 10 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V555654…
 #> # ℹ 170 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Retain most complete record per visit
 essence_raw |> dedupe(keep = "most_complete")
-#> # A tibble: 180 × 16
+#> # A tibble: 180 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V110090…
@@ -213,14 +213,14 @@ essence_raw |> dedupe(keep = "most_complete")
 #>  9 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V536810…
 #> 10 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V555654…
 #> # ℹ 170 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Use numeric facility ID instead of name
 essence_raw |> dedupe(facility_col = Hospital)
-#> # A tibble: 180 × 16
+#> # A tibble: 180 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -234,14 +234,14 @@ essence_raw |> dedupe(facility_col = Hospital)
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 170 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Deduplicate by patient identifier (MRN-equivalent in ESSENCE)
 essence_raw |> dedupe(visit_col = C_Unique_Patient_ID)
-#> # A tibble: 183 × 16
+#> # A tibble: 183 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V555654…
@@ -255,16 +255,16 @@ essence_raw |> dedupe(visit_col = C_Unique_Patient_ID)
 #>  9 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V368132…
 #> 10 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V234672…
 #> # ℹ 173 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Works with post-clean_names() column names too
 essence_raw |>
   janitor::clean_names() |>
   dedupe(order_by = arrived_date_time, keep = "last")
-#> # A tibble: 180 × 16
+#> # A tibble: 180 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V110090…
@@ -278,10 +278,10 @@ essence_raw |>
 #>  9 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V536810…
 #> 10 Cardiology Spec…     1010 Medical Spec… KY_Fayette      40508        V555654…
 #> # ℹ 170 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
 # Full recommended pre-processing pipeline
 essence_raw |>
@@ -293,7 +293,7 @@ essence_raw |>
 #>   - Urgent Care
 #>   - Primary Care
 #> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography.
-#> # A tibble: 129 × 17
+#> # A tibble: 129 × 19
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -307,8 +307,9 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 119 more rows
-#> # ℹ 11 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>, .out_of_state <lgl>
+#> # ℹ 13 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   .out_of_state <lgl>
 ```

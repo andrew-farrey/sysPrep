@@ -15,7 +15,7 @@ essence_raw
 
 ## Format
 
-A data frame with approximately 190 rows and 16 columns:
+A data frame with approximately 190 rows and 18 columns:
 
 - HospitalName:
 
@@ -61,6 +61,13 @@ A data frame with approximately 190 rows and 16 columns:
 - Date:
 
   Date. Visit date.
+
+- C_Visit_Date_Time:
+
+  POSIXct. Timestamp of the actual clinical encounter. Used by
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  to chronologically order `.patient_class_sequence` when linking ED and
+  direct-admit records.
 
 - Arrived_Date_Time:
 

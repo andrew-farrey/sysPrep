@@ -151,15 +151,12 @@ deduplication strategy and identify potential feed-level issues.
 ``` r
 
 classified <- classify_duplicates(essence_raw)
-#> `c_patient_class` not found in data. Patient class change detection will be
-#> skipped. To enable, include `c_patient_class` as a field in your ESSENCE API
-#> pull. All other duplication types will still be classified.
 classified
 #> 
 #> ── ESSENCE Duplicate Classification ────────────────────────────────────────────
-#> ℹ Patient class change detection was unavailable (`c_patient_class` absent).
 #> 
 #> ── Overall ──
+#> 
 #>                      dup_type n percent
 #>                  type_unknown 5   45.5%
 #>             visit_date_change 3   27.3%
@@ -176,7 +173,6 @@ classified
 #> # ℹ abbreviated name: ¹​`visit_date_change+pid_change`
 #> # ℹ 1 more variable: n_duplicated_total <dbl>
 #> ── Duplicated Visit IDs ──
-#> 
 #> 11 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 #> 
 #> ── Visit Groups ──
@@ -243,9 +239,6 @@ typed <- essence_raw |>
     classify_duplicates(essence_raw, return_format = "tibble"),
     by = c("hospital_name", "visit_id")
   )
-#> `c_patient_class` not found in data. Patient class change detection will be
-#> skipped. To enable, include `c_patient_class` as a field in your ESSENCE API
-#> pull. All other duplication types will still be classified.
 
 dplyr::count(typed, dup_type)
 #> # A tibble: 5 × 2

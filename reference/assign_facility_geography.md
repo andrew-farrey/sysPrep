@@ -197,7 +197,7 @@ for selective reassignment of out-of-state visits only.
 # Default: overwrite both region and zip for all visits
 essence_clean |> assign_facility_geography()
 #> Facility geography applied to all 160 visits (region and zip).
-#> # A tibble: 160 × 20
+#> # A tibble: 160 × 22
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -211,11 +211,12 @@ essence_clean |> assign_facility_geography()
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 150 more rows
-#> # ℹ 14 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>, original_region <chr>, original_zip_code <chr>,
-#> #   .out_of_state <lgl>, .facility_geography <lgl>
+#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   .out_of_state <lgl>, original_region <chr>, original_zip_code <chr>,
+#> #   .facility_geography <lgl>
 
 # Preserve residential geography for comparison
 essence_clean |>
@@ -224,7 +225,7 @@ essence_clean |>
     patient_differs_from_facility = region != original_region
   )
 #> Facility geography applied to all 160 visits (region and zip).
-#> # A tibble: 160 × 21
+#> # A tibble: 160 × 23
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -238,12 +239,12 @@ essence_clean |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 150 more rows
-#> # ℹ 15 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>, original_region <chr>, original_zip_code <chr>,
-#> #   .out_of_state <lgl>, .facility_geography <lgl>,
-#> #   patient_differs_from_facility <lgl>
+#> # ℹ 17 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   .out_of_state <lgl>, original_region <chr>, original_zip_code <chr>,
+#> #   .facility_geography <lgl>, patient_differs_from_facility <lgl>
 
 # Facility geography for cluster detection
 essence_raw |>
@@ -255,7 +256,7 @@ essence_raw |>
 #>   - Urgent Care
 #>   - Primary Care
 #> Facility geography applied to all 129 visits (region and zip).
-#> # A tibble: 129 × 19
+#> # A tibble: 129 × 21
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -269,9 +270,9 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 119 more rows
-#> # ℹ 13 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>, original_region <chr>, original_zip_code <chr>,
-#> #   .facility_geography <lgl>
+#> # ℹ 15 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   original_region <chr>, original_zip_code <chr>, .facility_geography <lgl>
 ```

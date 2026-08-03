@@ -272,7 +272,7 @@ surviving primary row.</p>
 <span></span>
 <span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">episodes</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: 160</span></span>
-<span><span class="co">#&gt; Columns: 19</span></span>
+<span><span class="co">#&gt; Columns: 21</span></span>
 <span><span class="co">#&gt; $ .episode_id             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "Central Medical Center_V10085501"<span style="color: #949494;">, </span>"Central M…</span></span>
 <span><span class="co">#&gt; $ hospital_name           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "Central Medical Center"<span style="color: #949494;">, </span>"Central Medical Cen…</span></span>
 <span><span class="co">#&gt; $ hospital                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> 1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001…</span></span>
@@ -283,7 +283,9 @@ surviving primary row.</p>
 <span><span class="co">#&gt; $ c_bio_sense_id          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "202301121001P74942483"<span style="color: #949494;">, </span>"202309291001P7771715…</span></span>
 <span><span class="co">#&gt; $ c_unique_patient_id     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "P74942483"<span style="color: #949494;">, </span>"P77717150"<span style="color: #949494;">, </span>"P16845892"<span style="color: #949494;">, </span>"P98662…</span></span>
 <span><span class="co">#&gt; $ date                    <span style="color: #949494; font-style: italic;">&lt;date&gt;</span> 2023-01-12<span style="color: #949494;">, </span>2023-09-29<span style="color: #949494;">, </span>2023-07-15<span style="color: #949494;">, </span>2023-06-1…</span></span>
+<span><span class="co">#&gt; $ c_visit_date_time       <span style="color: #949494; font-style: italic;">&lt;dttm&gt;</span> 2023-01-12 17:47:39<span style="color: #949494;">, </span>2023-09-29 20:06:22<span style="color: #949494;">, </span>202…</span></span>
 <span><span class="co">#&gt; $ arrived_date_time       <span style="color: #949494; font-style: italic;">&lt;dttm&gt;</span> 2023-01-12 17:57:47<span style="color: #949494;">, </span>2023-09-29 20:29:47<span style="color: #949494;">, </span>202…</span></span>
+<span><span class="co">#&gt; $ c_patient_class         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"E"<span style="color: #949494;">, </span>"…</span></span>
 <span><span class="co">#&gt; $ region                  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "TN_Davidson"<span style="color: #949494;">, </span>"KY_Kenton"<span style="color: #949494;">, </span>"KY_Campbell"<span style="color: #949494;">, </span>"OH…</span></span>
 <span><span class="co">#&gt; $ zip_code                <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "37040"<span style="color: #949494;">, </span>"41011"<span style="color: #949494;">, </span>"41011"<span style="color: #949494;">, </span>"45001"<span style="color: #949494;">, </span>"43215"<span style="color: #949494;">, </span>"…</span></span>
 <span><span class="co">#&gt; $ sex                     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "F"<span style="color: #949494;">, </span>"F"<span style="color: #949494;">, </span>"F"<span style="color: #949494;">, </span>"F"<span style="color: #949494;">, </span>"M"<span style="color: #949494;">, </span>"F"<span style="color: #949494;">, </span>"M"<span style="color: #949494;">, </span>"M"<span style="color: #949494;">, </span>"U"<span style="color: #949494;">, </span>"…</span></span>
@@ -304,12 +306,21 @@ collapsed output:</p>
 facility and visit identifier, shared across all rows belonging to the
 same encounter. Used internally to group rows into episodes and
 available for joining or filtering downstream.</p>
-<p><strong><code>.patient_class_sequence</code></strong> – A sorted,
-collapsed string of all patient classes present in the episode before
-merging. An episode built from both an ED row and an Admitted row has
-<code>.patient_class_sequence = "Admitted-&gt;ED"</code>. An episode
-built from a single ED row has
-<code>.patient_class_sequence = "ED"</code>. This column enables
+<p><strong><code>.patient_class_sequence</code></strong> – A collapsed
+string of the patient classes present in the episode, in the order they
+actually occurred (using <code>C_Visit_Date_Time</code>,
+<code>Date</code>+<code>Time</code>, or
+<code>C_Patient_Class_MDT_Updates</code> when available – see
+<code><a href="../reference/link_encounters.html">?link_encounters</a></code>). A single-pull ED record with both
+<code>HasBeenE = 1</code> and <code>HasBeenAdmitted = 1</code> set has
+no way to distinguish when each flag was assigned, so its two classes
+tie and fall back to alphabetical order:
+<code>.patient_class_sequence = "Admitted-&gt;ED"</code>. Two-pull
+linkage, where the ED and direct-admit records are genuinely separate
+rows with their own timestamps, can instead reflect a true reversal –
+e.g. <code>"Direct Admit-&gt;ED"</code> when the direct-admit record’s
+timestamp precedes the ED record’s. An episode built from a single ED
+row has <code>.patient_class_sequence = "ED"</code>. This column enables
 filtering to specific episode types (e.g.,
 <code>filter(.patient_class_sequence == "Admitted-&gt;ED")</code> to
 isolate escalating visits) even though the underlying rows have already

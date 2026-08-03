@@ -56,7 +56,7 @@ a reference for function output structure.</p>
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A data frame with approximately 160 rows and 19 columns. All
+    <p>A data frame with approximately 160 rows and 21 columns. All
 column names are in snake_case (post <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code>).</p><dl><dt>hospital_name</dt>
 <dd><p>Character. Synthetic facility name.</p></dd>
 
@@ -87,6 +87,10 @@ One unique value per visit after deduplication.</p></dd>
 
 <dt>date</dt>
 <dd><p>Date. Visit date.</p></dd>
+
+<dt>c_visit_date_time</dt>
+<dd><p>POSIXct. Timestamp of the actual clinical
+encounter.</p></dd>
 
 <dt>arrived_date_time</dt>
 <dd><p>POSIXct. NSSP record receipt timestamp.</p></dd>

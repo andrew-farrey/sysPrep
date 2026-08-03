@@ -294,6 +294,36 @@ ESSENCE API pull fields. Splitting each character maps to the HL7/PHIN
 standard:</p><table class="table table"><tr><td>Code</td><td>Patient class</td></tr><tr><td><code>E</code></td><td>ED</td></tr><tr><td><code>I</code></td><td>Inpatient</td></tr><tr><td><code>D</code></td><td>Direct Admit</td></tr><tr><td><code>V</code></td><td>Observation</td></tr><tr><td><code>O</code></td><td>Outpatient</td></tr><tr><td><code>B</code></td><td>Obstetrics</td></tr><tr><td><code>P</code></td><td>Preadmit</td></tr><tr><td><code>R</code></td><td>Recurring</td></tr></table></div>
 
 <div class="section">
+<h3 id="chronological-ordering-of-patient-class-sequence">Chronological ordering of <code>.patient_class_sequence</code><a class="anchor" aria-label="anchor" href="#chronological-ordering-of-patient-class-sequence"></a></h3>
+
+
+<p><code>.patient_class_sequence</code> reflects the actual order encounters occurred
+in, not alphabetical order – e.g. <code>"Direct Admit-&gt;ED"</code> when the
+direct-admit record's timestamp precedes the ED record's, which is the
+reverse of what typically indicates Gap 2's encounter-continuity issue
+(an ED visit that transitions into a direct-admit readmission, not a
+direct admit that precedes an ED visit). Ordering uses the first
+available field, per row, in this priority:</p><ol><li><p><strong><code>C_Patient_Class_MDT_Updates</code></strong> (requires <code>C_Patient_Class_List</code>).
+A concatenated list of timestamps positionally aligned with
+<code>C_Patient_Class_List</code>, giving the exact moment each class was
+assigned – the only field that can order two classes assigned
+within a single record (e.g. <code>"EI"</code>). Rows where the two lists'
+lengths disagree fall back to the next tier.</p></li>
+<li><p><strong><code>C_Visit_Date_Time</code></strong>. Applied per record – all classes
+derived from one record share that record's timestamp, so this only
+differentiates classes across separate records sharing the same
+<code>facility_col</code> x <code>visit_col</code> key (i.e. the ED record vs. the
+direct-admit record in Gap 2, or in the two-pull approach).</p></li>
+<li><p><strong><code>Date</code> + <code>Time</code></strong> (both required). Combined into a timestamp
+when neither field above is present.</p></li>
+</ol><p>If none of these fields are present (or none can be parsed) anywhere in
+the data, <code>link_encounters()</code> warns once and <code>.patient_class_sequence</code>
+falls back to alphabetical order for every episode. Within a single
+episode, if only some classes have a usable timestamp, timed classes are
+ordered first and untimed classes are appended last.</p>
+</div>
+
+<div class="section">
 <h3 id="episode-metadata-columns">Episode metadata columns<a class="anchor" aria-label="anchor" href="#episode-metadata-columns"></a></h3>
 
 
@@ -306,7 +336,8 @@ merged into it).</p><dl><dt><code>.episode_id</code></dt>
 
 <dt><code>.patient_class_sequence</code></dt>
 <dd><p>All patient classes for the episode
-sorted and collapsed, e.g., <code>"Direct Admit-&gt;ED"</code>.</p></dd>
+in chronological order and collapsed, e.g., <code>"Direct Admit-&gt;ED"</code>
+when the direct admit occurred first – see Details.</p></dd>
 
 <dt><code>.episode_n_rows</code></dt>
 <dd><p>Number of original rows the episode was built

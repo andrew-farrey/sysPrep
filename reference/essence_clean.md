@@ -14,7 +14,7 @@ essence_clean
 
 ## Format
 
-A data frame with approximately 160 rows and 19 columns. All column
+A data frame with approximately 160 rows and 21 columns. All column
 names are in snake_case (post
 [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)).
 
@@ -55,6 +55,10 @@ names are in snake_case (post
 - date:
 
   Date. Visit date.
+
+- c_visit_date_time:
+
+  POSIXct. Timestamp of the actual clinical encounter.
 
 - arrived_date_time:
 

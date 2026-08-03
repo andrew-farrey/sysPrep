@@ -211,15 +211,12 @@ alone would incorrectly collapse these into a single encounter.
 deduplication strategy and identify potential feed-level issues.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">classified</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/classify_duplicates.html">classify_duplicates</a></span><span class="op">(</span><span class="va">essence_raw</span><span class="op">)</span></span>
-<span><span class="co">#&gt; `c_patient_class` not found in data. Patient class change detection will be</span></span>
-<span><span class="co">#&gt; skipped. To enable, include `c_patient_class` as a field in your ESSENCE API</span></span>
-<span><span class="co">#&gt; pull. All other duplication types will still be classified.</span></span>
 <span><span class="va">classified</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">ESSENCE Duplicate Classification</span> <span style="color: #00BBBB;">────────────────────────────────────────────</span></span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Patient class change detection was unavailable (`c_patient_class` absent).</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ── <span style="font-weight: bold;">Overall</span> ──</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;                      dup_type n percent</span></span>
 <span><span class="co">#&gt;                  type_unknown 5   45.5%</span></span>
 <span><span class="co">#&gt;             visit_date_change 3   27.3%</span></span>
@@ -236,7 +233,6 @@ deduplication strategy and identify potential feed-level issues.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated name: ¹​`visit_date_change+pid_change`</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: n_duplicated_total &lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; ── <span style="font-weight: bold;">Duplicated Visit IDs</span> ──</span></span>
-<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; 11 facility × Visit_ID pair(s) with &gt;1 row. Access via $duplicate_ids.</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ── <span style="font-weight: bold;">Visit Groups</span> ──</span></span>
@@ -293,9 +289,6 @@ join classifications back to the original data:</p>
 <span>    <span class="fu"><a href="../reference/classify_duplicates.html">classify_duplicates</a></span><span class="op">(</span><span class="va">essence_raw</span>, return_format <span class="op">=</span> <span class="st">"tibble"</span><span class="op">)</span>,</span>
 <span>    by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"hospital_name"</span>, <span class="st">"visit_id"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="co">#&gt; `c_patient_class` not found in data. Patient class change detection will be</span></span>
-<span><span class="co">#&gt; skipped. To enable, include `c_patient_class` as a field in your ESSENCE API</span></span>
-<span><span class="co">#&gt; pull. All other duplication types will still be classified.</span></span>
 <span></span>
 <span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">typed</span>, <span class="va">dup_type</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 2</span></span></span>

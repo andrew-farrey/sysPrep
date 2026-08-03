@@ -143,7 +143,7 @@ essence_raw |>
     summarize_duplicates(essence_raw)$duplicate_ids,
     by = c("hospital_name", "visit_id")
   )
-#> # A tibble: 22 × 16
+#> # A tibble: 22 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V827543…
@@ -157,8 +157,8 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
 #> # ℹ 12 more rows
-#> # ℹ 10 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, arrived_date_time <dttm>, has_been_e <int>,
-#> #   has_been_admitted <int>, region <chr>, zip_code <chr>, sex <chr>,
-#> #   c_patient_age <int>
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 ```

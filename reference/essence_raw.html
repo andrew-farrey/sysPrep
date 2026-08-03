@@ -56,7 +56,7 @@ values are entirely synthetic. No real patient or facility data are included.</p
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A data frame with approximately 190 rows and 16 columns:</p><dl><dt>HospitalName</dt>
+    <p>A data frame with approximately 190 rows and 18 columns:</p><dl><dt>HospitalName</dt>
 <dd><p>Character. Synthetic facility name.</p></dd>
 
 <dt>Hospital</dt>
@@ -92,6 +92,11 @@ indicate <code>pid_change</code> duplication.</p></dd>
 
 <dt>Date</dt>
 <dd><p>Date. Visit date.</p></dd>
+
+<dt>C_Visit_Date_Time</dt>
+<dd><p>POSIXct. Timestamp of the actual clinical
+encounter. Used by <code><a href="link_encounters.html">link_encounters()</a></code> to chronologically order
+<code>.patient_class_sequence</code> when linking ED and direct-admit records.</p></dd>
 
 <dt>Arrived_Date_Time</dt>
 <dd><p>POSIXct. Timestamp when NSSP received the
