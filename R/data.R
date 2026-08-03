@@ -9,7 +9,7 @@
 #' All facility names, visit identifiers, patient identifiers, and geographic
 #' values are entirely synthetic. No real patient or facility data are included.
 #'
-#' @format A data frame with approximately 190 rows and 18 columns:
+#' @format A data frame with approximately 193 rows and 18 columns:
 #' \describe{
 #'   \item{HospitalName}{Character. Synthetic facility name.}
 #'   \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -37,10 +37,19 @@
 #'     record. Use as `order_by` in [dedupe()] to retain the most recently
 #'     transmitted version of each record.}
 #'   \item{HasBeenE}{Integer. `1` if the visit has been classified as an
-#'     emergency visit. All records in this dataset have `HasBeenE = 1`,
-#'     consistent with a `HasBeenE = 1` filtered ESSENCE pull.}
+#'     emergency visit. `0` on the two `patient_class_change` duplicate rows
+#'     (see Details), which represent a direct-admit continuation of an ED
+#'     visit; all other records have `HasBeenE = 1`, consistent with a
+#'     `HasBeenE = 1` filtered ESSENCE pull.}
 #'   \item{HasBeenAdmitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission (discharge-disposition aware).}
+#'   \item{C_Patient_Class}{Character. ESSENCE-derived single-letter patient
+#'     class (`"E"` for ED, `"I"` for inpatient). `classify_duplicates()`
+#'     detects `patient_class_change` duplicates generically, from any two
+#'     rows sharing a `facility x Visit_ID` key with distinct
+#'     `C_Patient_Class` values -- not a specific from/to pair. `"E"` to
+#'     `"I"` is used here only as a common, realistic illustration; see
+#'     Details.}
 #'   \item{Region}{Character. Patient ESSENCE Region of residence in
 #'     `{SITE}_{REGION}` format. Includes out-of-state values
 #'     (e.g., `"TN_Davidson"`) and `"OTHER_REGION"` entries to demonstrate
@@ -61,6 +70,17 @@
 #'     midnight-crossing visit where `Admit_Date_Time` was updated.}
 #'   \item{`pid_change`}{2 visits with a second row carrying a different
 #'     `C_Unique_Patient_ID` -- representing a corrected patient identifier.}
+#'   \item{`patient_class_change`}{2 visits with a second row carrying
+#'     `C_Patient_Class = "I"` (`HasBeenE`/`HasBeenAdmitted` flipped to
+#'     match) against the original row's `"E"`, and a later
+#'     `Arrived_Date_Time` -- representing an ED visit and its direct-admit
+#'     continuation transmitted as two records sharing one `Visit_ID`
+#'     rather than one record with an updated `C_Patient_Class_List`. Since
+#'     `dedupe(keep = "last")` keeps the more recent row by
+#'     `Arrived_Date_Time`, these two visits survive into [essence_clean]
+#'     as `c_patient_class = "I"` -- the ED encounter is silently dropped by
+#'     deduplication alone, illustrating the gap `link_encounters()` is
+#'     designed to catch instead.}
 #'   \item{`visit_date_change+pid_change`}{1 visit exhibiting both
 #'     mechanisms simultaneously.}
 #' }
@@ -111,9 +131,17 @@
 #'   \item{c_visit_date_time}{POSIXct. Timestamp of the actual clinical
 #'     encounter.}
 #'   \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
-#'   \item{has_been_e}{Integer. `1` for all records (ED pull).}
+#'   \item{has_been_e}{Integer. `1` for an ED pull; `0` on the two visits
+#'     where a `patient_class_change` direct-admit row outranked the ED row
+#'     under `dedupe(keep = "last")` -- see `c_patient_class` and
+#'     `?essence_raw`.}
 #'   \item{has_been_admitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission.}
+#'   \item{c_patient_class}{Character. ESSENCE-derived single-letter patient
+#'     class. `"I"` on the two visits where deduplication kept the
+#'     direct-admit continuation row over the original ED row (see
+#'     `?essence_raw`); `"E"` otherwise. Unchanged by the preprocessing
+#'     pipeline.}
 #'   \item{region}{Character. Patient ESSENCE Region of residence in
 #'     `{SITE}_{REGION}` format. Out-of-state and `OTHER_REGION` visits have
 #'     been reassigned to the treating facility's Region by

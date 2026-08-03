@@ -71,6 +71,21 @@
 #' patient class change detection is skipped and all other types remain
 #' functional.
 #'
+#' ## Linked vs. unlinked input
+#' `classify_duplicates()` can be run on a raw (unlinked) ESSENCE pull, or on
+#' the long-format output of [link_encounters()] -- it only requires
+#' `facility_col`/`visit_col` and the identifying columns above, regardless
+#' of which record structure they come from. Either way, `patient_class_change`
+#' (and every other type here) is detected from rows that still exist
+#' side-by-side with a shared `facility_col` x `visit_col` key: it looks for
+#' more than one distinct value of a field (here, `c_patient_class`) across
+#' those rows, not from any single row. Once those rows have already been
+#' collapsed into one -- e.g. by [dedupe()], or by [link_encounters()] with
+#' `return_format = "collapsed"` -- there is only one row left per key, so
+#' `n_rows == 1` and nothing is classified as a duplicate at all, regardless
+#' of what mechanism originally produced the now-merged rows. Classify before
+#' collapsing if you want to see which mechanism was responsible.
+#'
 #' ## Return formats
 #' \describe{
 #'   \item{`"list"` (default)}{A named list of class `essence_dup_classified`

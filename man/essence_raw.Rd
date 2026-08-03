@@ -5,7 +5,7 @@
 \alias{essence_raw}
 \title{Synthetic raw ESSENCE-like ED visit data}
 \format{
-A data frame with approximately 190 rows and 18 columns:
+A data frame with approximately 193 rows and 18 columns:
 \describe{
 \item{HospitalName}{Character. Synthetic facility name.}
 \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -33,10 +33,19 @@ encounter. Used by \code{\link[=link_encounters]{link_encounters()}} to chronolo
 record. Use as \code{order_by} in \code{\link[=dedupe]{dedupe()}} to retain the most recently
 transmitted version of each record.}
 \item{HasBeenE}{Integer. \code{1} if the visit has been classified as an
-emergency visit. All records in this dataset have \code{HasBeenE = 1},
-consistent with a \code{HasBeenE = 1} filtered ESSENCE pull.}
+emergency visit. \code{0} on the two \code{patient_class_change} duplicate rows
+(see Details), which represent a direct-admit continuation of an ED
+visit; all other records have \code{HasBeenE = 1}, consistent with a
+\code{HasBeenE = 1} filtered ESSENCE pull.}
 \item{HasBeenAdmitted}{Integer. \code{1} if the visit resulted in
 inpatient admission (discharge-disposition aware).}
+\item{C_Patient_Class}{Character. ESSENCE-derived single-letter patient
+class (\code{"E"} for ED, \code{"I"} for inpatient). \code{classify_duplicates()}
+detects \code{patient_class_change} duplicates generically, from any two
+rows sharing a \verb{facility x Visit_ID} key with distinct
+\code{C_Patient_Class} values -- not a specific from/to pair. \code{"E"} to
+\code{"I"} is used here only as a common, realistic illustration; see
+Details.}
 \item{Region}{Character. Patient ESSENCE Region of residence in
 \verb{\{SITE\}_\{REGION\}} format. Includes out-of-state values
 (e.g., \code{"TN_Davidson"}) and \code{"OTHER_REGION"} entries to demonstrate
@@ -76,6 +85,17 @@ values are entirely synthetic. No real patient or facility data are included.
 midnight-crossing visit where \code{Admit_Date_Time} was updated.}
 \item{\code{pid_change}}{2 visits with a second row carrying a different
 \code{C_Unique_Patient_ID} -- representing a corrected patient identifier.}
+\item{\code{patient_class_change}}{2 visits with a second row carrying
+\code{C_Patient_Class = "I"} (\code{HasBeenE}/\code{HasBeenAdmitted} flipped to
+match) against the original row's \code{"E"}, and a later
+\code{Arrived_Date_Time} -- representing an ED visit and its direct-admit
+continuation transmitted as two records sharing one \code{Visit_ID}
+rather than one record with an updated \code{C_Patient_Class_List}. Since
+\code{dedupe(keep = "last")} keeps the more recent row by
+\code{Arrived_Date_Time}, these two visits survive into \link{essence_clean}
+as \code{c_patient_class = "I"} -- the ED encounter is silently dropped by
+deduplication alone, illustrating the gap \code{link_encounters()} is
+designed to catch instead.}
 \item{\code{visit_date_change+pid_change}}{1 visit exhibiting both
 mechanisms simultaneously.}
 }

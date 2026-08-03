@@ -24,9 +24,17 @@ One unique value per visit after deduplication.}
 \item{c_visit_date_time}{POSIXct. Timestamp of the actual clinical
 encounter.}
 \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
-\item{has_been_e}{Integer. \code{1} for all records (ED pull).}
+\item{has_been_e}{Integer. \code{1} for an ED pull; \code{0} on the two visits
+where a \code{patient_class_change} direct-admit row outranked the ED row
+under \code{dedupe(keep = "last")} -- see \code{c_patient_class} and
+\code{?essence_raw}.}
 \item{has_been_admitted}{Integer. \code{1} if the visit resulted in
 inpatient admission.}
+\item{c_patient_class}{Character. ESSENCE-derived single-letter patient
+class. \code{"I"} on the two visits where deduplication kept the
+direct-admit continuation row over the original ED row (see
+\code{?essence_raw}); \code{"E"} otherwise. Unchanged by the preprocessing
+pipeline.}
 \item{region}{Character. Patient ESSENCE Region of residence in
 \verb{\{SITE\}_\{REGION\}} format. Out-of-state and \code{OTHER_REGION} visits have
 been reassigned to the treating facility's Region by

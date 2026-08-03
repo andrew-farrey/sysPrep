@@ -202,6 +202,21 @@ compound_dups <- compound_base |>
     Arrived_Date_Time   = Arrived_Date_Time + 7200L
   )
 
+# patient_class_change duplicates: same Visit_ID x Hospital, a second row
+# carrying a different C_Patient_Class value -- classify_duplicates()
+# detects this from any distinct C_Patient_Class values across duplicate
+# rows, not a specific from/to pair; an ED-to-inpatient transition (E -> I)
+# is used here only as a common, realistic illustration ----
+class_change_base <- base_visits |> dplyr::slice_sample(n = 2L)
+class_change_dups <- class_change_base |>
+  dplyr::mutate(
+    C_BioSense_ID     = paste0(make_biosense_id(Date, Hospital, C_Unique_Patient_ID), "R"),
+    HasBeenE          = 0L,
+    HasBeenAdmitted   = 1L,
+    C_Patient_Class   = "I",
+    Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE)
+  )
+
 # ── Combine all records into essence_raw ─────────────────────────────────────
 essence_raw <- dplyr::bind_rows(
   base_visits,
@@ -209,7 +224,8 @@ essence_raw <- dplyr::bind_rows(
   standard_dups,
   date_change_dups,
   pid_change_dups,
-  compound_dups
+  compound_dups,
+  class_change_dups
 ) |>
   # Shuffle row order to simulate a real pull
   dplyr::slice_sample(prop = 1) |>
