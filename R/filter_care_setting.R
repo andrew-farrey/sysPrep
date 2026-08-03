@@ -233,11 +233,8 @@ filter_care_setting <- function(data,
   # Normalize names upfront ----
   data <- clean_names_safe(data)
 
-  facility_col      <- resolve_col(data, rlang::ensym(facility_col))
-  facility_type_col <- resolve_col(data, rlang::ensym(facility_type_col))
-
-  fac_col_str  <- rlang::as_string(facility_col)
-  type_col_str <- rlang::as_string(facility_type_col)
+  fac_col_str  <- resolve_col_str(data, rlang::ensym(facility_col))
+  type_col_str <- resolve_col_str(data, rlang::ensym(facility_type_col))
 
   # Resolve facility_id_col optionally -- not required unless
   # fix_facility_id_vector is actually supplied ----
@@ -282,14 +279,7 @@ filter_care_setting <- function(data,
       as.character(fix_facility_id_vector)
     corrected_by_id_names <- unique(data[[fac_col_str]][id_matched_rows])
 
-    data <- data |>
-      dplyr::mutate(
-        "{type_col_str}" := dplyr::if_else(
-          as.character(.data[[id_col_str]]) %in% as.character(fix_facility_id_vector),
-          fix_to,
-          .data[[type_col_str]]
-        )
-      )
+    data <- apply_type_correction(data, type_col_str, id_matched_rows, fix_to)
   }
 
   # Apply exact facility type corrections ----
@@ -312,14 +302,11 @@ filter_care_setting <- function(data,
       )
     }
 
-    data <- data |>
-      dplyr::mutate(
-        "{type_col_str}" := dplyr::if_else(
-          .data[[fac_col_str]] %in% fix_facility_type_vector,
-          fix_to,
-          .data[[type_col_str]]
-        )
-      )
+    data <- apply_type_correction(
+      data, type_col_str,
+      data[[fac_col_str]] %in% fix_facility_type_vector,
+      fix_to
+    )
   }
 
   # Apply regex facility type corrections ----
@@ -349,15 +336,12 @@ filter_care_setting <- function(data,
         )
       )
 
-      data <- data |>
-        dplyr::mutate(
-          "{type_col_str}" := dplyr::if_else(
-            stringr::str_detect(.data[[fac_col_str]], fix_facility_type_regex) &
-              !.data[[fac_col_str]] %in% already_corrected,
-            fix_to,
-            .data[[type_col_str]]
-          )
-        )
+      data <- apply_type_correction(
+        data, type_col_str,
+        stringr::str_detect(data[[fac_col_str]], fix_facility_type_regex) &
+          !data[[fac_col_str]] %in% already_corrected,
+        fix_to
+      )
     }
   }
 

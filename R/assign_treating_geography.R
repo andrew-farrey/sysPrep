@@ -191,22 +191,16 @@ assign_treating_geography <- function(data,
   do_region <- "region" %in% geography
   do_zip    <- "zip"    %in% geography
 
-  # Validate region geography ----
-  if (do_region && is.null(hosp_region_col_str)) {
-    inform_if(verbose, "Region geography skipped: `HospitalRegion` not found in data.")
-    do_region <- FALSE
-  }
-
-  # Validate zip geography ----
-  if (do_zip) {
-    if (is.null(zip_col_str)) {
-      inform_if(verbose, "Zip geography skipped: `ZipCode` not found in data.")
-      do_zip <- FALSE
-    } else if (is.null(hosp_zip_col_str)) {
-      inform_if(verbose, "Zip geography skipped: `HospitalZip` not found in data.")
-      do_zip <- FALSE
-    }
-  }
+  # Validate geography columns (region_col_str is validated separately below,
+  # since it's unconditionally required for out-of-state detection) ----
+  geog_flags <- validate_geography_cols(
+    verbose, do_region, do_zip,
+    region_col_str, hosp_region_col_str,
+    zip_col_str, hosp_zip_col_str,
+    check_region_col = FALSE
+  )
+  do_region <- geog_flags$do_region
+  do_zip    <- geog_flags$do_zip
 
   # Region column required for out-of-state detection ----
   if (is.null(region_col_str)) {

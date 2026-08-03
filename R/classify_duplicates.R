@@ -157,12 +157,9 @@ classify_duplicates <- function(data,
   return_format <- match.arg(return_format)
 
   # Normalize names upfront ----
-  data_clean   <- clean_names_safe(data)
-  facility_col <- resolve_col(data_clean, rlang::ensym(facility_col))
-  visit_col    <- resolve_col(data_clean, rlang::ensym(visit_col))
-
-  fac_col_str   <- rlang::as_string(facility_col)
-  visit_col_str <- rlang::as_string(visit_col)
+  data_clean    <- clean_names_safe(data)
+  fac_col_str   <- resolve_col_str(data_clean, rlang::ensym(facility_col))
+  visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Resolve required columns -- accept raw ESSENCE names, clean_names() output, or variants ----
   biosense_col <- resolve_col_optional(data_clean, rlang::sym("C_BioSense_ID"))
@@ -255,14 +252,18 @@ classify_duplicates <- function(data,
   # Return tibble early if requested ----
   if (return_format == "tibble") return(visit_groups)
 
+  # Rows classified as an actual duplicate, shared by all three components
+  # below ----
+  dup_rows <- dplyr::filter(visit_groups, dup_type != "no_duplication")
+
   # Component: duplicate_ids ----
-  duplicate_ids <- visit_groups |>
-    dplyr::filter(dup_type != "no_duplication") |>
-    dplyr::select(dplyr::all_of(c(fac_col_str, visit_col_str)))
+  duplicate_ids <- dplyr::select(
+    dup_rows,
+    dplyr::all_of(c(fac_col_str, visit_col_str))
+  )
 
   # Component: by_facility wide summary ----
-  by_facility <- visit_groups |>
-    dplyr::filter(dup_type != "no_duplication") |>
+  by_facility <- dup_rows |>
     dplyr::count(
       .data[[fac_col_str]],
       dup_type
@@ -280,8 +281,7 @@ classify_duplicates <- function(data,
     dplyr::arrange(dplyr::desc(n_duplicated_total))
 
   # Component: overall tabyl-style summary ----
-  overall <- visit_groups |>
-    dplyr::filter(dup_type != "no_duplication") |>
+  overall <- dup_rows |>
     janitor::tabyl(dup_type) |>
     janitor::adorn_pct_formatting(digits = 1) |>
     dplyr::arrange(dplyr::desc(n))
@@ -320,11 +320,7 @@ print.essence_dup_classified <- function(x, ...) {
   cli::cli_h2("By Facility")
   print(x$by_facility, n = Inf)
 
-  cli::cli_h2("Duplicated Visit IDs")
-  cli::cli_text(
-    "{nrow(x$duplicate_ids)} facility \u00d7 Visit_ID pair(s) with >1 row. ",
-    "Access via $duplicate_ids."
-  )
+  cli_duplicate_ids_footer(x)
 
   cli::cli_h2("Visit Groups")
   cli::cli_text(

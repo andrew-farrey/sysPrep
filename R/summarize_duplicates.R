@@ -66,12 +66,9 @@ summarize_duplicates <- function(data,
                                  visit_col    = Visit_ID) {
 
   # Resolve column names ----
-  data_clean   <- clean_names_safe(data)
-  facility_col <- resolve_col(data_clean, rlang::ensym(facility_col))
-  visit_col    <- resolve_col(data_clean, rlang::ensym(visit_col))
-
-  fac_col_str   <- rlang::as_string(facility_col)
-  visit_col_str <- rlang::as_string(visit_col)
+  data_clean    <- clean_names_safe(data)
+  fac_col_str   <- resolve_col_str(data_clean, rlang::ensym(facility_col))
+  visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Identify duplicate groups (facility x visit_col with n > 1) ----
   group_counts <- data_clean |>
@@ -93,10 +90,8 @@ summarize_duplicates <- function(data,
   )
 
   # Component 2: facility-level summary ----
-  n_total_visits <- dplyr::n_distinct(
-    data_clean[[fac_col_str]],
-    data_clean[[visit_col_str]]
-  )
+  # group_counts already has one row per distinct facility x visit_col pair.
+  n_total_visits <- nrow(group_counts)
 
   # Build a lookup of duplicated facility x visit pairs for matching
   dup_pair_key <- paste(dup_groups[[fac_col_str]], dup_groups[[visit_col_str]])
@@ -169,11 +164,7 @@ print.essence_dup_summary <- function(x, ...) {
   }
 
   if (nrow(x$duplicate_ids) > 0L) {
-    cli::cli_h2("Duplicated Visit IDs")
-    cli::cli_text(
-      "{nrow(x$duplicate_ids)} facility \u00d7 Visit_ID pair(s) with >1 row. ",
-      "Access via $duplicate_ids."
-    )
+    cli_duplicate_ids_footer(x)
   }
 
   invisible(x)

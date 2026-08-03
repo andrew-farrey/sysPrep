@@ -130,11 +130,8 @@ review_facility_ed_visits <- function(data,
   # Normalize names ----
   data <- clean_names_safe(data)
 
-  facility_col      <- resolve_col(data, rlang::ensym(facility_col))
-  facility_type_col <- resolve_col(data, rlang::ensym(facility_type_col))
-
-  fac_col_str  <- rlang::as_string(facility_col)
-  type_col_str <- rlang::as_string(facility_type_col)
+  fac_col_str  <- resolve_col_str(data, rlang::ensym(facility_col))
+  type_col_str <- resolve_col_str(data, rlang::ensym(facility_type_col))
 
   # Resolve optional date column ----
   date_col_quo <- rlang::enquo(date_col)
@@ -221,15 +218,37 @@ review_facility_ed_visits <- function(data,
     facility_counts
   }
 
+  # Only compute the quantiles the chosen `method` actually uses -- e.g. the
+  # IQR quantiles are wasted work (recomputed per group) under the default
+  # method = "percentile", and vice versa for method = "iqr".
+  needs_pct <- method != "iqr"
+  needs_iqr <- method != "percentile"
+
   facility_counts <- threshold_groups |>
     dplyr::mutate(
-      .pct_low  = quantile(.data[[detect_col]], percentile_low,  na.rm = TRUE),
-      .pct_high = quantile(.data[[detect_col]], percentile_high, na.rm = TRUE),
-      .q1       = quantile(.data[[detect_col]], 0.25, na.rm = TRUE),
-      .q3       = quantile(.data[[detect_col]], 0.75, na.rm = TRUE),
+      .pct_low  = if (needs_pct) {
+        quantile(.data[[detect_col]], percentile_low, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      .pct_high = if (needs_pct) {
+        quantile(.data[[detect_col]], percentile_high, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      .q1       = if (needs_iqr) {
+        quantile(.data[[detect_col]], 0.25, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      .q3       = if (needs_iqr) {
+        quantile(.data[[detect_col]], 0.75, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
       .iqr      = .q3 - .q1,
-      .iqr_low  = .q1 - iqr_multiplier * .iqr,
-      .iqr_high = .q3 + iqr_multiplier * .iqr
+      .iqr_low  = if (needs_iqr) .q1 - iqr_multiplier * .iqr else NA_real_,
+      .iqr_high = if (needs_iqr) .q3 + iqr_multiplier * .iqr else NA_real_
     ) |>
     dplyr::ungroup()
 

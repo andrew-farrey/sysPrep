@@ -173,25 +173,13 @@ assign_facility_geography <- function(data,
   do_region <- "region" %in% geography
   do_zip    <- "zip"    %in% geography
 
-  if (do_region) {
-    if (is.null(region_col_str)) {
-      inform_if(verbose, "Region geography skipped: `Region` not found in data.")
-      do_region <- FALSE
-    } else if (is.null(hosp_region_col_str)) {
-      inform_if(verbose, "Region geography skipped: `HospitalRegion` not found in data.")
-      do_region <- FALSE
-    }
-  }
-
-  if (do_zip) {
-    if (is.null(zip_col_str)) {
-      inform_if(verbose, "Zip geography skipped: `ZipCode` not found in data.")
-      do_zip <- FALSE
-    } else if (is.null(hosp_zip_col_str)) {
-      inform_if(verbose, "Zip geography skipped: `HospitalZip` not found in data.")
-      do_zip <- FALSE
-    }
-  }
+  geog_flags <- validate_geography_cols(
+    verbose, do_region, do_zip,
+    region_col_str, hosp_region_col_str,
+    zip_col_str, hosp_zip_col_str
+  )
+  do_region <- geog_flags$do_region
+  do_zip    <- geog_flags$do_zip
 
   if (!do_region && !do_zip) {
     rlang::warn("No geography types could be processed. Returning data unchanged.")

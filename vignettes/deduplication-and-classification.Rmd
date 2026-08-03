@@ -70,8 +70,8 @@ change produces an additional row for the same `Visit_ID`.
 transitions during a visit -- for example, from emergency department to
 inpatient admission -- are handled without generating duplicate rows: the
 transition is appended to `C_Patient_Class_List`, `C_Patient_Class` is
-updated, and the `HasBeenE`, `HasBeenI`, `HasBeenAdmitted` flags are revised
-in place. A `patient_class_change` duplicate appears only when something
+updated, and the `HasBeenE`, `HasBeenI`, `HasBeenAdmitted` flags (ED-visit
+and inpatient-admission indicator columns) are revised in place. A `patient_class_change` duplicate appears only when something
 additional causes a new row to be submitted for the same `Visit_ID` coincident
 with a class transition -- such as a feed configuration issue or a concurrent
 `visit_date_change`. This mechanism requires `c_patient_class` to be present

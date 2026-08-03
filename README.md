@@ -25,7 +25,7 @@ cluster/anomaly detection if left unaddressed:
 | Problem | Functions |
 |---------|-----------|
 | **Duplicate records** -- multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | `dedupe()`, `summarize_duplicates()`, `classify_duplicates()` |
-| **Non-emergency providers** -- facilities without EDs and FSEDs with incorrect types included in pulls | `filter_care_setting()`, `review_facility_ed_visits()` |
+| **Non-emergency providers** -- facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency `FacilityType`, included in pulls | `filter_care_setting()`, `review_facility_ed_visits()` |
 | **Invisible direct admissions** -- HasBeenE = 1 queries structurally exclude patients admitted without ED triage | `link_encounters()` |
 | **Out-of-state and unknown-residence visits** -- discarding these understates facility burden | `assign_treating_geography()`, `assign_facility_geography()` |
 

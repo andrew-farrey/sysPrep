@@ -45,6 +45,14 @@ resolve_col_optional <- function(data, col_sym) {
   )
 }
 
+# resolve_col_str() ----
+# Convenience wrapper around resolve_col() for the common case where the
+# resolved column is needed as a string (e.g. for .data[[...]] subsetting)
+# rather than as a symbol.
+resolve_col_str <- function(data, col_sym) {
+  rlang::as_string(resolve_col(data, col_sym))
+}
+
 # clean_names_safe() ----
 # Like janitor::clean_names() but preserves leading-dot prefixes on column
 # names. janitor::clean_names() strips leading dots (e.g. `.index_encounter`
@@ -73,6 +81,73 @@ clean_names_safe <- function(data) {
 # never routed through this helper and always fire regardless of verbose.
 inform_if <- function(verbose, ...) {
   if (verbose) rlang::inform(...)
+}
+
+# validate_geography_cols() ----
+# Shared by assign_treating_geography() and assign_facility_geography():
+# downgrades do_region/do_zip to FALSE (with an informative message) when a
+# column required for that geography type is absent. `check_region_col`
+# controls whether `region_col_str` itself is validated here --
+# assign_treating_geography() validates it separately afterward since it is
+# unconditionally required there for out-of-state detection, regardless of
+# `geography`; assign_facility_geography() has no such separate requirement,
+# so it validates region_col_str as part of this check.
+validate_geography_cols <- function(verbose, do_region, do_zip,
+                                    region_col_str, hosp_region_col_str,
+                                    zip_col_str, hosp_zip_col_str,
+                                    check_region_col = TRUE) {
+  if (do_region) {
+    if (check_region_col && is.null(region_col_str)) {
+      inform_if(
+        verbose,
+        "Region geography skipped: `Region` not found in data."
+      )
+      do_region <- FALSE
+    } else if (is.null(hosp_region_col_str)) {
+      inform_if(
+        verbose,
+        "Region geography skipped: `HospitalRegion` not found in data."
+      )
+      do_region <- FALSE
+    }
+  }
+
+  if (do_zip) {
+    if (is.null(zip_col_str)) {
+      inform_if(verbose, "Zip geography skipped: `ZipCode` not found in data.")
+      do_zip <- FALSE
+    } else if (is.null(hosp_zip_col_str)) {
+      inform_if(
+        verbose,
+        "Zip geography skipped: `HospitalZip` not found in data."
+      )
+      do_zip <- FALSE
+    }
+  }
+
+  list(do_region = do_region, do_zip = do_zip)
+}
+
+# apply_type_correction() ----
+# Shared by filter_care_setting()'s facility ID, facility name, and regex
+# correction blocks: overwrites `type_col_str` with `fix_to` for rows
+# matching `mask`, leaving other rows unchanged.
+apply_type_correction <- function(data, type_col_str, mask, fix_to) {
+  dplyr::mutate(
+    data,
+    "{type_col_str}" := dplyr::if_else(mask, fix_to, .data[[type_col_str]])
+  )
+}
+
+# cli_duplicate_ids_footer() ----
+# Shared by print.essence_dup_summary() and print.essence_dup_classified():
+# renders the identical "$duplicate_ids" access footer for both.
+cli_duplicate_ids_footer <- function(x) {
+  cli::cli_h2("Duplicated Visit IDs")
+  cli::cli_text(
+    "{nrow(x$duplicate_ids)} facility \u00d7 Visit_ID pair(s) with >1 row. ",
+    "Access via $duplicate_ids."
+  )
 }
 
 # assign_geography_reassignment() ----
