@@ -75,32 +75,46 @@ mechanisms with different causes and different implications for how
 deduplication should be approached. Without deduplication, these
 additional rows inflate case counts, distort trend analyses, and produce
 inaccurate rates.</p>
-<p><strong>Standard retransmission.</strong> A facility resubmits a
-record after updating clinical fields – adding a discharge disposition,
-a lab result, or a diagnosis code. The National Syndromic Surveillance
-Program (NSSP) appends the new transmission rather than overwriting the
-original, resulting in two rows with the same
-<code>HospitalName × Visit_ID</code> combination. The newer row
-typically contains more complete information. Retaining the most
-recently transmitted row
-(<code>order_by = Arrived_Date_Time, keep = "last"</code>) is
-appropriate for most surveillance contexts.</p>
+<p><strong>Why duplication happens.</strong> BioSense, the NSSP platform
+underlying ESSENCE, computes a record identifier –
+<code>C_BioSense_ID</code> (called EssenceID in the ESSENCE backend) –
+from a small set of calculated fields: most often
+<code>C_Visit_Date_Time</code> and <code>C_Unique_Patient_ID</code>, and
+<code>C_BioSense_Facility_ID</code> (<code>Hospital</code> in this
+package and in <code>dataDetails</code> API pulls) when a transfer is
+involved. As long as those calculated fields are transmitted
+consistently for a given encounter, updates to other fields – a
+discharge disposition, a lab result, a diagnosis code – are correctly
+appended to the existing record, with no additional row created. This is
+why the vast majority of ESSENCE updates do not produce duplicates. NSSP
+is not the source of the problem: a new <code>C_BioSense_ID</code> is
+computed, and an apparent second record created, only when one of the
+calculated fields disagrees between transmissions of what should be the
+same encounter – most often <code>C_Visit_Date_Time</code> or
+<code>C_Unique_Patient_ID</code>, and less often
+<code>C_BioSense_Facility_ID</code> during a transfer. BioSense has no
+way to tell whether such a change is a genuine correction or an
+unwarranted, feed-level error; either way, the visit is duplicated. When
+a site transmits fully accurate calculated fields for every visit,
+duplication from this mechanism is essentially zero. The two most common
+ways it occurs in ESSENCE data are:</p>
 <p><strong><code>visit_date_change</code>.</strong>
 <code>C_BioSense_ID</code> is derived from <code>C_Visit_Date</code> and
 <code>C_Visit_Date_Time</code>, which are frequently populated from
-<code>Admit_Date_Time</code>. When a hospital treats
-<code>C_Visit_Date_Time</code> as a modifiable field and submits an
-update that crosses midnight – changing what was a pre-midnight value to
-a post-midnight value – NSSP computes a new <code>C_BioSense_ID</code>
-for the same <code>Visit_ID</code>, producing two rows that appear to
-represent different BioSense records but refer to the same encounter.
-This is the most widespread duplication type across NSSP sites, though
-the exact scope varies by site and facility, and the affected proportion
-of visits is typically small. Many hospitals handle midnight-crossing
-visits correctly by not modifying <code>Admit_Date_Time</code> or
-<code>C_Visit_Date_Time</code> after the patient’s initial registration;
-the duplicate arises only at facilities that treat these fields as
-modifiable.</p>
+<code>Admit_Date_Time</code>. Some hospitals’ systems update
+<code>C_Visit_Date_Time</code> as providers interact with the patient
+over the course of the visit, rather than fixing it at initial
+registration. When one of those updates crosses midnight – changing what
+was a pre-midnight value to a post-midnight value – NSSP computes a new
+<code>C_BioSense_ID</code> for the same <code>Visit_ID</code>, producing
+two rows that appear to represent different BioSense records but refer
+to the same encounter. This is the most widespread duplication type
+across NSSP sites, though the exact scope varies by site and facility,
+and the affected proportion of visits is typically small. Many hospitals
+handle midnight-crossing visits correctly by not modifying
+<code>Admit_Date_Time</code> or <code>C_Visit_Date_Time</code> after the
+patient’s initial registration; the duplicate arises only at facilities
+whose systems continue to update it afterward.</p>
 <p>The impact of this duplication is disproportionate in small-count
 contexts. A syndrome definition for a relatively rare condition – such
 as a specific overdose agent or an emerging chief complaint pattern –
@@ -112,13 +126,20 @@ substantially higher than the true count, potentially triggering alerts
 that do not reflect genuine changes in incidence. This is the clinical
 and surveillance consequence that motivates deduplication even when the
 affected proportion of total visits is low.</p>
-<p><strong><code>pid_change</code>.</strong> The patient identifier
-(<code>C_Unique_Patient_ID</code>, which maps to medical record number
-in Kentucky) was corrected or updated mid-visit by the facility. A
-patient may be registered under a temporary identifier at arrival and
-assigned their permanent MRN after identity verification. Each
-identifier change produces an additional row for the same
-<code>Visit_ID</code>.</p>
+<p><strong><code>pid_change</code>.</strong> <code>C_BioSense_ID</code>
+also incorporates <code>C_Unique_Patient_ID</code> (which maps to
+medical record number in Kentucky). A patient may be registered under a
+temporary identifier at arrival and assigned their permanent MRN after
+identity verification; the facility submits an update message with the
+corrected <code>C_Unique_Patient_ID</code> while <code>Visit_ID</code>
+itself stays the same. Because BioSense recomputes
+<code>C_BioSense_ID</code> from the new
+<code>C_Unique_Patient_ID</code>, the update produces an additional row
+rather than correcting the existing one – the original row, tied to the
+earlier <code>C_Unique_Patient_ID</code>, is left in place and still
+reflects the earlier state of the visit, while the new row carries the
+corrected identifier and current information. Each identifier change
+produces one additional row for the same <code>Visit_ID</code>.</p>
 <p><strong><code>patient_class_change</code>.</strong> Under normal HL7
 processing, patient class transitions during a visit – for example, from
 emergency department to inpatient admission – are handled without
@@ -194,8 +215,12 @@ the underlying data:</p>
 visits affected. <code>$by_facility</code> gives per-facility counts of
 duplicated visit identifiers, sorted by total duplicated visits
 descending. A facility with a disproportionately high duplicate rate may
-indicate a feed configuration issue – for example, a facility that does
-not suppress retransmission for unchanged records.</p>
+indicate a feed configuration issue – for example, a registration system
+that routinely updates <code>C_Visit_Date_Time</code> as providers
+interact with the patient (producing <code>visit_date_change</code>
+duplicates whenever an update crosses midnight), or a workflow that
+changes <code>C_Unique_Patient_ID</code> between update messages for the
+same visit (producing <code>pid_change</code> duplicates).</p>
 <blockquote>
 <p><strong>Why is the deduplication key
 <code>HospitalName × Visit_ID</code>, not <code>Visit_ID</code>

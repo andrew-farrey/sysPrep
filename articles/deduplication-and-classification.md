@@ -11,30 +11,42 @@ deduplication should be approached. Without deduplication, these
 additional rows inflate case counts, distort trend analyses, and produce
 inaccurate rates.
 
-**Standard retransmission.** A facility resubmits a record after
-updating clinical fields – adding a discharge disposition, a lab result,
-or a diagnosis code. The National Syndromic Surveillance Program (NSSP)
-appends the new transmission rather than overwriting the original,
-resulting in two rows with the same `HospitalName × Visit_ID`
-combination. The newer row typically contains more complete information.
-Retaining the most recently transmitted row
-(`order_by = Arrived_Date_Time, keep = "last"`) is appropriate for most
-surveillance contexts.
+**Why duplication happens.** BioSense, the NSSP platform underlying
+ESSENCE, computes a record identifier – `C_BioSense_ID` (called
+EssenceID in the ESSENCE backend) – from a small set of calculated
+fields: most often `C_Visit_Date_Time` and `C_Unique_Patient_ID`, and
+`C_BioSense_Facility_ID` (`Hospital` in this package and in
+`dataDetails` API pulls) when a transfer is involved. As long as those
+calculated fields are transmitted consistently for a given encounter,
+updates to other fields – a discharge disposition, a lab result, a
+diagnosis code – are correctly appended to the existing record, with no
+additional row created. This is why the vast majority of ESSENCE updates
+do not produce duplicates. NSSP is not the source of the problem: a new
+`C_BioSense_ID` is computed, and an apparent second record created, only
+when one of the calculated fields disagrees between transmissions of
+what should be the same encounter – most often `C_Visit_Date_Time` or
+`C_Unique_Patient_ID`, and less often `C_BioSense_Facility_ID` during a
+transfer. BioSense has no way to tell whether such a change is a genuine
+correction or an unwarranted, feed-level error; either way, the visit is
+duplicated. When a site transmits fully accurate calculated fields for
+every visit, duplication from this mechanism is essentially zero. The
+two most common ways it occurs in ESSENCE data are:
 
 **`visit_date_change`.** `C_BioSense_ID` is derived from `C_Visit_Date`
 and `C_Visit_Date_Time`, which are frequently populated from
-`Admit_Date_Time`. When a hospital treats `C_Visit_Date_Time` as a
-modifiable field and submits an update that crosses midnight – changing
-what was a pre-midnight value to a post-midnight value – NSSP computes a
-new `C_BioSense_ID` for the same `Visit_ID`, producing two rows that
-appear to represent different BioSense records but refer to the same
-encounter. This is the most widespread duplication type across NSSP
-sites, though the exact scope varies by site and facility, and the
-affected proportion of visits is typically small. Many hospitals handle
-midnight-crossing visits correctly by not modifying `Admit_Date_Time` or
-`C_Visit_Date_Time` after the patient’s initial registration; the
-duplicate arises only at facilities that treat these fields as
-modifiable.
+`Admit_Date_Time`. Some hospitals’ systems update `C_Visit_Date_Time` as
+providers interact with the patient over the course of the visit, rather
+than fixing it at initial registration. When one of those updates
+crosses midnight – changing what was a pre-midnight value to a
+post-midnight value – NSSP computes a new `C_BioSense_ID` for the same
+`Visit_ID`, producing two rows that appear to represent different
+BioSense records but refer to the same encounter. This is the most
+widespread duplication type across NSSP sites, though the exact scope
+varies by site and facility, and the affected proportion of visits is
+typically small. Many hospitals handle midnight-crossing visits
+correctly by not modifying `Admit_Date_Time` or `C_Visit_Date_Time`
+after the patient’s initial registration; the duplicate arises only at
+facilities whose systems continue to update it afterward.
 
 The impact of this duplication is disproportionate in small-count
 contexts. A syndrome definition for a relatively rare condition – such
@@ -48,12 +60,18 @@ incidence. This is the clinical and surveillance consequence that
 motivates deduplication even when the affected proportion of total
 visits is low.
 
-**`pid_change`.** The patient identifier (`C_Unique_Patient_ID`, which
-maps to medical record number in Kentucky) was corrected or updated
-mid-visit by the facility. A patient may be registered under a temporary
-identifier at arrival and assigned their permanent MRN after identity
-verification. Each identifier change produces an additional row for the
-same `Visit_ID`.
+**`pid_change`.** `C_BioSense_ID` also incorporates
+`C_Unique_Patient_ID` (which maps to medical record number in Kentucky).
+A patient may be registered under a temporary identifier at arrival and
+assigned their permanent MRN after identity verification; the facility
+submits an update message with the corrected `C_Unique_Patient_ID` while
+`Visit_ID` itself stays the same. Because BioSense recomputes
+`C_BioSense_ID` from the new `C_Unique_Patient_ID`, the update produces
+an additional row rather than correcting the existing one – the original
+row, tied to the earlier `C_Unique_Patient_ID`, is left in place and
+still reflects the earlier state of the visit, while the new row carries
+the corrected identifier and current information. Each identifier change
+produces one additional row for the same `Visit_ID`.
 
 **`patient_class_change`.** Under normal HL7 processing, patient class
 transitions during a visit – for example, from emergency department to
@@ -136,7 +154,11 @@ pairs and the proportion of unique visits affected. `$by_facility` gives
 per-facility counts of duplicated visit identifiers, sorted by total
 duplicated visits descending. A facility with a disproportionately high
 duplicate rate may indicate a feed configuration issue – for example, a
-facility that does not suppress retransmission for unchanged records.
+registration system that routinely updates `C_Visit_Date_Time` as
+providers interact with the patient (producing `visit_date_change`
+duplicates whenever an update crosses midnight), or a workflow that
+changes `C_Unique_Patient_ID` between update messages for the same visit
+(producing `pid_change` duplicates).
 
 > **Why is the deduplication key `HospitalName × Visit_ID`, not
 > `Visit_ID` alone?** The same `Visit_ID` may appear at two facilities
