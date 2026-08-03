@@ -344,11 +344,12 @@ nrow(episodes)
 # Inspect the distribution of care pathways
 episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
-#> # A tibble: 2 × 2
+#> # A tibble: 3 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        124
+#> 1 ED                        122
 #> 2 Admitted->ED               36
+#> 3 Admitted                    2
 
 # Long format: inspect the raw linkage mechanism directly
 episodes_long <- link_encounters(ed_clean, return_format = "long")

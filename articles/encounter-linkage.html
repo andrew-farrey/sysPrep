@@ -339,11 +339,12 @@ below, not because a filtering step is required.</p>
 <code class="sourceCode R"><span><span class="co"># Distribution of care pathways -- already one row per encounter</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 2</span></span></span>
 <span><span class="co">#&gt;   .patient_class_sequence     n</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        124</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        122</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Admitted                    2</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="inspecting-the-raw-linkage-mechanism-return_format-long">Inspecting the Raw Linkage Mechanism:
 <code>return_format = "long"</code><a class="anchor" aria-label="anchor" href="#inspecting-the-raw-linkage-mechanism-return_format-long"></a>
@@ -361,8 +362,8 @@ linkage mechanism itself. No merge is applied in this mode.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
 <span><span class="co">#&gt;   patient_class     n</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Admitted         36</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ED              160</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Admitted         38</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ED              158</span></span></code></pre></div>
 <p>In long format, <code>.index_encounter</code> marks the row that
 survives a “one row per episode” filter – <code>TRUE</code> on the ED
 row when both ED and Admitted rows are present, or on the single row for
@@ -371,11 +372,12 @@ ED-only or Direct Admit-only episodes:</p>
 <code class="sourceCode R"><span><span class="va">episodes_long</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 2</span></span></span>
 <span><span class="co">#&gt;   .patient_class_sequence     n</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        124</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        122</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Admitted                    2</span></span></code></pre></div>
 <p>This matches the collapsed-format encounter count above, since the
 same rows are merged into (or, in long format, selected as) the
 encounter of record.</p>
@@ -420,11 +422,12 @@ every row already represents one merged encounter:</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">burden</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 2</span></span></span>
 <span><span class="co">#&gt;   .patient_class_sequence     n</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        124</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ED                        122</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Admitted                    2</span></span></code></pre></div>
 <p>This yields one count per clinical encounter. Visits that generated
 both an ED signal and an Admitted signal are merged into a single row
 (using the ED row as primary) and counted once. Visits that generated

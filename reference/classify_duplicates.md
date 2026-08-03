@@ -159,6 +159,28 @@ data, available via the standard ESSENCE API as a pull field. When
 absent, patient class change detection is skipped and all other types
 remain functional.
 
+### Linked vs. unlinked input
+
+`classify_duplicates()` can be run on a raw (unlinked) ESSENCE pull, or
+on the long-format output of
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+– it only requires `facility_col`/`visit_col` and the identifying
+columns above, regardless of which record structure they come from.
+Either way, `patient_class_change` (and every other type here) is
+detected from rows that still exist side-by-side with a shared
+`facility_col` x `visit_col` key: it looks for more than one distinct
+value of a field (here, `c_patient_class`) across those rows, not from
+any single row. Once those rows have already been collapsed into one –
+e.g. by
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
+or by
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+with `return_format = "collapsed"` – there is only one row left per key,
+so `n_rows == 1` and nothing is classified as a duplicate at all,
+regardless of what mechanism originally produced the now-merged rows.
+Classify before collapsing if you want to see which mechanism was
+responsible.
+
 ### Return formats
 
 - `"list"` (default):
@@ -193,24 +215,26 @@ essence_raw |> classify_duplicates()
 #> ── Overall ──
 #> 
 #>                      dup_type n percent
-#>                  type_unknown 5   45.5%
-#>             visit_date_change 3   27.3%
-#>                    pid_change 2   18.2%
-#>  visit_date_change+pid_change 1    9.1%
+#>                  type_unknown 5   38.5%
+#>             visit_date_change 3   23.1%
+#>          patient_class_change 2   15.4%
+#>                    pid_change 2   15.4%
+#>  visit_date_change+pid_change 1    7.7%
 #> ── By Facility ──
 #> 
-#> # A tibble: 4 × 6
-#>   hospital_name pid_change type_unknown visit_date_change visit_date_change+pi…¹
-#>   <chr>              <int>        <int>             <int>                  <int>
-#> 1 Central Medi…          2            2                 1                      0
-#> 2 Metro Health…          0            3                 0                      0
-#> 3 North County…          0            0                 1                      1
-#> 4 River Valley…          0            0                 1                      0
-#> # ℹ abbreviated name: ¹​`visit_date_change+pid_change`
-#> # ℹ 1 more variable: n_duplicated_total <dbl>
+#> # A tibble: 5 × 7
+#>   hospital_name   patient_class_change pid_change type_unknown visit_date_change
+#>   <chr>                          <int>      <int>        <int>             <int>
+#> 1 Central Medica…                    1          2            2                 1
+#> 2 Metro Health S…                    0          0            3                 0
+#> 3 North County H…                    0          0            0                 1
+#> 4 Lakeside Commu…                    1          0            0                 0
+#> 5 River Valley M…                    0          0            0                 1
+#> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
+#> #   n_duplicated_total <dbl>
 #> ── Duplicated Visit IDs ──
 #> 
-#> 11 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
+#> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 #> 
 #> ── Visit Groups ──
 #> 
@@ -236,20 +260,20 @@ essence_raw |>
     classify_duplicates(essence_raw, return_format = "tibble"),
     by = c("hospital_name", "visit_id")
   )
-#> # A tibble: 191 × 24
+#> # A tibble: 193 × 24
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
-#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V892704…
-#>  3 River Valley Me…     1003 Emergency Ca… KY_Warren       42101        V194297…
-#>  4 Westside Family…     1009 Primary Care  KY_Jefferson    40203        V283015…
-#>  5 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V286688…
-#>  6 Hillside FSED        1007 Urgent Care   KY_Jefferson    40202        V158366…
-#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
-#>  8 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V827543…
-#>  9 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
-#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
-#> # ℹ 181 more rows
+#>  1 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V286688…
+#>  2 Hillside FSED        1007 Urgent Care   KY_Jefferson    40202        V158366…
+#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
+#>  4 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
+#>  5 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
+#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
+#>  7 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
+#>  8 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
+#>  9 Hillside FSED        1007 Urgent Care   KY_Jefferson    40202        V787824…
+#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V229451…
+#> # ℹ 183 more rows
 #> # ℹ 18 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,

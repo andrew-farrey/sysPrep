@@ -239,11 +239,12 @@ required.
 # Distribution of care pathways -- already one row per encounter
 episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
-#> # A tibble: 2 × 2
+#> # A tibble: 3 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        124
+#> 1 ED                        122
 #> 2 Admitted->ED               36
+#> 3 Admitted                    2
 ```
 
 ### Inspecting the Raw Linkage Mechanism: `return_format = "long"`
@@ -263,8 +264,8 @@ dplyr::count(episodes_long, patient_class)
 #> # A tibble: 2 × 2
 #>   patient_class     n
 #>   <chr>         <int>
-#> 1 Admitted         36
-#> 2 ED              160
+#> 1 Admitted         38
+#> 2 ED              158
 ```
 
 In long format, `.index_encounter` marks the row that survives a “one
@@ -277,11 +278,12 @@ episodes:
 episodes_long |>
   dplyr::filter(.index_encounter) |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
-#> # A tibble: 2 × 2
+#> # A tibble: 3 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        124
+#> 1 ED                        122
 #> 2 Admitted->ED               36
+#> 3 Admitted                    2
 ```
 
 This matches the collapsed-format encounter count above, since the same
@@ -329,11 +331,12 @@ burden <- episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
 
 burden
-#> # A tibble: 2 × 2
+#> # A tibble: 3 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        124
+#> 1 ED                        122
 #> 2 Admitted->ED               36
+#> 3 Admitted                    2
 ```
 
 This yields one count per clinical encounter. Visits that generated both

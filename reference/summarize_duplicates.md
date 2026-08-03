@@ -85,23 +85,24 @@ essence_raw |> summarize_duplicates()
 #> 
 #> ── Overall ──
 #> 
-#> • Total rows in pull: 191
+#> • Total rows in pull: 193
 #> • Unique visits (facility x ID): 180
-#> • Duplicated Visit IDs: 11 (6.1%)
-#> • Excess rows to remove: 11
+#> • Duplicated Visit IDs: 13 (7.2%)
+#> • Excess rows to remove: 13
 #> 
 #> ── By Facility (most duplicated first) ──
 #> 
-#> # A tibble: 4 × 5
+#> # A tibble: 5 × 5
 #>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
 #>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      5             5           13.2
+#> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
 #> 3 North County Hos…       19                      2             2           10.5
-#> 4 River Valley Med…       15                      1             1            6.7
+#> 4 Lakeside Communi…       21                      1             1            4.8
+#> 5 River Valley Med…       15                      1             1            6.7
 #> ── Duplicated Visit IDs ──
 #> 
-#> 11 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
+#> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 
 # Inspect components
 dups <- summarize_duplicates(essence_raw)
@@ -109,31 +110,34 @@ dups$overall
 #> # A tibble: 1 × 5
 #>   n_total_rows n_unique_visits n_duplicated_visit_ids n_excess_rows
 #>          <int>           <int>                  <int>         <int>
-#> 1          191             180                     11            11
+#> 1          193             180                     13            13
 #> # ℹ 1 more variable: pct_duplicated <dbl>
 dups$by_facility
-#> # A tibble: 4 × 5
+#> # A tibble: 5 × 5
 #>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
 #>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      5             5           13.2
+#> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
 #> 3 North County Hos…       19                      2             2           10.5
-#> 4 River Valley Med…       15                      1             1            6.7
+#> 4 Lakeside Communi…       21                      1             1            4.8
+#> 5 River Valley Med…       15                      1             1            6.7
 dups$duplicate_ids
-#> # A tibble: 11 × 2
-#>    hospital_name            visit_id 
-#>    <chr>                    <chr>    
-#>  1 Central Medical Center   V10085501
-#>  2 Central Medical Center   V14709603
-#>  3 Central Medical Center   V37919657
-#>  4 Central Medical Center   V48287737
-#>  5 Central Medical Center   V60047491
-#>  6 Metro Health System East V38278064
-#>  7 Metro Health System East V82754314
-#>  8 Metro Health System East V85359976
-#>  9 North County Hospital    V28588848
-#> 10 North County Hospital    V64229194
-#> 11 River Valley Medical     V86561004
+#> # A tibble: 13 × 2
+#>    hospital_name               visit_id 
+#>    <chr>                       <chr>    
+#>  1 Central Medical Center      V10085501
+#>  2 Central Medical Center      V14709603
+#>  3 Central Medical Center      V37919657
+#>  4 Central Medical Center      V48287737
+#>  5 Central Medical Center      V60047491
+#>  6 Central Medical Center      V89270420
+#>  7 Lakeside Community Hospital V71515667
+#>  8 Metro Health System East    V38278064
+#>  9 Metro Health System East    V82754314
+#> 10 Metro Health System East    V85359976
+#> 11 North County Hospital       V28588848
+#> 12 North County Hospital       V64229194
+#> 13 River Valley Medical        V86561004
 
 # Filter raw data to duplicated visits for manual review
 # (clean first so join keys match snake_case output of $duplicate_ids)
@@ -143,20 +147,20 @@ essence_raw |>
     summarize_duplicates(essence_raw)$duplicate_ids,
     by = c("hospital_name", "visit_id")
   )
-#> # A tibble: 22 × 18
+#> # A tibble: 26 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V827543…
+#>  1 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
 #>  2 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
 #>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
 #>  4 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
 #>  5 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V285888…
-#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
-#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V600474…
-#>  8 River Valley Me…     1003 Emergency Ca… KY_Warren       42101        V865610…
-#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
-#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
-#> # ℹ 12 more rows
+#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
+#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V892704…
+#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
+#>  9 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
+#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V892704…
+#> # ℹ 16 more rows
 #> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,

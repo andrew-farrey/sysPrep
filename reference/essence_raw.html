@@ -56,7 +56,7 @@ values are entirely synthetic. No real patient or facility data are included.</p
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A data frame with approximately 190 rows and 18 columns:</p><dl><dt>HospitalName</dt>
+    <p>A data frame with approximately 193 rows and 18 columns:</p><dl><dt>HospitalName</dt>
 <dd><p>Character. Synthetic facility name.</p></dd>
 
 <dt>Hospital</dt>
@@ -105,12 +105,23 @@ transmitted version of each record.</p></dd>
 
 <dt>HasBeenE</dt>
 <dd><p>Integer. <code>1</code> if the visit has been classified as an
-emergency visit. All records in this dataset have <code>HasBeenE = 1</code>,
-consistent with a <code>HasBeenE = 1</code> filtered ESSENCE pull.</p></dd>
+emergency visit. <code>0</code> on the two <code>patient_class_change</code> duplicate rows
+(see Details), which represent a direct-admit continuation of an ED
+visit; all other records have <code>HasBeenE = 1</code>, consistent with a
+<code>HasBeenE = 1</code> filtered ESSENCE pull.</p></dd>
 
 <dt>HasBeenAdmitted</dt>
 <dd><p>Integer. <code>1</code> if the visit resulted in
 inpatient admission (discharge-disposition aware).</p></dd>
+
+<dt>C_Patient_Class</dt>
+<dd><p>Character. ESSENCE-derived single-letter patient
+class (<code>"E"</code> for ED, <code>"I"</code> for inpatient). <code><a href="classify_duplicates.html">classify_duplicates()</a></code>
+detects <code>patient_class_change</code> duplicates generically, from any two
+rows sharing a <code>facility x Visit_ID</code> key with distinct
+<code>C_Patient_Class</code> values – not a specific from/to pair. <code>"E"</code> to
+<code>"I"</code> is used here only as a common, realistic illustration; see
+Details.</p></dd>
 
 <dt>Region</dt>
 <dd><p>Character. Patient ESSENCE Region of residence in
@@ -158,6 +169,19 @@ midnight-crossing visit where <code>Admit_Date_Time</code> was updated.</p></dd>
 <dt><code>pid_change</code></dt>
 <dd><p>2 visits with a second row carrying a different
 <code>C_Unique_Patient_ID</code> – representing a corrected patient identifier.</p></dd>
+
+<dt><code>patient_class_change</code></dt>
+<dd><p>2 visits with a second row carrying
+<code>C_Patient_Class = "I"</code> (<code>HasBeenE</code>/<code>HasBeenAdmitted</code> flipped to
+match) against the original row's <code>"E"</code>, and a later
+<code>Arrived_Date_Time</code> – representing an ED visit and its direct-admit
+continuation transmitted as two records sharing one <code>Visit_ID</code>
+rather than one record with an updated <code>C_Patient_Class_List</code>. Since
+<code>dedupe(keep = "last")</code> keeps the more recent row by
+<code>Arrived_Date_Time</code>, these two visits survive into <a href="essence_clean.html">essence_clean</a>
+as <code>c_patient_class = "I"</code> – the ED encounter is silently dropped by
+deduplication alone, illustrating the gap <code><a href="link_encounters.html">link_encounters()</a></code> is
+designed to catch instead.</p></dd>
 
 <dt><code>visit_date_change+pid_change</code></dt>
 <dd><p>1 visit exhibiting both

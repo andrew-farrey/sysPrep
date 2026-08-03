@@ -96,11 +96,21 @@ encounter.</p></dd>
 <dd><p>POSIXct. NSSP record receipt timestamp.</p></dd>
 
 <dt>has_been_e</dt>
-<dd><p>Integer. <code>1</code> for all records (ED pull).</p></dd>
+<dd><p>Integer. <code>1</code> for an ED pull; <code>0</code> on the two visits
+where a <code>patient_class_change</code> direct-admit row outranked the ED row
+under <code>dedupe(keep = "last")</code> – see <code>c_patient_class</code> and
+<code><a href="essence_raw.html">?essence_raw</a></code>.</p></dd>
 
 <dt>has_been_admitted</dt>
 <dd><p>Integer. <code>1</code> if the visit resulted in
 inpatient admission.</p></dd>
+
+<dt>c_patient_class</dt>
+<dd><p>Character. ESSENCE-derived single-letter patient
+class. <code>"I"</code> on the two visits where deduplication kept the
+direct-admit continuation row over the original ED row (see
+<code><a href="essence_raw.html">?essence_raw</a></code>); <code>"E"</code> otherwise. Unchanged by the preprocessing
+pipeline.</p></dd>
 
 <dt>region</dt>
 <dd><p>Character. Patient ESSENCE Region of residence in

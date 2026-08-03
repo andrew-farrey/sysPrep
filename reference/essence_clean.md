@@ -66,11 +66,22 @@ names are in snake_case (post
 
 - has_been_e:
 
-  Integer. `1` for all records (ED pull).
+  Integer. `1` for an ED pull; `0` on the two visits where a
+  `patient_class_change` direct-admit row outranked the ED row under
+  `dedupe(keep = "last")` – see `c_patient_class` and
+  [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md).
 
 - has_been_admitted:
 
   Integer. `1` if the visit resulted in inpatient admission.
+
+- c_patient_class:
+
+  Character. ESSENCE-derived single-letter patient class. `"I"` on the
+  two visits where deduplication kept the direct-admit continuation row
+  over the original ED row (see
+  [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md));
+  `"E"` otherwise. Unchanged by the preprocessing pipeline.
 
 - region:
 

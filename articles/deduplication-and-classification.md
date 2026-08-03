@@ -85,22 +85,23 @@ dups
 #> 
 #> ── Overall ──
 #> 
-#> • Total rows in pull: 191
+#> • Total rows in pull: 193
 #> • Unique visits (facility x ID): 180
-#> • Duplicated Visit IDs: 11 (6.1%)
-#> • Excess rows to remove: 11
+#> • Duplicated Visit IDs: 13 (7.2%)
+#> • Excess rows to remove: 13
 #> 
 #> ── By Facility (most duplicated first) ──
 #> 
-#> # A tibble: 4 × 5
+#> # A tibble: 5 × 5
 #>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
 #>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      5             5           13.2
+#> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
 #> 3 North County Hos…       19                      2             2           10.5
-#> 4 River Valley Med…       15                      1             1            6.7
+#> 4 Lakeside Communi…       21                      1             1            4.8
+#> 5 River Valley Med…       15                      1             1            6.7
 #> ── Duplicated Visit IDs ──
-#> 11 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
+#> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 ```
 
 The printed output shows dataset-wide duplicate counts and a
@@ -114,18 +115,19 @@ dups$overall
 #> # A tibble: 1 × 5
 #>   n_total_rows n_unique_visits n_duplicated_visit_ids n_excess_rows
 #>          <int>           <int>                  <int>         <int>
-#> 1          191             180                     11            11
+#> 1          193             180                     13            13
 #> # ℹ 1 more variable: pct_duplicated <dbl>
 
 # Per-facility counts (facilities with duplicates only)
 dups$by_facility
-#> # A tibble: 4 × 5
+#> # A tibble: 5 × 5
 #>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
 #>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      5             5           13.2
+#> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
 #> 3 North County Hos…       19                      2             2           10.5
-#> 4 River Valley Med…       15                      1             1            6.7
+#> 4 Lakeside Communi…       21                      1             1            4.8
+#> 5 River Valley Med…       15                      1             1            6.7
 ```
 
 `$overall` gives the total number of duplicated `facility × Visit_ID`
@@ -158,22 +160,24 @@ classified
 #> ── Overall ──
 #> 
 #>                      dup_type n percent
-#>                  type_unknown 5   45.5%
-#>             visit_date_change 3   27.3%
-#>                    pid_change 2   18.2%
-#>  visit_date_change+pid_change 1    9.1%
+#>                  type_unknown 5   38.5%
+#>             visit_date_change 3   23.1%
+#>          patient_class_change 2   15.4%
+#>                    pid_change 2   15.4%
+#>  visit_date_change+pid_change 1    7.7%
 #> ── By Facility ──
-#> # A tibble: 4 × 6
-#>   hospital_name pid_change type_unknown visit_date_change visit_date_change+pi…¹
-#>   <chr>              <int>        <int>             <int>                  <int>
-#> 1 Central Medi…          2            2                 1                      0
-#> 2 Metro Health…          0            3                 0                      0
-#> 3 North County…          0            0                 1                      1
-#> 4 River Valley…          0            0                 1                      0
-#> # ℹ abbreviated name: ¹​`visit_date_change+pid_change`
-#> # ℹ 1 more variable: n_duplicated_total <dbl>
+#> # A tibble: 5 × 7
+#>   hospital_name   patient_class_change pid_change type_unknown visit_date_change
+#>   <chr>                          <int>      <int>        <int>             <int>
+#> 1 Central Medica…                    1          2            2                 1
+#> 2 Metro Health S…                    0          0            3                 0
+#> 3 North County H…                    0          0            0                 1
+#> 4 Lakeside Commu…                    1          0            0                 0
+#> 5 River Valley M…                    0          0            0                 1
+#> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
+#> #   n_duplicated_total <dbl>
 #> ── Duplicated Visit IDs ──
-#> 11 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
+#> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 #> 
 #> ── Visit Groups ──
 #> 
@@ -185,25 +189,27 @@ classified
 # Type distribution across the full dataset
 classified$overall
 #>                      dup_type n percent
-#>                  type_unknown 5   45.5%
-#>             visit_date_change 3   27.3%
-#>                    pid_change 2   18.2%
-#>  visit_date_change+pid_change 1    9.1%
+#>                  type_unknown 5   38.5%
+#>             visit_date_change 3   23.1%
+#>          patient_class_change 2   15.4%
+#>                    pid_change 2   15.4%
+#>  visit_date_change+pid_change 1    7.7%
 ```
 
 ``` r
 
 # Per-facility breakdown by type (wide format)
 classified$by_facility
-#> # A tibble: 4 × 6
-#>   hospital_name pid_change type_unknown visit_date_change visit_date_change+pi…¹
-#>   <chr>              <int>        <int>             <int>                  <int>
-#> 1 Central Medi…          2            2                 1                      0
-#> 2 Metro Health…          0            3                 0                      0
-#> 3 North County…          0            0                 1                      1
-#> 4 River Valley…          0            0                 1                      0
-#> # ℹ abbreviated name: ¹​`visit_date_change+pid_change`
-#> # ℹ 1 more variable: n_duplicated_total <dbl>
+#> # A tibble: 5 × 7
+#>   hospital_name   patient_class_change pid_change type_unknown visit_date_change
+#>   <chr>                          <int>      <int>        <int>             <int>
+#> 1 Central Medica…                    1          2            2                 1
+#> 2 Metro Health S…                    0          0            3                 0
+#> 3 North County H…                    0          0            0                 1
+#> 4 Lakeside Commu…                    1          0            0                 0
+#> 5 River Valley M…                    0          0            0                 1
+#> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
+#> #   n_duplicated_total <dbl>
 ```
 
 The `$overall` component shows how many duplicate groups belong to each
@@ -241,14 +247,15 @@ typed <- essence_raw |>
   )
 
 dplyr::count(typed, dup_type)
-#> # A tibble: 5 × 2
+#> # A tibble: 6 × 2
 #>   dup_type                         n
 #>   <chr>                        <int>
-#> 1 no_duplication                 169
-#> 2 pid_change                       4
-#> 3 type_unknown                    10
-#> 4 visit_date_change                6
-#> 5 visit_date_change+pid_change     2
+#> 1 no_duplication                 167
+#> 2 patient_class_change             4
+#> 3 pid_change                       4
+#> 4 type_unknown                    10
+#> 5 visit_date_change                6
+#> 6 visit_date_change+pid_change     2
 ```
 
 ## Removing Duplicates: `dedupe()`
@@ -262,11 +269,11 @@ The function retains exactly one row per `facility × visit_col` group.
 deduped <- dedupe(essence_raw, order_by = Arrived_Date_Time, keep = "last")
 
 cat("Rows before: ", nrow(essence_raw), "\n")
-#> Rows before:  191
+#> Rows before:  193
 cat("Rows after:  ", nrow(deduped), "\n")
 #> Rows after:   180
 cat("Rows removed:", nrow(essence_raw) - nrow(deduped), "\n")
-#> Rows removed: 11
+#> Rows removed: 13
 ```
 
 ``` r
