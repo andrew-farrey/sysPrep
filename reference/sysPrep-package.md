@@ -14,6 +14,14 @@ been validated against records pulled from the NSSP ESSENCE 'va_er'
 (Patient Location, Full Details) and 'va_hosp' (Facility Location, Full
 Details) data sources.
 
+## Package Options
+
+`options(sysPrep.quiet = TRUE)` suppresses the startup message shown on
+[`library(sysPrep)`](https://github.com/andrew-farrey/sysPrep). Set it
+in your `.Rprofile` to disable it permanently, or wrap a single call in
+[`suppressPackageStartupMessages()`](https://rdrr.io/r/base/message.html)
+to suppress it just once.
+
 ## See also
 
 Useful links:
