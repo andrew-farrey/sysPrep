@@ -10,6 +10,14 @@
 
 Provides a suite of functions for preprocessing and quality assurance of syndromic surveillance data obtained from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (ESSENCE) API. Functions address common data quality challenges including visit-level deduplication with mechanism classification, care setting filtering with facility type correction, emergency department to inpatient encounter linkage for accurate burden estimation, and geographic attribution for out-of-state and non-residential visits. Methods were developed through applied drug overdose surveillance and cluster detection. Functions have been validated against records pulled from the NSSP ESSENCE 'va_er' (Patient Location, Full Details) and 'va_hosp' (Facility Location, Full Details) data sources.
 }
+\section{Package Options}{
+
+\code{options(sysPrep.quiet = TRUE)} suppresses the startup message shown on
+\code{library(sysPrep)}. Set it in your \code{.Rprofile} to disable it permanently,
+or wrap a single call in \code{\link[=suppressPackageStartupMessages]{suppressPackageStartupMessages()}} to suppress
+it just once.
+}
+
 \seealso{
 Useful links:
 \itemize{

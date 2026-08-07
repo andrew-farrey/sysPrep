@@ -1,4 +1,10 @@
 
+#' @section Package Options:
+#' `options(sysPrep.quiet = TRUE)` suppresses the startup message shown on
+#' `library(sysPrep)`. Set it in your `.Rprofile` to disable it permanently,
+#' or wrap a single call in [suppressPackageStartupMessages()] to suppress
+#' it just once.
+#'
 #' @keywords internal
 "_PACKAGE"
 
