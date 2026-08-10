@@ -156,6 +156,27 @@ This mechanism requires <code>c_patient_class</code> to be present in
 the data pull. See also <code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code>,
 which addresses multi-class visits through encounter linkage rather than
 deduplication.</p>
+<p><strong>Cross-pull double-counting when combining ED and direct-admit
+data.</strong> The mechanisms above all produce duplicate rows
+<em>within</em> a single pull, which
+<code><a href="../reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="../reference/classify_duplicates.html">classify_duplicates()</a></code>,
+and <code><a href="../reference/dedupe.html">dedupe()</a></code> are built to detect and resolve. A related but
+distinct risk arises when combining a <code>HasBeenE = 1</code> pull
+with a separately queried <code>HasBeenAdmitted = 1</code> pull to build
+a combined “severe visit” count: pre-aggregated ESSENCE data
+(timeSeries, tableBuilder) cannot distinguish a true direct admission
+from a mis-submitted one whose corresponding ED record incorrectly shows
+<code>HasBeenAdmitted = 0</code>. Combining the two pulls without
+linking them double-counts the mis-submitted cases.
+<code><a href="../reference/dedupe.html">dedupe()</a></code> is not the right tool for this: even though the ED
+and mis-submitted admission records share a
+<code>facility_col x visit_col</code> key, they carry complementary, not
+redundant, information – the admission record’s discharge disposition
+and outcome are not present on the ED record – so discarding one (as
+<code><a href="../reference/dedupe.html">dedupe()</a></code> does) silently loses information that merging (as
+<code><a href="../reference/link_encounters.html">link_encounters()</a></code> does) preserves. See
+<code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code> and
+<code><a href="../reference/link_encounters.html">link_encounters()</a></code> for the dedicated fix.</p>
 </div>
 <div class="section level2">
 <h2 id="quantifying-duplicates-summarize_duplicates">Quantifying Duplicates: <code>summarize_duplicates()</code><a class="anchor" aria-label="anchor" href="#quantifying-duplicates-summarize_duplicates"></a>

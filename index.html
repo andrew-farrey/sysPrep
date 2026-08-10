@@ -66,7 +66,7 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p><code>sysPrep</code> provides formalized preprocessing methods for syndromic surveillance data from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (<a href="https://www.cdc.gov/nssp/" class="external-link">ESSENCE</a>) API.</p>
-<p>In Kentucky, these preprocessing steps were necessary to keep ESSENCE-based overdose surveillance competitive with EMS-based data sources (e.g., ODMAP, Biospatial) – without them, ESSENCE pulls were neither complete nor timely enough to compete as an anomaly detection source. They also removed a recurring source of false-positive clusters: duplicate visit records were driving cluster detections that reflected data artifacts rather than true anomalies, at a real cost in analyst time spent investigating them.</p>
+<p>In Kentucky, these preprocessing steps were necessary to keep ESSENCE-based overdose surveillance competitive with EMS-based data sources (e.g., ODMAP, Biospatial) – without them, ESSENCE pulls were neither complete nor timely enough to compete as an anomaly detection source for small-count, high-impact cluster detection. They also removed a recurring source of false-positive clusters: duplicate visit records were driving cluster detections that reflected data artifacts rather than true anomalies, at a real cost in analyst time spent investigating them.</p>
 <p>These methods are <strong>not required</strong> to perform case counting, cluster detection, or anomaly detection with ESSENCE data. Many surveillance questions tolerate the data quality issues <code>sysPrep</code> addresses without materially affecting conclusions. They are most valuable for <strong>small-count, high-impact case definitions</strong>, where external validity and minimizing false-positive clusters/anomalies matter most. Raw ESSENCE data pulls can present four categories of data quality issues that bias case counts or distort cluster/anomaly detection if left unaddressed:</p>
 <table class="table">
 <colgroup>
@@ -94,7 +94,7 @@
 </tr>
 <tr>
 <td>
-<strong>Invisible Direct Admission Encounters</strong> – HasBeenE = 1 queries structurally exclude patients admitted without ED triage</td>
+<strong>Mis-Submitted and Invisible Direct Admissions</strong> – some inpatient admissions are mistakenly submitted as unrelated to a preceding ED visit (a data quality artifact), and genuine direct admissions are excluded entirely from HasBeenE = 1 queries</td>
 <td><code><a href="reference/link_encounters.html">link_encounters()</a></code></td>
 </tr>
 <tr>

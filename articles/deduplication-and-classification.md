@@ -88,6 +88,36 @@ or a concurrent `visit_date_change`. This mechanism requires
 which addresses multi-class visits through encounter linkage rather than
 deduplication.
 
+**Cross-pull double-counting when combining ED and direct-admit data.**
+The mechanisms above all produce duplicate rows *within* a single pull,
+which
+[`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md),
+[`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md),
+and
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+are built to detect and resolve. A related but distinct risk arises when
+combining a `HasBeenE = 1` pull with a separately queried
+`HasBeenAdmitted = 1` pull to build a combined “severe visit” count:
+pre-aggregated ESSENCE data (timeSeries, tableBuilder) cannot
+distinguish a true direct admission from a mis-submitted one whose
+corresponding ED record incorrectly shows `HasBeenAdmitted = 0`.
+Combining the two pulls without linking them double-counts the
+mis-submitted cases.
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+is not the right tool for this: even though the ED and mis-submitted
+admission records share a `facility_col x visit_col` key, they carry
+complementary, not redundant, information – the admission record’s
+discharge disposition and outcome are not present on the ED record – so
+discarding one (as
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+does) silently loses information that merging (as
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+does) preserves. See
+[`vignette("encounter-linkage")`](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.md)
+and
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+for the dedicated fix.
+
 ## Quantifying Duplicates: `summarize_duplicates()`
 
 Before deduplicating, call

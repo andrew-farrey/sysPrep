@@ -2,39 +2,73 @@
 
 ## The Care Pathway Artifact Problem
 
-Standard ESSENCE surveillance queries filtered to `HasBeenE = 1` return
-visits where a patient received emergency department care. This is the
-appropriate filter for ED-based syndromic surveillance – but it has a
-structural consequence that practitioners rarely account for: it cannot
-return visits where `HasBeenE = 0` and `HasBeenAdmitted = 1`. These are
-**direct admissions** – patients admitted to inpatient units without ED
-triage.
+ESSENCE has no mechanism to detect when a record with `HasBeenE = 0` and
+`HasBeenAdmitted = 1` is actually the continuation of a `HasBeenE = 1`
+record submitted moments earlier at the same facility for the same
+visit, rather than a genuinely independent admission. A single row
+showing `HasBeenAdmitted = 1` and `HasBeenE = 0`
+(`C_Patient_Class = "I"`) can mean either of two very different things:
 
-Direct admissions are not a data quality problem. They represent a real
-clinical pathway in which a patient, typically through a physician
-referral or a pre-arranged admission, bypasses the emergency department
-entirely and is admitted directly to a medical, surgical, or telemetry
-unit. From a public health surveillance perspective, the question is
-whether changes in the proportion of patients following this pathway can
-be misidentified as changes in disease burden.
+- **A true direct admission.** The patient was referred from primary
+  care, outpatient care, or urgent care – or admitted based on a
+  pre-arranged plan – and genuinely never went through the ED at this
+  facility. This is a real clinical pathway, not a data quality problem.
+- **A mis-submitted continuity break.** The patient *was* triaged and
+  treated in the ED first, but the facility’s system closed that
+  encounter as a discharge instead of tracking the ED-to-inpatient
+  transition as one continuous record. The result is two records – one
+  correctly showing `HasBeenE = 1`, one showing `HasBeenAdmitted = 1`
+  and `HasBeenE = 0` – that share the same `facility_col x visit_col`
+  key but otherwise look, to ESSENCE, like two unrelated encounters.
+  This is a data quality artifact, not a distinct clinical pathway.
 
-They can. During opioid overdose surveillance in Kentucky, an apparent
-near-linear decline in emergency department opioid overdose visit volume
-was observed over a multi-year period. Detailed investigation revealed
-that a substantial portion of this apparent trend was attributable to a
-systematic shift in hospital admission practices: facilities in certain
-markets had begun directly admitting opioid overdose patients – routing
-them to telemetry units without ED triage – in response to changes in
-reimbursement structures and clinical protocols. From a `HasBeenE = 1`
-query perspective, these patients were invisible. The observed “decline”
-was, in part, a care pathway artifact rather than a true reduction in
-overdose incidence.
+Nothing in a single row distinguishes these two cases. The only way to
+tell them apart is to check whether a matching ED record exists under
+the same `facility_col x visit_col` key – which is exactly what
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+does.
 
-The policy implications are serious. An apparent decline in overdose
-burden might reduce intervention prioritization, divert resources away
-from prevention programs, and lead surveillance reports to understate
-the severity of an ongoing crisis – at precisely the time the actual
-burden may be stable or increasing.
+This has a direct, structural consequence for burden estimation. ESSENCE
+has no built-in capacity to deduplicate a mis-submitted direct-admit
+record against its originating ED visit. Running a `HasBeenE = 1` query
+and combining it with an otherwise-identical `HasBeenE = 0` /
+`HasBeenAdmitted = 1` query – expecting the sum to be an accurate
+“severe healthcare visit” census – does not produce one: some proportion
+of the records in the second query already exist as a separate ED visit
+in the first, and combining them without deduplication double-counts
+that encounter. At the same time, genuinely new direct admissions in the
+second query are exactly what you’re trying to capture.
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+resolves both problems at once: records sharing a
+`facility_col x visit_col` key are merged into one true encounter, while
+direct-admit records with no matching ED record are retained as their
+own distinct encounters.
+
+In Kentucky’s overdose surveillance data, some of the decline in the
+`HasBeenE = 1` trend over time is genuinely explained by growth in the
+`HasBeenE = 0` / `HasBeenAdmitted = 1` trend – but not as much as
+naively binning the two would suggest, since some proportion of that
+apparent direct-admit growth is the same double-counting artifact
+described above, not a new encounter. Reimbursement or clinical-protocol
+changes, improving HL7/EHR data quality over time, or both together are
+plausible contributors to a genuine pathway shift, but this can’t be
+attributed to either cause specifically. Practitioners unaware of this
+risk face it in two directions: naively summing separately-queried
+`HasBeenE = 1` and direct-admit counts overstates the true combined
+severe-visit census, while naively comparing the two trends to explain a
+decline in one against growth in the other overstates how much of that
+decline reflects a genuine pathway shift.
+
+> **How common is this, and would I know if it were happening in my
+> data?** This isn’t a widely documented ESSENCE data quality issue.
+> Using `HasBeenE = 1` and direct-admit data together for burden
+> estimation isn’t itself a widely formalized practice in ESSENCE – in
+> print or elsewhere – so the risk rarely surfaces. It came out of
+> record-level review of Kentucky’s data, not published guidance. Most
+> users working from pre-aggregated `HasBeenE = 1` and
+> `HasBeenAdmitted = 1` counts through timeSeries or tableBuilder have
+> no way to detect it, since the double-counted encounters are
+> indistinguishable from genuine direct admits at the aggregate level.
 
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 addresses this by combining an ED pull with a separately queried
@@ -318,6 +352,28 @@ many were dropped) and labels the remaining rows
 that shares no facility x visit_id with an ED row has no rows to merge
 with, so it survives collapsing as its own single-row episode with
 `.patient_class_sequence = "Direct Admit"`.
+
+> **Can I just row-bind the ED and direct-admit pulls and run
+> [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+> on the result, instead of passing them separately?** No – this risks
+> silently losing visits.
+> [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)’s
+> `facility_col x visit_col` grouping does not distinguish an ED record
+> from its corresponding direct-admit record; from
+> [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)’s
+> perspective they are simply two rows sharing a key. `keep = "last"` or
+> `keep = "first"` will pick whichever row has the later or earlier
+> `Arrived_Date_Time` and discard the other – unpredictably decreasing
+> either the ED visit count or the direct-admit count, depending on that
+> ordering, rather than merging the two into one complete encounter.
+> Always deduplicate each pull separately (as shown above) and pass both
+> to
+> [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+> as separate arguments; let
+> [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md),
+> not
+> [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
+> perform the combination.
 
 ## Burden Estimation from Linked Data
 

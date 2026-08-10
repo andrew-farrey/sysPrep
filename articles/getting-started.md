@@ -26,13 +26,15 @@ ESSENCE pull, and can bias case counts or distort cluster/anomaly
 detection if left unaddressed:
 
 **Duplicate records.** A single clinical encounter may appear as
-multiple rows in the same pull. Retransmissions occur when a facility
-resubmits a record after updating fields such as a lab result or
-discharge code. Midnight-crossing visits cause the NSSP system to
-recompute a visit identifier, producing two rows for the same encounter.
-Patient identifier corrections and patient class transitions can
-similarly generate spurious additional rows. Without deduplication, case
-counts are inflated and trends are distorted.
+multiple rows in the same pull. Ordinary clinical updates (a lab result,
+a discharge disposition) are correctly appended to the existing record
+with no additional row. Duplication happens instead when a specific
+calculated field disagrees between transmissions of what should be the
+same encounter – most often `C_Visit_Date_Time` (e.g., when a hospital
+updates it as care progresses and an update crosses midnight) or
+`C_Unique_Patient_ID` (e.g., when a temporary identifier is corrected to
+a permanent one). Without deduplication, case counts are inflated and
+trends are distorted.
 
 **Non-emergency providers.** ESSENCE returns visits from any facility
 that submitted a matching syndromic record, including primary care
@@ -42,15 +44,16 @@ which are functionally identical to hospital-based EDs, are sometimes
 onboarded to ESSENCE with incorrect facility type codes. Both categories
 require explicit handling before ED-based incidence can be estimated.
 
-**Invisible direct admissions.** Standard ESSENCE queries are filtered
-to visits with `HasBeenE = 1` – patients who received emergency
-department care. This filter structurally excludes patients who are
-admitted directly to inpatient units without ED triage. When hospital
-admission practices shift (as occurred in Kentucky opioid overdose
-surveillance), the resulting apparent change in ED visit volume can be
-an artifact of care routing changes rather than a true change in disease
-burden. Encounter linkage resolves this by combining ED and inpatient
-pulls into unified care episodes.
+**Mis-submitted and invisible direct admissions.** A row showing
+`HasBeenAdmitted = 1` and `HasBeenE = 0` can mean two different things,
+and nothing in that row alone tells you which: a genuine direct
+admission with no preceding ED visit, or an ED visit whose transition to
+inpatient care wasn’t recorded as one continuous encounter – producing
+what looks, to ESSENCE, like two unrelated visits for a single event.
+The former is structurally invisible to standard `HasBeenE = 1` queries;
+the latter double-counts a real encounter if the two records are
+combined without linking them. Encounter linkage resolves both by
+combining ED and inpatient pulls into unified care episodes.
 
 **Out-of-state and unknown-residence visits.** ESSENCE records include
 all patients treated at in-state facilities regardless of where they
@@ -260,7 +263,7 @@ change was made).
 | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md) | Remove duplicate records, retaining one row per facility × visit identifier |
 | [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md) | Filter to valid ED/inpatient providers; correct misclassified FSEDs |
 | [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md) | Flag facilities with anomalous visit volumes using IQR or SD outlier detection |
-| [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md) | Link ED and inpatient pulls into unified care episodes to capture direct admissions |
+| [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md) | Link ED and inpatient pulls into unified care episodes, correcting mis-submitted admissions and capturing genuine direct admissions |
 | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | Reassign geography for out-of-state and `OTHER_REGION` visits only |
 | [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) | Reassign geography for all visits to treating facility location |
 

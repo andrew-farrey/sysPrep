@@ -88,13 +88,15 @@ and cluster detection using NSSP ESSENCE data.</p>
 every ESSENCE pull, and can bias case counts or distort cluster/anomaly
 detection if left unaddressed:</p>
 <p><strong>Duplicate records.</strong> A single clinical encounter may
-appear as multiple rows in the same pull. Retransmissions occur when a
-facility resubmits a record after updating fields such as a lab result
-or discharge code. Midnight-crossing visits cause the NSSP system to
-recompute a visit identifier, producing two rows for the same encounter.
-Patient identifier corrections and patient class transitions can
-similarly generate spurious additional rows. Without deduplication, case
-counts are inflated and trends are distorted.</p>
+appear as multiple rows in the same pull. Ordinary clinical updates (a
+lab result, a discharge disposition) are correctly appended to the
+existing record with no additional row. Duplication happens instead when
+a specific calculated field disagrees between transmissions of what
+should be the same encounter – most often <code>C_Visit_Date_Time</code>
+(e.g., when a hospital updates it as care progresses and an update
+crosses midnight) or <code>C_Unique_Patient_ID</code> (e.g., when a
+temporary identifier is corrected to a permanent one). Without
+deduplication, case counts are inflated and trends are distorted.</p>
 <p><strong>Non-emergency providers.</strong> ESSENCE returns visits from
 any facility that submitted a matching syndromic record, including
 primary care clinics and medical specialty practices that are not
@@ -103,15 +105,17 @@ departments (FSEDs), which are functionally identical to hospital-based
 EDs, are sometimes onboarded to ESSENCE with incorrect facility type
 codes. Both categories require explicit handling before ED-based
 incidence can be estimated.</p>
-<p><strong>Invisible direct admissions.</strong> Standard ESSENCE
-queries are filtered to visits with <code>HasBeenE = 1</code> – patients
-who received emergency department care. This filter structurally
-excludes patients who are admitted directly to inpatient units without
-ED triage. When hospital admission practices shift (as occurred in
-Kentucky opioid overdose surveillance), the resulting apparent change in
-ED visit volume can be an artifact of care routing changes rather than a
-true change in disease burden. Encounter linkage resolves this by
-combining ED and inpatient pulls into unified care episodes.</p>
+<p><strong>Mis-submitted and invisible direct admissions.</strong> A row
+showing <code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code>
+can mean two different things, and nothing in that row alone tells you
+which: a genuine direct admission with no preceding ED visit, or an ED
+visit whose transition to inpatient care wasn’t recorded as one
+continuous encounter – producing what looks, to ESSENCE, like two
+unrelated visits for a single event. The former is structurally
+invisible to standard <code>HasBeenE = 1</code> queries; the latter
+double-counts a real encounter if the two records are combined without
+linking them. Encounter linkage resolves both by combining ED and
+inpatient pulls into unified care episodes.</p>
 <p><strong>Out-of-state and unknown-residence visits.</strong> ESSENCE
 records include all patients treated at in-state facilities regardless
 of where they live. Patients who cannot or do not provide an address are
@@ -341,8 +345,8 @@ detection</td>
 </tr>
 <tr class="even">
 <td><code><a href="../reference/link_encounters.html">link_encounters()</a></code></td>
-<td>Link ED and inpatient pulls into unified care episodes to capture
-direct admissions</td>
+<td>Link ED and inpatient pulls into unified care episodes, correcting
+mis-submitted admissions and capturing genuine direct admissions</td>
 </tr>
 <tr class="odd">
 <td><code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code></td>

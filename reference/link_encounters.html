@@ -3,19 +3,19 @@
 facility_col x visit_col key into a single composite row per true
 care episode, and reconciles their field values so information present
 on only one of the source rows is not silently discarded. Corrects two
-related but distinct duplication mechanisms: direct admissions invisible
-to a HasBeenE = 1 query, and the encounter-continuity data quality issue
-where a patient's discharge and immediate direct-admit readmission are
-reported as separate records sharing the same Visit_ID at the same
-facility."><meta property="og:description" content="Links ED and direct-admit inpatient records sharing the same
+related but distinct duplication mechanisms: the encounter-continuity
+data quality issue where a patient's ED discharge and immediate
+direct-admit readmission are reported as separate records sharing the
+same Visit_ID at the same facility, and true direct admissions that
+are structurally invisible to a HasBeenE = 1 query."><meta property="og:description" content="Links ED and direct-admit inpatient records sharing the same
 facility_col x visit_col key into a single composite row per true
 care episode, and reconciles their field values so information present
 on only one of the source rows is not silently discarded. Corrects two
-related but distinct duplication mechanisms: direct admissions invisible
-to a HasBeenE = 1 query, and the encounter-continuity data quality issue
-where a patient's discharge and immediate direct-admit readmission are
-reported as separate records sharing the same Visit_ID at the same
-facility."><meta property="og:image" content="https://andrew-farrey.github.io/sysPrep/logo.png"></head><body>
+related but distinct duplication mechanisms: the encounter-continuity
+data quality issue where a patient's ED discharge and immediate
+direct-admit readmission are reported as separate records sharing the
+same Visit_ID at the same facility, and true direct admissions that
+are structurally invisible to a HasBeenE = 1 query."><meta property="og:image" content="https://andrew-farrey.github.io/sysPrep/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -54,11 +54,11 @@ facility."><meta property="og:image" content="https://andrew-farrey.github.io/sy
 <code>facility_col</code> x <code>visit_col</code> key into a single composite row per true
 care episode, and reconciles their field values so information present
 on only one of the source rows is not silently discarded. Corrects two
-related but distinct duplication mechanisms: direct admissions invisible
-to a <code>HasBeenE = 1</code> query, and the encounter-continuity data quality issue
-where a patient's discharge and immediate direct-admit readmission are
-reported as separate records sharing the same <code>Visit_ID</code> at the same
-facility.</p>
+related but distinct duplication mechanisms: the encounter-continuity
+data quality issue where a patient's ED discharge and immediate
+direct-admit readmission are reported as separate records sharing the
+same <code>Visit_ID</code> at the same facility, and true direct admissions that
+are structurally invisible to a <code>HasBeenE = 1</code> query.</p>
     </div>
 
     <div class="section level2">
@@ -157,31 +157,39 @@ and <code>.index_encounter</code>.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
 
 <div class="section">
-<h3 id="the-problem-two-invisible-sources-of-undercounting">The problem: two invisible sources of undercounting<a class="anchor" aria-label="anchor" href="#the-problem-two-invisible-sources-of-undercounting"></a></h3>
+<h3 id="the-care-pathway-artifact-problem">The care pathway artifact problem<a class="anchor" aria-label="anchor" href="#the-care-pathway-artifact-problem"></a></h3>
 
 
-<p>Many ESSENCE surveillance case definitions filter to <code>HasBeenE = 1</code>. This
-works well when the condition of interest routes consistently through the
-ED, but creates two distinct gaps:</p>
-<p><strong>Gap 1 – Direct admissions are structurally excluded.</strong> A patient admitted
-directly to an inpatient unit without ED triage has <code>HasBeenAdmitted = 1</code>
-and <code>HasBeenE = 0</code>. This visit never appears in a <code>HasBeenE = 1</code> query
-regardless of which syndrome definition or date range is used.</p>
-<p><strong>Gap 2 – Encounter continuity is broken across two records sharing one
-<code>Visit_ID</code>.</strong> At some facilities, a patient seen in the ED is recorded as
-discharged, then almost immediately readmitted as a direct admit – but
-the hospital's system treats the ED encounter as fully closed rather than
-tracking the class transition within one continuous record. Both records
-share the same <code>facility_col</code> x <code>visit_col</code> key, but the ED record's
-fields (e.g. <code>Discharge_Disposition</code>, <code>CCDD</code>, <code>C_Death</code>) reflect only what
-was known at ED discharge – not the outcome of the encounter that
-actually continued. Counting both records separately double-counts a
-single real-world event.</p>
-<p><code>link_encounters()</code> addresses both gaps: it links records sharing the same
-<code>facility_col</code> x <code>visit_col</code> key (Gap 2's records already share this key –
-no cross-Visit_ID matching is needed), and, by default, merges each
-episode's rows into one composite row so information from the direct-admit
-record is reconciled onto the surviving row rather than discarded.</p>
+<p>A row showing <code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code>
+(<code>C_Patient_Class = "I"</code> or <code>"D"</code>) can mean either of two very different
+things, and nothing in that single row tells you which:</p>
+<p><strong>The continuity-break artifact.</strong> The patient <em>was</em> triaged and treated
+in the ED first, but the facility's system closed that encounter as a
+discharge instead of tracking the ED-to-inpatient transition as one
+continuous record. The result is two records sharing the same
+<code>facility_col</code> x <code>visit_col</code> key – one correctly showing <code>HasBeenE = 1</code>,
+one showing <code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code> – that otherwise
+look unrelated. The ED record's fields (e.g. <code>Discharge_Disposition</code>,
+<code>CCDD</code>, <code>C_Death</code>) reflect only what was known at ED discharge, not the
+outcome of the encounter that actually continued. Counting both records
+separately double-counts a single real-world event. This is a data
+quality artifact, not a distinct clinical pathway.</p>
+<p><strong>The invisibility gap.</strong> A patient admitted directly to an inpatient
+unit without ED triage – via physician referral, a pre-arranged
+admission, or similar – genuinely has <code>HasBeenAdmitted = 1</code> and
+<code>HasBeenE = 0</code> with no preceding ED record to find. This visit never
+appears in a <code>HasBeenE = 1</code> query regardless of which syndrome
+definition or date range is used. This is a real clinical pathway, not
+a data quality problem – but a <code>HasBeenE = 1</code>-only pull will always
+miss it.</p>
+<p>The only way to tell these two cases apart is to check whether a
+matching ED record exists under the same <code>facility_col</code> x <code>visit_col</code>
+key. <code>link_encounters()</code> does exactly this: it links records sharing
+that key (the continuity-break artifact's records already share it –
+no cross-<code>Visit_ID</code> matching is needed), and, by default, merges each
+episode's rows into one composite row so information from the
+direct-admit record is reconciled onto the surviving row rather than
+discarded.</p>
 </div>
 
 <div class="section">
@@ -243,10 +251,20 @@ with a separately queried inpatient pull (<code>HasBeenAdmitted = 1</code>). Row
 <code>HasBeenE = 1</code> are automatically removed from the inpatient pull to prevent
 duplicate rows for the same underlying record. This is the recommended
 approach when direct admission volume is material to the surveillance
-question, and is required to detect Gap 2's encounter-continuity issue
+question, and is required to detect the continuity-break artifact
 when the direct-admit record is entirely absent from the ED pull (i.e.
 <code>HasBeenE = 0</code> on that record, so it would never appear in a <code>HasBeenE = 1</code>
 query).</p>
+<p><strong>Do not row-bind <code>ed_data</code> and <code>inpatient_admission_data</code> into one data
+frame and call <code><a href="dedupe.html">dedupe()</a></code> on the combined result instead of using the
+two-pull approach above.</strong> <code><a href="dedupe.html">dedupe()</a></code>'s <code>keep</code> strategies are not aware
+of the distinction between an ED record and its corresponding
+direct-admit record – both just look like two rows sharing a
+<code>facility_col</code> x <code>visit_col</code> key – and will discard one of them based
+on <code>order_by</code> rather than merging them, silently and unpredictably
+reducing either the ED or the direct-admit count depending on which
+record's <code>Arrived_Date_Time</code> happens to win. Always deduplicate each
+pull separately, then pass both to <code>link_encounters()</code>.</p>
 </div>
 
 <div class="section">
@@ -258,8 +276,9 @@ query).</p>
 <p><strong>Limitation:</strong> if a facility's HL7 feed assigns a genuinely different
 <code>Visit_ID</code> to the inpatient leg of a care episode, <code>link_encounters()</code>
 cannot detect the relationship – the two records will appear as separate
-episodes. This is a distinct scenario from Gap 2 above (which assumes the
-<code>Visit_ID</code> is shared) and is not addressed by this function. If your data
+episodes. This is a distinct scenario from the continuity-break artifact
+above (which assumes the <code>Visit_ID</code> is shared) and is not addressed by
+this function. If your data
 includes <code>C_Unique_Patient_ID</code> (MRN), cross-referencing collapsed output
 against a patient-level deduplication pass is a reasonable additional QA
 step for this scenario.</p>
@@ -300,7 +319,7 @@ standard:</p><table class="table table"><tr><td>Code</td><td>Patient class</td><
 <p><code>.patient_class_sequence</code> reflects the actual order encounters occurred
 in, not alphabetical order – e.g. <code>"Direct Admit-&gt;ED"</code> when the
 direct-admit record's timestamp precedes the ED record's, which is the
-reverse of what typically indicates Gap 2's encounter-continuity issue
+reverse of what typically indicates the continuity-break artifact
 (an ED visit that transitions into a direct-admit readmission, not a
 direct admit that precedes an ED visit). Ordering uses the first
 available field, per row, in this priority:</p><ol><li><p><strong><code>C_Patient_Class_MDT_Updates</code></strong> (requires <code>C_Patient_Class_List</code>).
@@ -313,7 +332,8 @@ lengths disagree fall back to the next tier.</p></li>
 derived from one record share that record's timestamp, so this only
 differentiates classes across separate records sharing the same
 <code>facility_col</code> x <code>visit_col</code> key (i.e. the ED record vs. the
-direct-admit record in Gap 2, or in the two-pull approach).</p></li>
+direct-admit record in the continuity-break artifact, or in the
+two-pull approach).</p></li>
 <li><p><strong><code>Date</code> + <code>Time</code></strong> (both required). Combined into a timestamp
 when neither field above is present.</p></li>
 </ol><p>If none of these fields are present (or none can be parsed) anywhere in
