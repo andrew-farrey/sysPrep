@@ -97,6 +97,25 @@ with a class transition -- such as a feed configuration issue or a concurrent
 in the data pull. See also `vignette("encounter-linkage")`, which addresses
 multi-class visits through encounter linkage rather than deduplication.
 
+**Cross-pull double-counting when combining ED and direct-admit data.**
+The mechanisms above all produce duplicate rows *within* a single pull,
+which `summarize_duplicates()`, `classify_duplicates()`, and `dedupe()`
+are built to detect and resolve. A related but distinct risk arises when
+combining a `HasBeenE = 1` pull with a separately queried
+`HasBeenAdmitted = 1` pull to build a combined "severe visit" count:
+pre-aggregated ESSENCE data (timeSeries, tableBuilder) cannot distinguish
+a true direct admission from a mis-submitted one whose corresponding ED
+record incorrectly shows `HasBeenAdmitted = 0`. Combining the two pulls
+without linking them double-counts the mis-submitted cases. `dedupe()` is
+not the right tool for this: even though the ED and mis-submitted
+admission records share a `facility_col x visit_col` key, they carry
+complementary, not redundant, information -- the admission record's
+discharge disposition and outcome are not present on the ED record -- so
+discarding one (as `dedupe()` does) silently loses information that
+merging (as `link_encounters()` does) preserves. See
+`vignette("encounter-linkage")` and `link_encounters()` for the dedicated
+fix.
+
 ## Quantifying Duplicates: `summarize_duplicates()`
 
 Before deduplicating, call `summarize_duplicates()` to understand the scope

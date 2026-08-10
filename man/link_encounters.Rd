@@ -76,40 +76,48 @@ Links ED and direct-admit inpatient records sharing the same
 \code{facility_col} x \code{visit_col} key into a single composite row per true
 care episode, and reconciles their field values so information present
 on only one of the source rows is not silently discarded. Corrects two
-related but distinct duplication mechanisms: direct admissions invisible
-to a \code{HasBeenE = 1} query, and the encounter-continuity data quality issue
-where a patient's discharge and immediate direct-admit readmission are
-reported as separate records sharing the same \code{Visit_ID} at the same
-facility.
+related but distinct duplication mechanisms: the encounter-continuity
+data quality issue where a patient's ED discharge and immediate
+direct-admit readmission are reported as separate records sharing the
+same \code{Visit_ID} at the same facility, and true direct admissions that
+are structurally invisible to a \code{HasBeenE = 1} query.
 }
 \details{
-\subsection{The problem: two invisible sources of undercounting}{
+\subsection{The care pathway artifact problem}{
 
-Many ESSENCE surveillance case definitions filter to \code{HasBeenE = 1}. This
-works well when the condition of interest routes consistently through the
-ED, but creates two distinct gaps:
+A row showing \code{HasBeenAdmitted = 1} and \code{HasBeenE = 0}
+(\code{C_Patient_Class = "I"} or \code{"D"}) can mean either of two very different
+things, and nothing in that single row tells you which:
 
-\strong{Gap 1 -- Direct admissions are structurally excluded.} A patient admitted
-directly to an inpatient unit without ED triage has \code{HasBeenAdmitted = 1}
-and \code{HasBeenE = 0}. This visit never appears in a \code{HasBeenE = 1} query
-regardless of which syndrome definition or date range is used.
+\strong{The continuity-break artifact.} The patient \emph{was} triaged and treated
+in the ED first, but the facility's system closed that encounter as a
+discharge instead of tracking the ED-to-inpatient transition as one
+continuous record. The result is two records sharing the same
+\code{facility_col} x \code{visit_col} key -- one correctly showing \code{HasBeenE = 1},
+one showing \code{HasBeenAdmitted = 1} and \code{HasBeenE = 0} -- that otherwise
+look unrelated. The ED record's fields (e.g. \code{Discharge_Disposition},
+\code{CCDD}, \code{C_Death}) reflect only what was known at ED discharge, not the
+outcome of the encounter that actually continued. Counting both records
+separately double-counts a single real-world event. This is a data
+quality artifact, not a distinct clinical pathway.
 
-\strong{Gap 2 -- Encounter continuity is broken across two records sharing one
-\code{Visit_ID}.} At some facilities, a patient seen in the ED is recorded as
-discharged, then almost immediately readmitted as a direct admit -- but
-the hospital's system treats the ED encounter as fully closed rather than
-tracking the class transition within one continuous record. Both records
-share the same \code{facility_col} x \code{visit_col} key, but the ED record's
-fields (e.g. \code{Discharge_Disposition}, \code{CCDD}, \code{C_Death}) reflect only what
-was known at ED discharge -- not the outcome of the encounter that
-actually continued. Counting both records separately double-counts a
-single real-world event.
+\strong{The invisibility gap.} A patient admitted directly to an inpatient
+unit without ED triage -- via physician referral, a pre-arranged
+admission, or similar -- genuinely has \code{HasBeenAdmitted = 1} and
+\code{HasBeenE = 0} with no preceding ED record to find. This visit never
+appears in a \code{HasBeenE = 1} query regardless of which syndrome
+definition or date range is used. This is a real clinical pathway, not
+a data quality problem -- but a \code{HasBeenE = 1}-only pull will always
+miss it.
 
-\code{link_encounters()} addresses both gaps: it links records sharing the same
-\code{facility_col} x \code{visit_col} key (Gap 2's records already share this key --
-no cross-Visit_ID matching is needed), and, by default, merges each
-episode's rows into one composite row so information from the direct-admit
-record is reconciled onto the surviving row rather than discarded.
+The only way to tell these two cases apart is to check whether a
+matching ED record exists under the same \code{facility_col} x \code{visit_col}
+key. \code{link_encounters()} does exactly this: it links records sharing
+that key (the continuity-break artifact's records already share it --
+no cross-\code{Visit_ID} matching is needed), and, by default, merges each
+episode's rows into one composite row so information from the
+direct-admit record is reconciled onto the surviving row rather than
+discarded.
 }
 
 \subsection{Merge behavior (\code{return_format = "collapsed"}, the default)}{
@@ -163,10 +171,21 @@ with a separately queried inpatient pull (\code{HasBeenAdmitted = 1}). Rows with
 \code{HasBeenE = 1} are automatically removed from the inpatient pull to prevent
 duplicate rows for the same underlying record. This is the recommended
 approach when direct admission volume is material to the surveillance
-question, and is required to detect Gap 2's encounter-continuity issue
+question, and is required to detect the continuity-break artifact
 when the direct-admit record is entirely absent from the ED pull (i.e.
 \code{HasBeenE = 0} on that record, so it would never appear in a \code{HasBeenE = 1}
 query).
+
+\strong{Do not row-bind \code{ed_data} and \code{inpatient_admission_data} into one data
+frame and call \code{\link[=dedupe]{dedupe()}} on the combined result instead of using the
+two-pull approach above.} \code{dedupe()}'s \code{keep} strategies are not aware
+of the distinction between an ED record and its corresponding
+direct-admit record -- both just look like two rows sharing a
+\code{facility_col} x \code{visit_col} key -- and will discard one of them based
+on \code{order_by} rather than merging them, silently and unpredictably
+reducing either the ED or the direct-admit count depending on which
+record's \code{Arrived_Date_Time} happens to win. Always deduplicate each
+pull separately, then pass both to \code{link_encounters()}.
 }
 
 \subsection{Linking key and its limitation}{
@@ -177,8 +196,9 @@ Records are linked by \code{facility_col} \eqn{\times} \code{visit_col}
 \strong{Limitation:} if a facility's HL7 feed assigns a genuinely different
 \code{Visit_ID} to the inpatient leg of a care episode, \code{link_encounters()}
 cannot detect the relationship -- the two records will appear as separate
-episodes. This is a distinct scenario from Gap 2 above (which assumes the
-\code{Visit_ID} is shared) and is not addressed by this function. If your data
+episodes. This is a distinct scenario from the continuity-break artifact
+above (which assumes the \code{Visit_ID} is shared) and is not addressed by
+this function. If your data
 includes \code{C_Unique_Patient_ID} (MRN), cross-referencing collapsed output
 against a patient-level deduplication pass is a reasonable additional QA
 step for this scenario.
@@ -225,7 +245,7 @@ standard:\tabular{ll}{
 \code{.patient_class_sequence} reflects the actual order encounters occurred
 in, not alphabetical order -- e.g. \code{"Direct Admit->ED"} when the
 direct-admit record's timestamp precedes the ED record's, which is the
-reverse of what typically indicates Gap 2's encounter-continuity issue
+reverse of what typically indicates the continuity-break artifact
 (an ED visit that transitions into a direct-admit readmission, not a
 direct admit that precedes an ED visit). Ordering uses the first
 available field, per row, in this priority:
@@ -240,7 +260,8 @@ lengths disagree fall back to the next tier.
 derived from one record share that record's timestamp, so this only
 differentiates classes across separate records sharing the same
 \code{facility_col} x \code{visit_col} key (i.e. the ED record vs. the
-direct-admit record in Gap 2, or in the two-pull approach).
+direct-admit record in the continuity-break artifact, or in the
+two-pull approach).
 \item \strong{\code{Date} + \code{Time}} (both required). Combined into a timestamp
 when neither field above is present.
 }

@@ -65,12 +65,13 @@ reference:
 
   - title: "Encounter Linkage"
     desc: >
-      Standard ESSENCE queries filtered to HasBeenE = 1 structurally exclude
-      direct admissions -- patients admitted to inpatient units without
-      emergency department triage. This mechanism makes care pathway shifts
-      (e.g., changes in hospital admission practices) indistinguishable from
-      true changes in disease burden. link_encounters() links ED and inpatient
-      records into unified care episodes to enable accurate burden estimation.
+      A row showing HasBeenAdmitted = 1 and HasBeenE = 0 can mean either a
+      genuine direct admission or a mis-submitted ED-to-inpatient continuity
+      break reported as two unrelated records -- nothing in a single row
+      tells you which. The former is invisible to HasBeenE = 1 queries; the
+      latter double-counts a single encounter if left unlinked.
+      link_encounters() links ED and inpatient records into unified care
+      episodes, correcting both problems at once.
     contents:
       - link_encounters
 
