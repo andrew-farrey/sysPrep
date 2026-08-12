@@ -225,17 +225,22 @@ in place of the \code{HasBeen_} pivot, since it distinguishes patient classes
 (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
 Pre-admit/Recurring) that the \code{HasBeen_} flags do not represent. For more
 granular and informative output, add \code{C_Patient_Class_List} to your
-ESSENCE API pull fields. Splitting each character maps to the HL7/PHIN
-standard:\tabular{ll}{
-   Code \tab Patient class \cr
-   \code{E} \tab ED \cr
+ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
+"Patient Class (Syndromic Surveillance)" value set (concept codes and
+preferred names, verified against
+\url{https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A}).
+\code{link_encounters()}'s own derived \code{patient_class} output values (\code{"ED"},
+\code{"Inpatient"}, \code{"Direct Admit"}, etc.) are shortened working labels, not
+required to match these preferred names verbatim:\tabular{ll}{
+   Code \tab PHIN VADS preferred name \cr
+   \code{D} \tab Direct admit \cr
+   \code{E} \tab Emergency \cr
    \code{I} \tab Inpatient \cr
-   \code{D} \tab Direct Admit \cr
-   \code{V} \tab Observation \cr
-   \code{O} \tab Outpatient \cr
+   \code{V} \tab Observation patient \cr
    \code{B} \tab Obstetrics \cr
+   \code{O} \tab Outpatient \cr
    \code{P} \tab Preadmit \cr
-   \code{R} \tab Recurring \cr
+   \code{R} \tab Recurring patient \cr
 }
 
 }

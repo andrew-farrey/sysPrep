@@ -21,23 +21,31 @@
 #' mechanisms, each with different causes and implications:
 #'
 #' \describe{
-#'   \item{`"visit_date_change"`}{`C_BioSense_ID` is derived from
-#'     `C_Visit_Date` and `C_Visit_Date_Time`, which are frequently populated
-#'     from `Admit_Date_Time`. When a hospital treats `C_Visit_Date_Time` as
-#'     a modifiable field and submits an update that crosses midnight, NSSP
-#'     computes a new `C_BioSense_ID` for the same `Visit_ID` -- producing
-#'     two rows that refer to the same encounter. This is the most widespread
+#'   \item{`"visit_date_change"`}{`C_BioSense_ID` is computed by
+#'     concatenating `C_Visit_Date`, `C_BioSense_Facility_ID` (`Hospital`),
+#'     and `C_Unique_Patient_ID`. `C_Visit_Date` itself takes its date value
+#'     from `C_Visit_Date_Time`. When a hospital's system updates
+#'     `C_Visit_Date_Time` as providers interact with the patient -- rather
+#'     than fixing it at initial registration -- and one such update crosses
+#'     midnight, `C_Visit_Date` changes to the next calendar day, which
+#'     recomputes `C_BioSense_ID` for the same `Visit_ID` and produces two
+#'     rows that refer to the same encounter. This is the most widespread
 #'     duplication type across NSSP sites; the affected proportion of visits
 #'     is typically small, but the impact is disproportionate in small-count
 #'     syndrome definitions where a few inflated counts can trigger anomaly
 #'     detection alerts that do not reflect genuine changes in incidence.
-#'     The duplicate arises only at facilities that treat these fields as
-#'     modifiable after initial registration. Detected by multiple distinct
-#'     `C_BioSense_ID` values and `Date` values within a group.}
-#'   \item{`"pid_change"`}{The patient identifier (`C_Unique_Patient_ID`,
-#'     which maps to MRN in Kentucky) was updated or corrected mid-visit by
-#'     the facility. Detected by multiple distinct `C_Unique_Patient_ID`
-#'     values within a group. Not all ESSENCE sites use MRN as
+#'     The duplicate arises only at facilities whose systems continue to
+#'     update `C_Visit_Date_Time` after initial registration. Detected by
+#'     multiple distinct `C_BioSense_ID` values and `Date` values within a
+#'     group.}
+#'   \item{`"pid_change"`}{`C_Unique_Patient_ID` (which maps to MRN in
+#'     Kentucky) is also one of the three fields concatenated into
+#'     `C_BioSense_ID`, so updating it mid-visit recomputes `C_BioSense_ID`
+#'     and produces a new row -- for example, when an initial local
+#'     (facility- or department-specific) MRN is replaced with a
+#'     community-wide or health-system-level MRN, or with a different local
+#'     MRN. Detected by multiple distinct `C_Unique_Patient_ID` values
+#'     within a group. Not all ESSENCE sites use MRN as
 #'     `C_Unique_Patient_ID`.}
 #'   \item{`"patient_class_change"`}{Under normal HL7 processing, patient
 #'     class transitions are handled without generating duplicate rows --

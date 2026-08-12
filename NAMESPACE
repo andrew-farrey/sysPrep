@@ -10,54 +10,66 @@ export(filter_care_setting)
 export(link_encounters)
 export(review_facility_ed_visits)
 export(summarize_duplicates)
-importFrom(cli,cli_alert_info)
-importFrom(cli,cli_bullets)
-importFrom(cli,cli_h1)
-importFrom(cli,cli_h2)
-importFrom(cli,cli_text)
-importFrom(dplyr,across)
-importFrom(dplyr,all_of)
-importFrom(dplyr,arrange)
-importFrom(dplyr,bind_rows)
-importFrom(dplyr,case_when)
-importFrom(dplyr,desc)
-importFrom(dplyr,filter)
-importFrom(dplyr,group_by)
-importFrom(dplyr,if_else)
-importFrom(dplyr,left_join)
-importFrom(dplyr,mutate)
-importFrom(dplyr,n)
-importFrom(dplyr,n_distinct)
-importFrom(dplyr,pick)
-importFrom(dplyr,recode_values)
-importFrom(dplyr,rows_update)
-importFrom(dplyr,select)
-importFrom(dplyr,semi_join)
-importFrom(dplyr,slice)
-importFrom(dplyr,slice_max)
-importFrom(dplyr,starts_with)
-importFrom(dplyr,summarise)
-importFrom(dplyr,ungroup)
-importFrom(janitor,adorn_pct_formatting)
-importFrom(janitor,clean_names)
-importFrom(janitor,make_clean_names)
-importFrom(janitor,tabyl)
-importFrom(rlang,":=")
-importFrom(rlang,.data)
-importFrom(rlang,abort)
-importFrom(rlang,as_name)
-importFrom(rlang,as_string)
-importFrom(rlang,enquo)
-importFrom(rlang,ensym)
-importFrom(rlang,inform)
-importFrom(rlang,quo_is_null)
-importFrom(rlang,sym)
-importFrom(rlang,warn)
+importFrom(cli,
+  cli_alert_info,
+  cli_bullets,
+  cli_h1,
+  cli_h2,
+  cli_text
+)
+importFrom(dplyr,
+  across,
+  all_of,
+  arrange,
+  bind_rows,
+  case_when,
+  desc,
+  filter,
+  group_by,
+  if_else,
+  left_join,
+  mutate,
+  n,
+  n_distinct,
+  pick,
+  recode_values,
+  rows_update,
+  select,
+  semi_join,
+  slice,
+  slice_max,
+  starts_with,
+  summarise,
+  ungroup
+)
+importFrom(janitor,
+  adorn_pct_formatting,
+  clean_names,
+  make_clean_names,
+  tabyl
+)
+importFrom(rlang,
+  ":=",
+  .data,
+  abort,
+  as_name,
+  as_string,
+  enquo,
+  ensym,
+  inform,
+  quo_is_null,
+  sym,
+  warn
+)
 importFrom(stats,quantile)
-importFrom(stringr,fixed)
-importFrom(stringr,str_detect)
-importFrom(stringr,str_starts)
+importFrom(stringr,
+  fixed,
+  str_detect,
+  str_starts
+)
 importFrom(tibble,tibble)
-importFrom(tidyr,pivot_longer)
-importFrom(tidyr,pivot_wider)
-importFrom(tidyr,unnest)
+importFrom(tidyr,
+  pivot_longer,
+  pivot_wider,
+  unnest
+)
