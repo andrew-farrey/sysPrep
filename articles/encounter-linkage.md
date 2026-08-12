@@ -104,18 +104,23 @@ The patient class codes follow the HL7 Patient Class standard as adopted
 by the Public Health Information Network (PHIN). The full value set is
 maintained by the [CDC PHIN Vocabulary Access and Distribution System
 (PHIN
-VADS)](https://phinvads.cdc.gov/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A):
+VADS)](https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A),
+whose preferred concept names are shown below.
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)’s
+own derived `patient_class` output values (`"ED"`, `"Inpatient"`,
+`"Direct Admit"`, etc.) are shortened working labels, not required to
+match these preferred names verbatim:
 
-| Code | Patient class |
-|------|---------------|
-| `E`  | ED            |
-| `I`  | Inpatient     |
-| `D`  | Direct Admit  |
-| `V`  | Observation   |
-| `O`  | Outpatient    |
-| `B`  | Obstetrics    |
-| `P`  | Preadmit      |
-| `R`  | Recurring     |
+| Code | PHIN VADS preferred name |
+|------|--------------------------|
+| `D`  | Direct admit             |
+| `E`  | Emergency                |
+| `I`  | Inpatient                |
+| `V`  | Observation patient      |
+| `B`  | Obstetrics               |
+| `O`  | Outpatient               |
+| `P`  | Preadmit                 |
+| `R`  | Recurring patient        |
 
 `C_Patient_Class_List` is strictly more informative than `HasBeen_`
 pivoting for one important reason: it is computed across all messages

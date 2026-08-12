@@ -139,25 +139,33 @@ via <code><a href="https://sfirke.github.io/janitor/reference/tabyl.html" class=
 <p>Multiple rows for the same facility x Visit_ID arise through distinct
 mechanisms, each with different causes and implications:</p>
 <dl><dt><code>"visit_date_change"</code></dt>
-<dd><p><code>C_BioSense_ID</code> is derived from
-<code>C_Visit_Date</code> and <code>C_Visit_Date_Time</code>, which are frequently populated
-from <code>Admit_Date_Time</code>. When a hospital treats <code>C_Visit_Date_Time</code> as
-a modifiable field and submits an update that crosses midnight, NSSP
-computes a new <code>C_BioSense_ID</code> for the same <code>Visit_ID</code> – producing
-two rows that refer to the same encounter. This is the most widespread
+<dd><p><code>C_BioSense_ID</code> is computed by
+concatenating <code>C_Visit_Date</code>, <code>C_BioSense_Facility_ID</code> (<code>Hospital</code>),
+and <code>C_Unique_Patient_ID</code>. <code>C_Visit_Date</code> itself takes its date value
+from <code>C_Visit_Date_Time</code>. When a hospital's system updates
+<code>C_Visit_Date_Time</code> as providers interact with the patient – rather
+than fixing it at initial registration – and one such update crosses
+midnight, <code>C_Visit_Date</code> changes to the next calendar day, which
+recomputes <code>C_BioSense_ID</code> for the same <code>Visit_ID</code> and produces two
+rows that refer to the same encounter. This is the most widespread
 duplication type across NSSP sites; the affected proportion of visits
 is typically small, but the impact is disproportionate in small-count
 syndrome definitions where a few inflated counts can trigger anomaly
 detection alerts that do not reflect genuine changes in incidence.
-The duplicate arises only at facilities that treat these fields as
-modifiable after initial registration. Detected by multiple distinct
-<code>C_BioSense_ID</code> values and <code>Date</code> values within a group.</p></dd>
+The duplicate arises only at facilities whose systems continue to
+update <code>C_Visit_Date_Time</code> after initial registration. Detected by
+multiple distinct <code>C_BioSense_ID</code> values and <code>Date</code> values within a
+group.</p></dd>
 
 <dt><code>"pid_change"</code></dt>
-<dd><p>The patient identifier (<code>C_Unique_Patient_ID</code>,
-which maps to MRN in Kentucky) was updated or corrected mid-visit by
-the facility. Detected by multiple distinct <code>C_Unique_Patient_ID</code>
-values within a group. Not all ESSENCE sites use MRN as
+<dd><p><code>C_Unique_Patient_ID</code> (which maps to MRN in
+Kentucky) is also one of the three fields concatenated into
+<code>C_BioSense_ID</code>, so updating it mid-visit recomputes <code>C_BioSense_ID</code>
+and produces a new row – for example, when an initial local
+(facility- or department-specific) MRN is replaced with a
+community-wide or health-system-level MRN, or with a different local
+MRN. Detected by multiple distinct <code>C_Unique_Patient_ID</code> values
+within a group. Not all ESSENCE sites use MRN as
 <code>C_Unique_Patient_ID</code>.</p></dd>
 
 <dt><code>"patient_class_change"</code></dt>

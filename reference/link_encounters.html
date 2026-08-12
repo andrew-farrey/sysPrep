@@ -309,8 +309,13 @@ in place of the <code>HasBeen_</code> pivot, since it distinguishes patient clas
 (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
 Pre-admit/Recurring) that the <code>HasBeen_</code> flags do not represent. For more
 granular and informative output, add <code>C_Patient_Class_List</code> to your
-ESSENCE API pull fields. Splitting each character maps to the HL7/PHIN
-standard:</p><table class="table table"><tr><td>Code</td><td>Patient class</td></tr><tr><td><code>E</code></td><td>ED</td></tr><tr><td><code>I</code></td><td>Inpatient</td></tr><tr><td><code>D</code></td><td>Direct Admit</td></tr><tr><td><code>V</code></td><td>Observation</td></tr><tr><td><code>O</code></td><td>Outpatient</td></tr><tr><td><code>B</code></td><td>Obstetrics</td></tr><tr><td><code>P</code></td><td>Preadmit</td></tr><tr><td><code>R</code></td><td>Recurring</td></tr></table></div>
+ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
+"Patient Class (Syndromic Surveillance)" value set (concept codes and
+preferred names, verified against
+<a href="https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A</a>).
+<code>link_encounters()</code>'s own derived <code>patient_class</code> output values (<code>"ED"</code>,
+<code>"Inpatient"</code>, <code>"Direct Admit"</code>, etc.) are shortened working labels, not
+required to match these preferred names verbatim:</p><table class="table table"><tr><td>Code</td><td>PHIN VADS preferred name</td></tr><tr><td><code>D</code></td><td>Direct admit</td></tr><tr><td><code>E</code></td><td>Emergency</td></tr><tr><td><code>I</code></td><td>Inpatient</td></tr><tr><td><code>V</code></td><td>Observation patient</td></tr><tr><td><code>B</code></td><td>Obstetrics</td></tr><tr><td><code>O</code></td><td>Outpatient</td></tr><tr><td><code>P</code></td><td>Preadmit</td></tr><tr><td><code>R</code></td><td>Recurring patient</td></tr></table></div>
 
 <div class="section">
 <h3 id="chronological-ordering-of-patient-class-sequence">Chronological ordering of <code>.patient_class_sequence</code><a class="anchor" aria-label="anchor" href="#chronological-ordering-of-patient-class-sequence"></a></h3>

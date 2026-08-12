@@ -174,37 +174,42 @@ the same ESSENCE ID. For a patient who was registered in the ED
 contains <code>"EI"</code>.</p>
 <p>The patient class codes follow the HL7 Patient Class standard as
 adopted by the Public Health Information Network (PHIN). The full value
-set is maintained by the <a href="https://phinvads.cdc.gov/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">CDC
-PHIN Vocabulary Access and Distribution System (PHIN VADS)</a>:</p>
+set is maintained by the <a href="https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">CDC
+PHIN Vocabulary Access and Distribution System (PHIN VADS)</a>, whose
+preferred concept names are shown below.
+<code><a href="../reference/link_encounters.html">link_encounters()</a></code>’s own derived <code>patient_class</code>
+output values (<code>"ED"</code>, <code>"Inpatient"</code>,
+<code>"Direct Admit"</code>, etc.) are shortened working labels, not
+required to match these preferred names verbatim:</p>
 <table class="table">
 <thead><tr class="header">
 <th>Code</th>
-<th>Patient class</th>
+<th>PHIN VADS preferred name</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>E</code></td>
-<td>ED</td>
+<td><code>D</code></td>
+<td>Direct admit</td>
 </tr>
 <tr class="even">
+<td><code>E</code></td>
+<td>Emergency</td>
+</tr>
+<tr class="odd">
 <td><code>I</code></td>
 <td>Inpatient</td>
 </tr>
-<tr class="odd">
-<td><code>D</code></td>
-<td>Direct Admit</td>
-</tr>
 <tr class="even">
 <td><code>V</code></td>
-<td>Observation</td>
+<td>Observation patient</td>
 </tr>
 <tr class="odd">
-<td><code>O</code></td>
-<td>Outpatient</td>
-</tr>
-<tr class="even">
 <td><code>B</code></td>
 <td>Obstetrics</td>
+</tr>
+<tr class="even">
+<td><code>O</code></td>
+<td>Outpatient</td>
 </tr>
 <tr class="odd">
 <td><code>P</code></td>
@@ -212,7 +217,7 @@ PHIN Vocabulary Access and Distribution System (PHIN VADS)</a>:</p>
 </tr>
 <tr class="even">
 <td><code>R</code></td>
-<td>Recurring</td>
+<td>Recurring patient</td>
 </tr>
 </tbody>
 </table>

@@ -259,19 +259,25 @@ distinguishes patient classes (e.g. Direct Admit vs. Inpatient, or
 Observation/Outpatient/Obstetrics/ Pre-admit/Recurring) that the
 `HasBeen_` flags do not represent. For more granular and informative
 output, add `C_Patient_Class_List` to your ESSENCE API pull fields.
-Splitting each character maps to the HL7/PHIN standard:
+Splitting each character maps to the PHIN VADS "Patient Class (Syndromic
+Surveillance)" value set (concept codes and preferred names, verified
+against
+<https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A>).
+`link_encounters()`'s own derived `patient_class` output values (`"ED"`,
+`"Inpatient"`, `"Direct Admit"`, etc.) are shortened working labels, not
+required to match these preferred names verbatim:
 
-|      |               |
-|------|---------------|
-| Code | Patient class |
-| `E`  | ED            |
-| `I`  | Inpatient     |
-| `D`  | Direct Admit  |
-| `V`  | Observation   |
-| `O`  | Outpatient    |
-| `B`  | Obstetrics    |
-| `P`  | Preadmit      |
-| `R`  | Recurring     |
+|      |                          |
+|------|--------------------------|
+| Code | PHIN VADS preferred name |
+| `D`  | Direct admit             |
+| `E`  | Emergency                |
+| `I`  | Inpatient                |
+| `V`  | Observation patient      |
+| `B`  | Obstetrics               |
+| `O`  | Outpatient               |
+| `P`  | Preadmit                 |
+| `R`  | Recurring patient        |
 
 ### Chronological ordering of `.patient_class_sequence`
 
