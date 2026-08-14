@@ -399,6 +399,26 @@ test_that("safe_as_posixct() strips a trailing 'Z' before parsing", {
   expect_equal(result, as.POSIXct("2023-01-01 08:00:00"))
 })
 
+test_that("safe_as_posixct() parses US-style m/d/Y timestamps with seconds", {
+  result <- safe_as_posixct("01/15/2023 08:00:00")
+  expect_equal(result, as.POSIXct("2023-01-15 08:00:00"))
+})
+
+test_that("safe_as_posixct() parses US-style m/d/Y timestamps without seconds", {
+  # Regression test: this format previously fell through to the
+  # date-only "%m/%d/%Y" pattern, which matches only the date prefix and
+  # silently discards the trailing time -- producing midnight instead of
+  # erroring or returning NA. Asserting the exact time (not just
+  # non-NA) is what would have caught that.
+  result <- safe_as_posixct("01/15/2023 08:00")
+  expect_equal(result, as.POSIXct("2023-01-15 08:00:00"))
+})
+
+test_that("safe_as_posixct() parses US-style m/d/Y date-only values", {
+  result <- safe_as_posixct("01/15/2023")
+  expect_equal(result, as.POSIXct("2023-01-15"))
+})
+
 test_that("safe_as_posixct() returns NA instead of erroring on unparseable values", {
   expect_no_error(result <- safe_as_posixct("not-a-date"))
   expect_true(is.na(result))

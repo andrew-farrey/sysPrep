@@ -706,7 +706,7 @@ safe_as_posixct <- function(x) {
     "%Y-%m-%dT%H:%M:%OS", "%Y-%m-%d %H:%M:%OS",
     "%Y-%m-%dT%H:%M",     "%Y-%m-%d %H:%M",
     "%Y-%m-%d",
-    "%m/%d/%Y %H:%M:%OS", "%m/%d/%Y"
+    "%m/%d/%Y %H:%M:%OS", "%m/%d/%Y %H:%M", "%m/%d/%Y"
   )
 
   do.call(c, lapply(as.character(x), function(v) {
