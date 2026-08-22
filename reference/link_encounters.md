@@ -363,7 +363,7 @@ ed_clean <- essence_raw |>
 
 # Default: one row per true encounter, merged
 episodes <- link_encounters(ed_clean)
-#> Using `HasBeen_` flags for patient class derivation. For more granular and informative output, add `C_Patient_Class_List` to your ESSENCE API pull fields.
+#> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 nrow(episodes)
 #> [1] 160
 
@@ -379,7 +379,7 @@ episodes |>
 
 # Long format: inspect the raw linkage mechanism directly
 episodes_long <- link_encounters(ed_clean, return_format = "long")
-#> Using `HasBeen_` flags for patient class derivation. For more granular and informative output, add `C_Patient_Class_List` to your ESSENCE API pull fields.
+#> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 
 if (FALSE) { # \dontrun{
 # Two-pull linkage with a custom merge strategy for a site-specific field
