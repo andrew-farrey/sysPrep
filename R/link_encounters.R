@@ -414,12 +414,7 @@ link_encounters <- function(ed_data,
 
     inform_if(
       verbose,
-      paste0(
-        "Using `C_Patient_Class_List` for patient class derivation -- more ",
-        "granular than the `HasBeen_` flags. Accepts code form (e.g. \"EI\") ",
-        "and label form (e.g. \"Emergency,Inpatient\") -- independent of ",
-        "HasBeen_ flag availability."
-      )
+      "Using `C_Patient_Class_List` to derive complete encounters of care."
     )
 
     n_missing_pc_list <- sum(
@@ -514,9 +509,8 @@ link_encounters <- function(ed_data,
     inform_if(
       verbose,
       paste0(
-        "Using `HasBeen_` flags for patient class derivation. For more ",
-        "granular and informative output, add `C_Patient_Class_List` to ",
-        "your ESSENCE API pull fields."
+        "Using `HasBeen_` flags to derive complete encounters of care ",
+        "since `C_Patient_Class_List` is not present in `ed_data`."
       )
     )
 
@@ -632,6 +626,9 @@ link_encounters <- function(ed_data,
   }
 
   # Build episode metadata ----
+  # `.by =` groups only for the duration of this one mutate() call, without
+  # materializing a separate grouped-tibble object the way group_by() +
+  # ungroup() does -- cheaper to keep alive across a year of rows ----
   result <- ed_long |>
     dplyr::mutate(
       .episode_id = paste(
@@ -640,23 +637,70 @@ link_encounters <- function(ed_data,
         sep = "_"
       )
     ) |>
-    dplyr::group_by(.data[[fac_col_str]], .data[[visit_col_str]]) |>
     dplyr::mutate(
       .patient_class_sequence = compute_patient_class_sequence(
         patient_class, .class_time
       ),
       .episode_n_rows  = dplyr::n(),
       .index_encounter = patient_class == "ED" |
-        (patient_class != "ED" & dplyr::n() == 1L)
+        (patient_class != "ED" & dplyr::n() == 1L),
+      .by = c(dplyr::all_of(fac_col_str), dplyr::all_of(visit_col_str))
     ) |>
-    dplyr::ungroup() |>
     dplyr::select(-.class_time)
 
+  # Collapse each episode to one row ----
+  # Deliberately NOT dplyr::group_modify(~ collapse_episode(...)): that
+  # approach slices out a full-width single-row data.frame per episode and
+  # binds every one of them back together at the end, which is the actual
+  # source of the memory/time blowup on a full year of data (millions of
+  # tiny per-group data.frame objects, all of them live simultaneously
+  # until the final bind completes). The block below reconciles only the
+  # columns that actually change (has_been_* flags and merge_fields) as
+  # plain vectorized, per-episode-grouped column operations, then does a
+  # single row filter to keep one row per episode -- no per-group
+  # data.frame construction, no giant final bind ----
   if (return_format == "collapsed") {
-    result <- result |>
-      dplyr::group_by(.data[[".episode_id"]]) |>
-      dplyr::group_modify(~ collapse_episode(.x, merge_fields, merge_delimiter)) |>
-      dplyr::ungroup()
+    has_been_cols <- grep("^has_been_", names(result), value = TRUE)
+    merge_cols    <- intersect(names(merge_fields), names(result))
+
+    # Episodes with exactly one row need no reconciliation -- the "merged"
+    # result is trivially that row's own value. Isolating them skips
+    # merge_field_value() (and the has_been_ max()) entirely for what is,
+    # in real ESSENCE data, the large majority of visits (only episodes
+    # with an actual ED-to-inpatient transition or direct-admit linkage
+    # have >1 row). Only that smaller multi-row subset needs the grouped
+    # reconciliation below ----
+    single_row <- dplyr::filter(result, .data[[".episode_n_rows"]] == 1L)
+    multi_row  <- dplyr::filter(result, .data[[".episode_n_rows"]] > 1L)
+
+    if (nrow(multi_row) > 0L) {
+      multi_row <- multi_row |>
+        dplyr::mutate(
+          .primary_idx = pick_primary_row_index(patient_class),
+          dplyr::across(
+            dplyr::all_of(has_been_cols),
+            ~ if (all(is.na(.x))) .x else max(.x, na.rm = TRUE)
+          ),
+          dplyr::across(
+            dplyr::all_of(merge_cols),
+            ~ merge_field_value(
+              values          = .x,
+              patient_classes = patient_class,
+              primary_value   = .x[.primary_idx[1L]],
+              strategy        = merge_fields[[dplyr::cur_column()]],
+              delimiter       = merge_delimiter
+            )
+          ),
+          .row_in_group = dplyr::row_number(),
+          .by = .episode_id
+        ) |>
+        dplyr::filter(.data[[".row_in_group"]] == .data[[".primary_idx"]]) |>
+        dplyr::select(-dplyr::all_of(c(".primary_idx", ".row_in_group")))
+    }
+
+    result <- dplyr::bind_rows(single_row, multi_row) |>
+      dplyr::mutate(.index_encounter = TRUE) |>
+      dplyr::arrange(.data[[".episode_id"]])
   }
 
   if (clean_names) clean_names_safe(result) else result
@@ -709,15 +753,28 @@ safe_as_posixct <- function(x) {
     "%m/%d/%Y %H:%M:%OS", "%m/%d/%Y %H:%M", "%m/%d/%Y"
   )
 
-  do.call(c, lapply(as.character(x), function(v) {
-    if (is.na(v) || v == "") return(as.POSIXct(NA_character_))
-    v_clean <- sub("Z$", "", trimws(v))
-    parsed  <- tryCatch(
-      as.POSIXct(v_clean, tryFormats = formats),
-      error = function(e) as.POSIXct(NA_character_)
-    )
-    if (is.na(parsed)) as.POSIXct(NA_character_) else parsed
-  }))
+  x_clean <- sub("Z$", "", trimws(as.character(x)))
+  result  <- as.POSIXct(rep(NA_character_, length(x_clean)))
+
+  # Vectorized per-format fill: try each format against the whole vector at
+  # once (one C-level strptime() pass) and only keep trying remaining
+  # unparsed elements with the next format. This gives the same per-element
+  # "first matching format wins" result as the old row-by-row loop, without
+  # a separate R function call + tryCatch per row -- the row-by-row version
+  # is what made this the dominant cost on a full year of data ----
+  remaining <- !is.na(x_clean) & x_clean != ""
+  for (fmt in formats) {
+    if (!any(remaining)) break
+    parsed <- suppressWarnings(as.POSIXct(x_clean[remaining], format = fmt))
+    ok <- !is.na(parsed)
+    if (any(ok)) {
+      idx            <- which(remaining)[ok]
+      result[idx]    <- parsed[ok]
+      remaining[idx] <- FALSE
+    }
+  }
+
+  result
 }
 
 # compute_patient_class_sequence() ----
@@ -788,20 +845,28 @@ merge_union_ccdd <- function(values, delimiter) {
   values <- values[!is.na(values) & values != ""]
   if (length(values) == 0L) return(NA_character_)
 
-  cc_parts <- character(0)
-  dd_parts <- character(0)
+  # Vectorized across all of this group's values at once, rather than
+  # calling strsplit()/trimws() per value in a loop -- trimws() compiles a
+  # perl regex on every call, and this function runs once per multi-row
+  # episode, so per-value looping is the difference between O(episodes)
+  # and O(episodes x rows-per-episode) regex compiles on a full year of
+  # data ----
+  halves    <- strsplit(values, "|", fixed = TRUE)
+  cc_halves <- vapply(halves, function(h) if (length(h) >= 1L) h[1] else "", character(1L))
+  dd_halves <- vapply(halves, function(h) if (length(h) >= 2L) h[2] else "", character(1L))
 
-  for (v in values) {
-    halves  <- strsplit(v, "|", fixed = TRUE)[[1]]
-    cc_half <- if (length(halves) >= 1L) halves[1] else ""
-    dd_half <- if (length(halves) >= 2L) halves[2] else ""
+  cc_halves <- cc_halves[nzchar(cc_halves)]
+  dd_halves <- dd_halves[nzchar(dd_halves)]
 
-    if (nzchar(cc_half)) {
-      cc_parts <- c(cc_parts, trimws(strsplit(cc_half, delimiter, fixed = TRUE)[[1]]))
-    }
-    if (nzchar(dd_half)) {
-      dd_parts <- c(dd_parts, trimws(strsplit(dd_half, delimiter, fixed = TRUE)[[1]]))
-    }
+  cc_parts <- if (length(cc_halves) > 0L) {
+    trimws(unlist(strsplit(cc_halves, delimiter, fixed = TRUE), use.names = FALSE))
+  } else {
+    character(0)
+  }
+  dd_parts <- if (length(dd_halves) > 0L) {
+    trimws(unlist(strsplit(dd_halves, delimiter, fixed = TRUE), use.names = FALSE))
+  } else {
+    character(0)
   }
 
   cc_parts <- unique(cc_parts[nzchar(cc_parts)])
