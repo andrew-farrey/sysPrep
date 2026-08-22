@@ -77,9 +77,14 @@ ESSENCE surveillance data includes visits from out-of-state residents and
 patients whose legal address is unavailable to the treating facility
 (\code{OTHER_REGION}). Simply discarding these visits understates the true
 incidence burden experienced by facilities in the surveillance area.
-Assigning the treating facility's geography to these visits retains them
-in the analytic dataset while approximating both residence-based and
-incidence-based burden from a single geographic field.
+This dropping is rarely a deliberate choice -- a region-based map or
+summary table scoped to in-state values will silently exclude these rows
+without an explicit filter. EMS-based systems report incidence at the
+location of care rather than patient residence; this function brings
+ESSENCE data into that same frame. Assigning the treating facility's
+geography to these visits retains them in the analytic dataset while
+approximating both residence-based and incidence-based burden from a
+single geographic field.
 }
 
 \subsection{Site prefix detection}{
@@ -89,13 +94,19 @@ the NSSP Site Short Name and \code{REGION} is the ESSENCE Region -- a county
 name derived from a zip-code-to-county lookup table maintained by
 ESSENCE. Because some site names contain multiple underscores, the
 prefix is all characters before the \strong{last} underscore. A visit is
-classified as out-of-state when its
-\code{Region} does not begin with \code{paste0(site, "_")}, or when \code{Region} is
-\code{"OTHER_REGION"} or \code{NA}. For example, with \code{site = "KY"}:
+classified as out-of-state or unknown residence when its \code{Region} does
+not begin with \code{paste0(site, "_")}, or when \code{Region} is \code{"OTHER_REGION"},
+\code{paste0(site, "_UNKNOWN")} (e.g. \code{"KY_UNKNOWN"}), or \code{NA}. Unlike
+\code{"OTHER_REGION"}, the \code{"{site}_UNKNOWN"} form carries the site prefix --
+ESSENCE uses it for a known-site record whose residential geography
+could not be determined, as distinct from a residence that is genuinely
+unmapped to any region -- so it is checked explicitly rather than relying
+on the prefix mismatch below. For example, with \code{site = "KY"}:
 \itemize{
 \item \code{"KY_Jefferson"} -> in-state, unchanged
 \item \code{"TN_Davidson"} -> out-of-state, region assigned from \code{HospitalRegion}
 \item \code{"OTHER_REGION"} -> unknown residence, region assigned from \code{HospitalRegion}
+\item \code{"KY_UNKNOWN"} -> unknown residence, region assigned from \code{HospitalRegion}
 }
 }
 

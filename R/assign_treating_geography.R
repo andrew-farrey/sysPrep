@@ -15,9 +15,14 @@
 #' patients whose legal address is unavailable to the treating facility
 #' (`OTHER_REGION`). Simply discarding these visits understates the true
 #' incidence burden experienced by facilities in the surveillance area.
-#' Assigning the treating facility's geography to these visits retains them
-#' in the analytic dataset while approximating both residence-based and
-#' incidence-based burden from a single geographic field.
+#' This dropping is rarely a deliberate choice -- a region-based map or
+#' summary table scoped to in-state values will silently exclude these rows
+#' without an explicit filter. EMS-based systems report incidence at the
+#' location of care rather than patient residence; this function brings
+#' ESSENCE data into that same frame. Assigning the treating facility's
+#' geography to these visits retains them in the analytic dataset while
+#' approximating both residence-based and incidence-based burden from a
+#' single geographic field.
 #'
 #' ## Site prefix detection
 #' The `Region` field uses the format `{SITE}_{REGION}`, where `SITE` is
@@ -25,12 +30,18 @@
 #' name derived from a zip-code-to-county lookup table maintained by
 #' ESSENCE. Because some site names contain multiple underscores, the
 #' prefix is all characters before the **last** underscore. A visit is
-#' classified as out-of-state when its
-#' `Region` does not begin with `paste0(site, "_")`, or when `Region` is
-#' `"OTHER_REGION"` or `NA`. For example, with `site = "KY"`:
+#' classified as out-of-state or unknown residence when its `Region` does
+#' not begin with `paste0(site, "_")`, or when `Region` is `"OTHER_REGION"`,
+#' `paste0(site, "_UNKNOWN")` (e.g. `"KY_UNKNOWN"`), or `NA`. Unlike
+#' `"OTHER_REGION"`, the `"{site}_UNKNOWN"` form carries the site prefix --
+#' ESSENCE uses it for a known-site record whose residential geography
+#' could not be determined, as distinct from a residence that is genuinely
+#' unmapped to any region -- so it is checked explicitly rather than relying
+#' on the prefix mismatch below. For example, with `site = "KY"`:
 #' - `"KY_Jefferson"` -> in-state, unchanged
 #' - `"TN_Davidson"` -> out-of-state, region assigned from `HospitalRegion`
 #' - `"OTHER_REGION"` -> unknown residence, region assigned from `HospitalRegion`
+#' - `"KY_UNKNOWN"` -> unknown residence, region assigned from `HospitalRegion`
 #'
 #' ## Geography types
 #' Both `"region"` and `"zip"` are attempted by default. If the columns
@@ -220,13 +231,18 @@ assign_treating_geography <- function(data,
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
-  # Identify out-of-state / OTHER_REGION visits ----
+  # Identify out-of-state / OTHER_REGION / unknown-residence visits ----
+  # `"{site}_UNKNOWN"` (e.g. "KY_UNKNOWN") is ESSENCE's placeholder for a
+  # known-site record whose residential geography could not be determined --
+  # unlike "OTHER_REGION", it carries the site prefix, so it would otherwise
+  # pass the str_starts() check below and be silently left as "in-state" ----
   site_prefix <- paste0(site, "_")
 
   data <- data |>
     dplyr::mutate(
       .out_of_state = is.na(.data[[region_col_str]]) |
         .data[[region_col_str]] == "OTHER_REGION" |
+        .data[[region_col_str]] == paste0(site_prefix, "UNKNOWN") |
         !stringr::str_starts(
           .data[[region_col_str]],
           stringr::fixed(site_prefix)

@@ -27,6 +27,20 @@ test_that("assign_treating_geography() handles OTHER_REGION", {
   expect_false(any(result$region == "OTHER_REGION", na.rm = TRUE))
 })
 
+test_that("assign_treating_geography() handles site-prefixed unknown residence (e.g. KY_UNKNOWN)", {
+  # Regression test: "KY_UNKNOWN" carries the site prefix, so a naive
+  # str_starts(region, "KY_") check alone would misclassify it as in-state
+  # and leave it unreassigned -- this must be caught explicitly.
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(
+      Region  = "KY_UNKNOWN",
+      ZipCode = NA_character_
+    )
+  result <- assign_treating_geography(data, geography = "region")
+  expect_true(all(result$.out_of_state))
+  expect_false(any(result$region == "KY_UNKNOWN", na.rm = TRUE))
+})
+
 test_that("assign_treating_geography() preserve_original_geographies adds columns", {
   data <- make_essence_data(n = 5L)
   result <- assign_treating_geography(
