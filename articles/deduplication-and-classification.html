@@ -155,10 +155,9 @@ identifier change produces one additional row for the same
 processing, patient class transitions during a visit – for example, from
 emergency department to inpatient admission – are handled without
 generating duplicate rows: the transition is appended to
-<code>C_Patient_Class_List</code>, <code>C_Patient_Class</code> is
-updated, and the <code>HasBeenE</code>, <code>HasBeenI</code>,
-<code>HasBeenAdmitted</code> flags (ED-visit and inpatient-admission
-indicator columns) are revised in place. A
+<code>C_Patient_Class_List</code>, and the <code>HasBeenE</code>,
+<code>HasBeenI</code>, <code>HasBeenAdmitted</code> flags (ED-visit and
+inpatient-admission indicator columns) are revised in place. A
 <code>patient_class_change</code> duplicate appears only when something
 additional causes a new row to be submitted for the same
 <code>Visit_ID</code> coincident with a class transition – such as a
