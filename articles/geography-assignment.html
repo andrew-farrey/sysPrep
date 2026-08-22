@@ -83,9 +83,21 @@ address, and patients who decline to provide one. The
 <code>OTHER_REGION</code> value is not a geographic unit – it is a
 placeholder indicating that no residential geography can be
 assigned.</p>
-<p><strong>Missing <code>Region</code></strong> occurs at facilities
-that do not transmit patient address fields. These records appear with
-<code>NA</code> in the <code>Region</code> column.</p>
+<p><strong><code>{SITE}_UNKNOWN</code></strong>
+(e.g. <code>"KY_UNKNOWN"</code>) records represent visits at a
+known-site facility that did not transmit patient address fields. Unlike
+<code>OTHER_REGION</code>, this value carries the site prefix – it is
+ESSENCE’s placeholder for “the system knows this residence is missing,”
+as distinct from a residence that was received but does not map to any
+region. In practice, <code>{SITE}_UNKNOWN</code> is rare relative to
+<code>OTHER_REGION</code> – observed volumes in production Kentucky
+surveillance run in the single digits against tens of thousands of
+<code>OTHER_REGION</code> records over the same period – but because it
+carries the site prefix, it was silently misclassified as in-state and
+left unreassigned prior to this being caught. A bare <code>NA</code> in
+<code>Region</code> is treated as unknown residence too, though in
+practice ESSENCE typically fills in one of the placeholder values above
+rather than leaving the field empty.</p>
 </div>
 <div class="section level2">
 <h2 id="the-cost-of-discarding-these-visits">The Cost of Discarding These Visits<a class="anchor" aria-label="anchor" href="#the-cost-of-discarding-these-visits"></a>
@@ -93,7 +105,13 @@ that do not transmit patient address fields. These records appear with
 <p>The common response to out-of-state and unknown-residence records is
 to filter them out before analysis. This is understandable – residential
 geography is the expected denominator for incidence-based rates – but it
-introduces systematic bias:</p>
+introduces systematic bias. And it rarely requires an explicit
+<code><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter()</a></code> call to happen: any downstream step scoped to your
+jurisdiction’s regions – joining to a shapefile of in-state counties for
+a map, grouping by <code>Region</code> against a fixed list of in-state
+values for a summary table – silently drops rows whose
+<code>Region</code> doesn’t match, with no filter statement in the code
+to flag the decision for review.</p>
 <p><strong>Burden understatement.</strong> Facilities that treat a high
 volume of out-of-state or transient patients see their case counts
 reduced proportionally. A border facility that treats patients from
@@ -112,6 +130,14 @@ patients, more border traffic, or a policy change affecting unhoused
 populations – the exclusion of <code>OTHER_REGION</code> records can
 create apparent trends in what is actually a stable underlying
 burden.</p>
+<p>This is also why <code>sysPrep</code> treats the fix as attribution
+rather than exclusion-avoidance alone: EMS-based systems (e.g., ODMAP,
+Biospatial) report incidence at the location where care was rendered,
+not the patient’s jurisdiction of residence. Assigning treating facility
+geography brings ESSENCE data into that same incidence-based frame,
+which matters for applied, rapid-response surveillance where the
+operative question is where a case was treated, not which jurisdiction
+is responsible for the follow-up.</p>
 <p><code>sysPrep</code> provides two functions for retaining these
 visits by attributing them to the geography of the treating facility.
 The choice of which function to use depends on the research
@@ -183,28 +209,36 @@ string.</p>
 <p>Both geography functions use the same detection logic: - A visit is
 classified as <strong>in-state</strong> when <code>Region</code> begins
 with <code>paste0(site, "_")</code> (e.g., <code>"KY_"</code> for
-<code>site = "KY"</code>). - A visit is classified as
-<strong>out-of-state or unknown</strong> when <code>Region</code> begins
-with a different prefix, is exactly <code>"OTHER_REGION"</code>, or is
-<code>NA</code>.</p>
+<code>site = "KY"</code>) and is not the known-site unknown-residence
+placeholder below. - A visit is classified as <strong>out-of-state or
+unknown</strong> when <code>Region</code> begins with a different
+prefix, is exactly <code>"OTHER_REGION"</code>, is exactly
+<code>paste0(site, "_UNKNOWN")</code> (e.g., <code>"KY_UNKNOWN"</code>),
+or is <code>NA</code>. The <code>"{site}_UNKNOWN"</code> form is checked
+explicitly rather than relying on the prefix mismatch, since it carries
+the site prefix and would otherwise be (incorrectly) classified as
+in-state.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Illustrate the detection logic on a few example values</span></span>
 <span><span class="va">region_examples</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"KY_Jefferson"</span>, <span class="st">"TN_Davidson"</span>, <span class="st">"OH_Hamilton"</span>,</span>
-<span>                     <span class="st">"OTHER_REGION"</span>, <span class="cn">NA_character_</span><span class="op">)</span></span>
+<span>                     <span class="st">"OTHER_REGION"</span>, <span class="st">"KY_UNKNOWN"</span>, <span class="cn">NA_character_</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  region   <span class="op">=</span> <span class="va">region_examples</span>,</span>
 <span>  in_state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/startsWith.html" class="external-link">startsWith</a></span><span class="op">(</span></span>
 <span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/replace_na.html" class="external-link">replace_na</a></span><span class="op">(</span><span class="va">region_examples</span>, <span class="st">""</span><span class="op">)</span>,</span>
 <span>    <span class="st">"KY_"</span></span>
-<span>  <span class="op">)</span> <span class="op">&amp;</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">region_examples</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">&amp;</span></span>
+<span>    <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">region_examples</span><span class="op">)</span> <span class="op">&amp;</span></span>
+<span>    <span class="va">region_examples</span> <span class="op">!=</span> <span class="st">"KY_UNKNOWN"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;         region in_state</span></span>
 <span><span class="co">#&gt; 1 KY_Jefferson     TRUE</span></span>
 <span><span class="co">#&gt; 2  TN_Davidson    FALSE</span></span>
 <span><span class="co">#&gt; 3  OH_Hamilton    FALSE</span></span>
 <span><span class="co">#&gt; 4 OTHER_REGION    FALSE</span></span>
-<span><span class="co">#&gt; 5         &lt;NA&gt;    FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt; 5   KY_UNKNOWN    FALSE</span></span>
+<span><span class="co">#&gt; 6         &lt;NA&gt;    FALSE</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="two-functions-two-philosophies">Two Functions, Two Philosophies<a class="anchor" aria-label="anchor" href="#two-functions-two-philosophies"></a>

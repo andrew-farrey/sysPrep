@@ -66,7 +66,7 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p><code>sysPrep</code> provides formalized preprocessing methods for syndromic surveillance data from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (<a href="https://www.cdc.gov/nssp/" class="external-link">ESSENCE</a>) API.</p>
-<p>In Kentucky, these preprocessing steps were necessary to keep ESSENCE-based overdose surveillance competitive with EMS-based data sources (e.g., ODMAP, Biospatial) – without them, ESSENCE pulls were neither complete nor timely enough to compete as an anomaly detection source for small-count, high-impact cluster detection. They also removed a recurring source of false-positive clusters: duplicate visit records were driving cluster detections that reflected data artifacts rather than true anomalies, at a real cost in analyst time spent investigating them.</p>
+<p>In Kentucky, these preprocessing steps were necessary to keep ESSENCE-based overdose surveillance competitive with EMS-based data sources (e.g., ODMAP, Biospatial) – without them, ESSENCE pulls were neither complete nor timely enough to compete as an anomaly detection source for small-count, high-impact cluster detection. They also removed a recurring source of false-positive clusters: duplicate visit records were driving cluster detections that reflected data artifacts rather than true anomalies, at a real cost in analyst time spent investigating them. Geographic reassignment closes a related gap: EMS-based systems report incidence at the location where care was rendered, not the patient’s jurisdiction of residence, and ESSENCE data defaults to the latter – <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>/<code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code> bring ESSENCE into that same incidence-based frame.</p>
 <p>These methods are <strong>not required</strong> to perform case counting, cluster detection, or anomaly detection with ESSENCE data. Many surveillance questions tolerate the data quality issues <code>sysPrep</code> addresses without materially affecting conclusions. They are most valuable for <strong>small-count, high-impact case definitions</strong>, where external validity and minimizing false-positive clusters/anomalies matter most. Raw ESSENCE data pulls can present four categories of data quality issues that bias case counts or distort cluster/anomaly detection if left unaddressed:</p>
 <table class="table">
 <colgroup>
@@ -99,7 +99,7 @@
 </tr>
 <tr>
 <td>
-<strong>Out-of-State and OTHER_REGION (unknown residence) Visits</strong> – discarding these understates facility burden</td>
+<strong>Out-of-State and OTHER_REGION (unknown residence) Visits</strong> – these visits’ <code>Region</code> doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered</td>
 <td>
 <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>, <code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code>
 </td>

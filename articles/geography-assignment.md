@@ -19,15 +19,32 @@ who decline to provide one. The `OTHER_REGION` value is not a geographic
 unit – it is a placeholder indicating that no residential geography can
 be assigned.
 
-**Missing `Region`** occurs at facilities that do not transmit patient
-address fields. These records appear with `NA` in the `Region` column.
+**`{SITE}_UNKNOWN`** (e.g. `"KY_UNKNOWN"`) records represent visits at a
+known-site facility that did not transmit patient address fields. Unlike
+`OTHER_REGION`, this value carries the site prefix – it is ESSENCE’s
+placeholder for “the system knows this residence is missing,” as
+distinct from a residence that was received but does not map to any
+region. In practice, `{SITE}_UNKNOWN` is rare relative to `OTHER_REGION`
+– observed volumes in production Kentucky surveillance run in the single
+digits against tens of thousands of `OTHER_REGION` records over the same
+period – but because it carries the site prefix, it was silently
+misclassified as in-state and left unreassigned prior to this being
+caught. A bare `NA` in `Region` is treated as unknown residence too,
+though in practice ESSENCE typically fills in one of the placeholder
+values above rather than leaving the field empty.
 
 ## The Cost of Discarding These Visits
 
 The common response to out-of-state and unknown-residence records is to
 filter them out before analysis. This is understandable – residential
 geography is the expected denominator for incidence-based rates – but it
-introduces systematic bias:
+introduces systematic bias. And it rarely requires an explicit
+[`filter()`](https://rdrr.io/r/stats/filter.html) call to happen: any
+downstream step scoped to your jurisdiction’s regions – joining to a
+shapefile of in-state counties for a map, grouping by `Region` against a
+fixed list of in-state values for a summary table – silently drops rows
+whose `Region` doesn’t match, with no filter statement in the code to
+flag the decision for review.
 
 **Burden understatement.** Facilities that treat a high volume of
 out-of-state or transient patients see their case counts reduced
@@ -47,6 +64,15 @@ population shifts over time – more transient patients, more border
 traffic, or a policy change affecting unhoused populations – the
 exclusion of `OTHER_REGION` records can create apparent trends in what
 is actually a stable underlying burden.
+
+This is also why `sysPrep` treats the fix as attribution rather than
+exclusion-avoidance alone: EMS-based systems (e.g., ODMAP, Biospatial)
+report incidence at the location where care was rendered, not the
+patient’s jurisdiction of residence. Assigning treating facility
+geography brings ESSENCE data into that same incidence-based frame,
+which matters for applied, rapid-response surveillance where the
+operative question is where a case was treated, not which jurisdiction
+is responsible for the follow-up.
 
 `sysPrep` provides two functions for retaining these visits by
 attributing them to the geography of the treating facility. The choice
@@ -110,29 +136,37 @@ characters before the **last** underscore in the string.
 
 Both geography functions use the same detection logic: - A visit is
 classified as **in-state** when `Region` begins with `paste0(site, "_")`
-(e.g., `"KY_"` for `site = "KY"`). - A visit is classified as
+(e.g., `"KY_"` for `site = "KY"`) and is not the known-site
+unknown-residence placeholder below. - A visit is classified as
 **out-of-state or unknown** when `Region` begins with a different
-prefix, is exactly `"OTHER_REGION"`, or is `NA`.
+prefix, is exactly `"OTHER_REGION"`, is exactly
+`paste0(site, "_UNKNOWN")` (e.g., `"KY_UNKNOWN"`), or is `NA`. The
+`"{site}_UNKNOWN"` form is checked explicitly rather than relying on the
+prefix mismatch, since it carries the site prefix and would otherwise be
+(incorrectly) classified as in-state.
 
 ``` r
 
 # Illustrate the detection logic on a few example values
 region_examples <- c("KY_Jefferson", "TN_Davidson", "OH_Hamilton",
-                     "OTHER_REGION", NA_character_)
+                     "OTHER_REGION", "KY_UNKNOWN", NA_character_)
 
 data.frame(
   region   = region_examples,
   in_state = startsWith(
     tidyr::replace_na(region_examples, ""),
     "KY_"
-  ) & !is.na(region_examples)
+  ) &
+    !is.na(region_examples) &
+    region_examples != "KY_UNKNOWN"
 )
 #>         region in_state
 #> 1 KY_Jefferson     TRUE
 #> 2  TN_Davidson    FALSE
 #> 3  OH_Hamilton    FALSE
 #> 4 OTHER_REGION    FALSE
-#> 5         <NA>    FALSE
+#> 5   KY_UNKNOWN    FALSE
+#> 6         <NA>    FALSE
 ```
 
 ## Two Functions, Two Philosophies

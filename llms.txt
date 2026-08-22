@@ -15,7 +15,12 @@ source for small-count, high-impact cluster detection. They also removed
 a recurring source of false-positive clusters: duplicate visit records
 were driving cluster detections that reflected data artifacts rather
 than true anomalies, at a real cost in analyst time spent investigating
-them.
+them. Geographic reassignment closes a related gap: EMS-based systems
+report incidence at the location where care was rendered, not the
+patient’s jurisdiction of residence, and ESSENCE data defaults to the
+latter –
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)/[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
+bring ESSENCE into that same incidence-based frame.
 
 These methods are **not required** to perform case counting, cluster
 detection, or anomaly detection with ESSENCE data. Many surveillance
@@ -32,7 +37,7 @@ unaddressed:
 | **Duplicate Records** – multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md), [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md), [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md) |
 | **Non-Emergency Providers** – facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency `FacilityType`, included in pulls | [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md), [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md) |
 | **Mis-Submitted and Invisible Direct Admissions** – some inpatient admissions are mistakenly submitted as unrelated to a preceding ED visit (a data quality artifact), and genuine direct admissions are excluded entirely from HasBeenE = 1 queries | [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md) |
-| **Out-of-State and OTHER_REGION (unknown residence) Visits** – discarding these understates facility burden | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
+| **Out-of-State and OTHER_REGION (unknown residence) Visits** – these visits’ `Region` doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
 
 `sysPrep` synthesizes these methods into a reproducible, documented
 pipeline – a foundation other ESSENCE practitioners can adopt, evaluate,
