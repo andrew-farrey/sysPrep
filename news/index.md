@@ -31,8 +31,15 @@
   Flag facility visit count outliers for QA. Supports `verbose` to
   suppress informational messages.
 - [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md):
-  Assign treating facility geography to out-of-state visits. Supports
-  `verbose` to suppress informational messages.
+  Assign treating facility geography to out-of-state visits. By default
+  writes to new `new_region_col`/ `new_zip_col` columns
+  (`"region_hybrid"`/`"zip_code_hybrid"`), leaving
+  `region_col`/`zip_col` untouched; set `overwrite = TRUE` to overwrite
+  them in place instead. Supports `verbose` to suppress informational
+  messages.
 - [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md):
-  Assign facility geography to all visits. Supports `verbose` to
-  suppress informational messages.
+  Assign facility geography to all visits. Same
+  `new_region_col`/`new_zip_col`/`overwrite` behavior as
+  [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md),
+  defaulting to `"region_facility"`/ `"zip_code_facility"`. Supports
+  `verbose` to suppress informational messages.

@@ -209,11 +209,11 @@ geography assignment last (applied only to the valid ED population).</p>
 <span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># Step 3: Assign treating facility geography to out-of-state and OTHER_REGION visits</span></span>
-<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span>preserve_original_geographies <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; The following `FacilityType` values are not in `keep_types` and will be excluded:</span></span>
 <span><span class="co">#&gt;   - Medical Specialty</span></span>
 <span><span class="co">#&gt;   - Primary Care</span></span>
-<span><span class="co">#&gt; 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography.</span></span></code></pre></div>
+<span><span class="co">#&gt; 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.</span></span></code></pre></div>
 <p><strong>Step 1 – Deduplication</strong> (<code><a href="../reference/dedupe.html">dedupe()</a></code>):
 Groups records by facility × visit identifier. Within each group,
 retains the single row with the latest <code>Arrived_Date_Time</code> –
@@ -232,13 +232,13 @@ facilities’ visits would be excluded along with genuine non-ED
 providers.</p>
 <p><strong>Step 3 – Geographic attribution</strong>
 (<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>): For visits where
-<code>Region</code> is out-of-state or <code>OTHER_REGION</code>,
-replaces <code>Region</code> and <code>ZipCode</code> with the treating
-facility’s corresponding geographic fields. In-state patient geography
-is preserved unchanged. Setting
-<code>preserve_original_geographies = TRUE</code> retains the
-pre-reassignment values in <code>original_region</code> and
-<code>original_zip_code</code> for audit purposes.</p>
+<code>Region</code> is out-of-state or <code>OTHER_REGION</code>, writes
+the treating facility’s corresponding geographic fields to new
+<code>region_hybrid</code>/ <code>zip_code_hybrid</code> columns.
+<code>Region</code>/<code>ZipCode</code> themselves are never modified –
+for in-state visits,
+<code>region_hybrid</code>/<code>zip_code_hybrid</code> simply carry
+through the original value unchanged.</p>
 <p>Each of these functions reports what it did via informational console
 messages – useful during interactive exploration, but often unwanted
 when the pipeline runs inside a rendered R Markdown report or other
@@ -252,10 +252,7 @@ data quality issues are never silently hidden:</p>
 <span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span>,</span>
 <span>    verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span></span>
-<span>    preserve_original_geographies <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="what-changed">What Changed?<a class="anchor" aria-label="anchor" href="#what-changed"></a>
@@ -288,7 +285,7 @@ data quality issues are never silently hidden:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; New columns added by assign_treating_geography():</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">" "</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">setdiff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">clean</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">essence_raw</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, .out_of_state, original_region, original_zip_code</span></span></code></pre></div>
+<span><span class="co">#&gt;   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, .out_of_state, region_hybrid, zip_code_hybrid</span></span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># How many visits had geography reassigned?</span></span>
 <span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">clean</span>, <span class="va">.out_of_state</span><span class="op">)</span></span>
@@ -298,11 +295,18 @@ data quality issues are never silently hidden:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> FALSE           133</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> TRUE             27</span></span></code></pre></div>
 <p>The <code>.out_of_state</code> column marks visits where
-<code>Region</code> was reassigned from an out-of-state county or
-<code>OTHER_REGION</code> to the treating facility’s county. The
-<code>original_region</code> column retains the pre-reassignment value
-for those visits, while in-state visits have
-<code>original_region = NA</code> (no change was made).</p>
+<code>region_hybrid</code> differs from <code>Region</code> – i.e.,
+where the treating facility’s county was substituted for an out-of-state
+or <code>OTHER_REGION</code> value. For in-state visits,
+<code>region_hybrid</code> equals <code>Region</code> unchanged.
+Chaining <code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code> onto the same pipeline
+adds a third column, <code>region_facility</code>, with treating
+geography substituted for <em>every</em> visit – useful for comparing
+residential, hybrid, and facility-based geography side by side without
+touching <code>Region</code> at all. See
+<code><a href="../articles/geography-assignment.html">vignette("geography-assignment")</a></code> for the full mechanics,
+including how to overwrite <code>Region</code>/<code>ZipCode</code> in
+place instead if that’s what your pipeline needs.</p>
 </div>
 <div class="section level2">
 <h2 id="function-reference">Function Reference<a class="anchor" aria-label="anchor" href="#function-reference"></a>

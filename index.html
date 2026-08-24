@@ -161,7 +161,8 @@
 <span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># Step 3: Assign treating facility geography to out-of-state visits</span></span>
-<span>  <span class="fu"><a href="reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span>preserve_original_geographies <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="co"># (writes region_hybrid/zip_code_hybrid; Region/ZipCode stay untouched)</span></span>
+<span>  <span class="fu"><a href="reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Check for facility-level anomalies</span></span>
 <span><span class="va">clean</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/review_facility_ed_visits.html">review_facility_ed_visits</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"both"</span>, date_col <span class="op">=</span> <span class="va">Date</span><span class="op">)</span></span></code></pre></div>
@@ -178,6 +179,22 @@
 <span><span class="co"># Distribution of care pathways</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>For comparing residential vs. treating geography side by side – both geography functions write to new columns by default, so chaining them adds <code>region_hybrid</code> and <code>region_facility</code> without disturbing <code>region</code> itself (built fresh here rather than reusing <code>clean</code> above, since <code>clean</code> already ran <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code> once as step 3 of its own pipeline):</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">geo_all</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/filter_care_setting.html">filter_care_setting</a></span><span class="op">(</span></span>
+<span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/assign_facility_geography.html">assign_facility_geography</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">geo_all</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hospital_name</span>, <span class="va">region</span>, <span class="va">region_hybrid</span>, <span class="va">region_facility</span><span class="op">)</span></span>
+<span><span class="co"># region: untouched original</span></span>
+<span><span class="co"># region_hybrid: residential geography, with treating geography substituted</span></span>
+<span><span class="co">#   only for out-of-state/unknown-residence visits</span></span>
+<span><span class="co"># region_facility: treating geography for every visit</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
@@ -209,7 +226,7 @@
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
 <p>If you use <code>sysPrep</code> in published work, please cite the package directly:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"sysPrep"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">

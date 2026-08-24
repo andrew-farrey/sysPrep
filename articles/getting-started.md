@@ -146,11 +146,11 @@ clean <- essence_raw |>
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   ) |>
   # Step 3: Assign treating facility geography to out-of-state and OTHER_REGION visits
-  assign_treating_geography(preserve_original_geographies = TRUE)
+  assign_treating_geography()
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Medical Specialty
 #>   - Primary Care
-#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography.
+#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
 ```
 
 **Step 1 – Deduplication**
@@ -175,12 +175,12 @@ providers.
 
 **Step 3 – Geographic attribution**
 ([`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)):
-For visits where `Region` is out-of-state or `OTHER_REGION`, replaces
-`Region` and `ZipCode` with the treating facility’s corresponding
-geographic fields. In-state patient geography is preserved unchanged.
-Setting `preserve_original_geographies = TRUE` retains the
-pre-reassignment values in `original_region` and `original_zip_code` for
-audit purposes.
+For visits where `Region` is out-of-state or `OTHER_REGION`, writes the
+treating facility’s corresponding geographic fields to new
+`region_hybrid`/ `zip_code_hybrid` columns. `Region`/`ZipCode`
+themselves are never modified – for in-state visits,
+`region_hybrid`/`zip_code_hybrid` simply carry through the original
+value unchanged.
 
 Each of these functions reports what it did via informational console
 messages – useful during interactive exploration, but often unwanted
@@ -197,10 +197,7 @@ clean_quiet <- essence_raw |>
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services"),
     verbose = FALSE
   ) |>
-  assign_treating_geography(
-    preserve_original_geographies = TRUE,
-    verbose = FALSE
-  )
+  assign_treating_geography(verbose = FALSE)
 ```
 
 ## What Changed?
@@ -234,7 +231,7 @@ cat("\nNew columns added by assign_treating_geography():\n")
 #> 
 #> New columns added by assign_treating_geography():
 cat(" ", paste(setdiff(names(clean), names(essence_raw)), collapse = ", "), "\n")
-#>   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, .out_of_state, original_region, original_zip_code
+#>   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, .out_of_state, region_hybrid, zip_code_hybrid
 ```
 
 ``` r
@@ -248,11 +245,18 @@ dplyr::count(clean, .out_of_state)
 #> 2 TRUE             27
 ```
 
-The `.out_of_state` column marks visits where `Region` was reassigned
-from an out-of-state county or `OTHER_REGION` to the treating facility’s
-county. The `original_region` column retains the pre-reassignment value
-for those visits, while in-state visits have `original_region = NA` (no
-change was made).
+The `.out_of_state` column marks visits where `region_hybrid` differs
+from `Region` – i.e., where the treating facility’s county was
+substituted for an out-of-state or `OTHER_REGION` value. For in-state
+visits, `region_hybrid` equals `Region` unchanged. Chaining
+[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
+onto the same pipeline adds a third column, `region_facility`, with
+treating geography substituted for *every* visit – useful for comparing
+residential, hybrid, and facility-based geography side by side without
+touching `Region` at all. See
+[`vignette("geography-assignment")`](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.md)
+for the full mechanics, including how to overwrite `Region`/`ZipCode` in
+place instead if that’s what your pipeline needs.
 
 ## Function Reference
 

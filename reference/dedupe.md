@@ -292,8 +292,8 @@ essence_raw |>
 #>   - Medical Specialty
 #>   - Urgent Care
 #>   - Primary Care
-#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography.
-#> # A tibble: 129 × 19
+#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> # A tibble: 129 × 21
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -307,9 +307,9 @@ essence_raw |>
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
 #> # ℹ 119 more rows
-#> # ℹ 13 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> # ℹ 15 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   .out_of_state <lgl>
+#> #   .out_of_state <lgl>, region_hybrid <chr>, zip_code_hybrid <chr>
 ```

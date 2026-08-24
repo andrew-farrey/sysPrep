@@ -56,7 +56,10 @@ implements a hybrid approach – preserving residential geography for
 in-state patients while reassigning only out-of-state and OTHER_REGION
 visits to the treating facility’s county. assign_facility_geography()
 applies full incidence-at-location reassignment, attributing all visits
-to the treating facility’s geography regardless of patient origin.
+to the treating facility’s geography regardless of patient origin. Both
+write to new columns by default (region_hybrid/region_facility), leaving
+the original Region/ZipCode untouched, so calling either – or both,
+chained – is always safe to try and safe to re-run.
 
 - [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
   : Assign treating facility geography to out-of-state and OTHER_REGION

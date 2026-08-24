@@ -2,7 +2,13 @@
 
 The result of running `essence_raw` through the full `sysPrep`
 preprocessing pipeline: deduplication, care setting filtering with FSED
-correction, and treating geography assignment for out-of-state visits.
+correction, and both geography attribution functions chained on their
+default (additive) behavior – `region`/`zip_code` are the untouched
+originals throughout;
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+and
+[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
+each add their own new columns alongside them rather than overwriting.
 Intended to demonstrate the expected output of the package workflow and
 to serve as a reference for function output structure.
 
@@ -14,7 +20,7 @@ essence_clean
 
 ## Format
 
-A data frame with approximately 160 rows and 21 columns. All column
+A data frame with approximately 160 rows and 24 columns. All column
 names are in snake_case (post
 [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)).
 
@@ -86,13 +92,12 @@ names are in snake_case (post
 - region:
 
   Character. Patient ESSENCE Region of residence in `{SITE}_{REGION}`
-  format. Out-of-state and `OTHER_REGION` visits have been reassigned to
-  the treating facility's Region by
-  [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
+  format, exactly as received – never modified by either geography
+  function.
 
 - zip_code:
 
-  Character. Patient zip code (reassigned for out-of-state visits).
+  Character. Patient zip code, exactly as received.
 
 - sex:
 
@@ -102,19 +107,38 @@ names are in snake_case (post
 
   Integer. Patient age in years.
 
-- original_region:
-
-  Character. Pre-reassignment `Region` value, preserved when
-  `preserve_original_geographies = TRUE`.
-
-- original_zip_code:
-
-  Character. Pre-reassignment `ZipCode` value.
-
 - .out_of_state:
 
-  Logical. `TRUE` for visits where `Region` and/or `ZipCode` were
-  reassigned to treating facility geography.
+  Logical. `TRUE` for visits where `region` is out-of-state,
+  `"OTHER_REGION"`, or unknown residence – these are the visits where
+  `region_hybrid` differs from `region`. Added by
+  [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
+
+- region_hybrid:
+
+  Character. `region` for in-state visits; `hospital_region` for
+  out-of-state/`OTHER_REGION`/unknown-residence visits. Added by
+  [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
+
+- zip_code_hybrid:
+
+  Character. `zip_code` analog of `region_hybrid`.
+
+- region_facility:
+
+  Character. `hospital_region` for every visit, regardless of patient
+  residence. Added by
+  [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md).
+
+- zip_code_facility:
+
+  Character. `zip_code` analog of `region_facility`.
+
+- .facility_geography:
+
+  Logical. Always `TRUE` – signals that facility geography has been
+  computed for every row. Added by
+  [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md).
 
 ## Source
 

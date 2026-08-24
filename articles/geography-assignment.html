@@ -259,27 +259,80 @@ modified</strong>:</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><strong>Rows modified</strong></td>
+<td><strong>Default output column</strong></td>
+<td>
+<code>region_hybrid</code> (new column; <code>Region</code>
+untouched)</td>
+<td>
+<code>region_facility</code> (new column; <code>Region</code>
+untouched)</td>
+</tr>
+<tr class="even">
+<td><strong>Rows reassigned</strong></td>
 <td>Out-of-state + <code>OTHER_REGION</code> + <code>NA</code> only</td>
 <td><strong>All rows</strong></td>
 </tr>
-<tr class="even">
-<td><strong>In-state patient geography</strong></td>
-<td>Preserved unchanged</td>
-<td>Overwritten</td>
-</tr>
 <tr class="odd">
+<td><strong>In-state patient geography</strong></td>
+<td>Reflected as-is in <code>region_hybrid</code>
+</td>
+<td>Overwritten with facility geography</td>
+</tr>
+<tr class="even">
 <td><strong>Research question</strong></td>
 <td>Where did this care take place? (for non-residents only)</td>
 <td>Where did all care take place?</td>
 </tr>
-<tr class="even">
-<td><strong>Resulting <code>Region</code> meaning</strong></td>
+<tr class="odd">
+<td><strong>Resulting column meaning</strong></td>
 <td>Mixed: residential for in-state, treating for out-of-state</td>
 <td>Treating facility county for everyone</td>
 </tr>
 </tbody>
 </table>
+<p>Both default to writing a new column rather than overwriting
+<code>Region</code> in place – <code>Region</code> itself is never
+touched unless you explicitly opt into that with
+<code>overwrite = TRUE</code> (covered at the end of this vignette).
+This means calling both functions back to back gives you all three
+geographies side by side with zero extra arguments:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">geo_all</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/filter_care_setting.html">filter_care_setting</a></span><span class="op">(</span></span>
+<span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/assign_facility_geography.html">assign_facility_geography</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; The following `FacilityType` values are not in `keep_types` and will be excluded:</span></span>
+<span><span class="co">#&gt;   - Medical Specialty</span></span>
+<span><span class="co">#&gt;   - Primary Care</span></span>
+<span><span class="co">#&gt; 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.</span></span>
+<span><span class="co">#&gt; Facility geography applied to all 160 visits in `region_facility`/`zip_code_facility`.</span></span>
+<span></span>
+<span><span class="va">geo_all</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hospital_name</span>, <span class="va">region</span>, <span class="va">region_hybrid</span>, <span class="va">region_facility</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 4</span></span></span>
+<span><span class="co">#&gt;    hospital_name          region       region_hybrid region_facility</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Central Medical Center TN_Davidson  KY_Jefferson  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> Central Medical Center KY_Kenton    KY_Kenton     KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Central Medical Center KY_Campbell  KY_Campbell   KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Central Medical Center OH_Hamilton  KY_Jefferson  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> Central Medical Center OH_Franklin  KY_Jefferson  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Central Medical Center KY_McCracken KY_McCracken  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> Central Medical Center KY_Daviess   KY_Daviess    KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Central Medical Center KY_Daviess   KY_Daviess    KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Central Medical Center <span style="color: #BB0000;">NA</span>           KY_Jefferson  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Central Medical Center KY_Campbell  KY_Campbell   KY_Jefferson</span></span></code></pre></div>
+<p><code>region</code> is the untouched original for every row;
+<code>region_hybrid</code> matches it for in-state visits and
+substitutes treating geography for the rest;
+<code>region_facility</code> substitutes treating geography for
+<strong>every</strong> row, including the in-state majority. One pass
+over the data, three usable geographies – no
+<code>preserve_original_geographies</code>, no manual copying.</p>
 <p>This distinction matters for how the resulting data should be
 interpreted and which analyses it supports.</p>
 </div>
@@ -290,18 +343,18 @@ Reassignment<a class="anchor" aria-label="anchor" href="#assign_treating_geograp
 </h2>
 <p><code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code> is a <strong>targeted
 intervention</strong> on problem rows. It identifies visits where the
-patient geography is unavailable or out-of-area and replaces their
-<code>Region</code> with the treating facility’s county. In-state
-patient geography is left exactly as received from ESSENCE.</p>
-<p>The resulting dataset is a <strong>hybrid</strong>:
-<code>Region</code> contains residential geography for patients who
-provided an in-state address, and treating facility geography for
-patients who could not or did not. This hybrid is appropriate for
-area-based incidence analyses where you want to count as many visits as
-possible within your surveillance area, and where the distinction
-between resident and non-resident burden is not the primary analytical
-question.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+patient geography is unavailable or out-of-area and writes the treating
+facility’s county, for those visits only, to <code>region_hybrid</code>.
+<code>region</code> is left exactly as received from ESSENCE for every
+row – in-state and out-of-state alike.</p>
+<p><code>region_hybrid</code> is a <strong>hybrid</strong> column: it
+holds residential geography for patients who provided an in-state
+address, and treating facility geography for patients who could not or
+did not. This hybrid is appropriate for area-based incidence analyses
+where you want to count as many visits as possible within your
+surveillance area, and where the distinction between resident and
+non-resident burden is not the primary analytical question.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Start from deduplicated, filtered data</span></span>
 <span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -312,15 +365,13 @@ question.</p>
 <span><span class="co">#&gt;   - Medical Specialty</span></span>
 <span><span class="co">#&gt;   - Primary Care</span></span>
 <span></span>
-<span><span class="co"># Selective reassignment: only out-of-state and OTHER_REGION rows change</span></span>
+<span><span class="co"># Selective reassignment: only out-of-state and OTHER_REGION rows get a</span></span>
+<span><span class="co"># reassigned value in region_hybrid; region itself is never touched</span></span>
 <span><span class="va">treating_geo</span> <span class="op">&lt;-</span> <span class="va">ed_clean</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span></span>
-<span>    site                        <span class="op">=</span> <span class="st">"KY"</span>,</span>
-<span>    preserve_original_geographies <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span>site <span class="op">=</span> <span class="st">"KY"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and</span></span>
-<span><span class="co">#&gt; assigned treating facility geography.</span></span></code></pre></div>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<span><span class="co">#&gt; assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># How many visits were reassigned?</span></span>
 <span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">treating_geo</span>, <span class="va">.out_of_state</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
@@ -328,9 +379,52 @@ question.</p>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> FALSE           133</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> TRUE             27</span></span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Compare region before and after for reassigned rows</span></span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Compare original region against the hybrid result for reassigned rows --</span></span>
+<span><span class="co"># no preserve_original_geographies needed, since region was never modified</span></span>
 <span><span class="va">treating_geo</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.out_of_state</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hospital_name</span>, <span class="va">region</span>, <span class="va">region_hybrid</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 3</span></span></span>
+<span><span class="co">#&gt;    hospital_name               region       region_hybrid</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Central Medical Center      TN_Davidson  KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> Central Medical Center      OH_Hamilton  KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Central Medical Center      OH_Franklin  KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Central Medical Center      <span style="color: #BB0000;">NA</span>           KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> Central Medical Center      OTHER_REGION KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Central Medical Center      TN_Shelby    KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> Central Medical Center      OH_Hamilton  KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Downtown Emergency Services <span style="color: #BB0000;">NA</span>           KY_Fayette   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Hillside FSED               <span style="color: #BB0000;">NA</span>           KY_Jefferson </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Hillside FSED               OTHER_REGION KY_Jefferson</span></span></code></pre></div>
+<p>The <code>.out_of_state</code> column (logical) marks every row where
+<code>region_hybrid</code> differs from <code>region</code>. Rows where
+<code>.out_of_state = FALSE</code> have
+<code>region_hybrid == region</code> – the patient’s residential county,
+unchanged.</p>
+<p>If you’d rather overwrite <code>region</code>/<code>zip_code</code>
+in place instead of getting a
+<code>region_hybrid</code>/<code>zip_code_hybrid</code> column –
+reproducing the only behavior this function had before
+<code>new_region_col</code>/<code>new_zip_col</code> existed – pass
+their own names explicitly and opt in with
+<code>overwrite = TRUE</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Opt-in in-place overwrite, with an audit trail of what was replaced</span></span>
+<span><span class="va">treating_overwrite</span> <span class="op">&lt;-</span> <span class="va">ed_clean</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span></span>
+<span>    site                           <span class="op">=</span> <span class="st">"KY"</span>,</span>
+<span>    new_region_col                 <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>    new_zip_col                    <span class="op">=</span> <span class="st">"zip_code"</span>,</span>
+<span>    overwrite                      <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    preserve_original_geographies  <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="co">#&gt; 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and</span></span>
+<span><span class="co">#&gt; assigned treating facility geography in `region`/`zip_code`.</span></span>
+<span></span>
+<span><span class="va">treating_overwrite</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.out_of_state</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hospital_name</span>, <span class="va">original_region</span>, <span class="va">region</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
@@ -347,16 +441,14 @@ question.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Downtown Emergency Services <span style="color: #BB0000;">NA</span>              KY_Fayette  </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Hillside FSED               <span style="color: #BB0000;">NA</span>              KY_Jefferson</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Hillside FSED               OTHER_REGION    KY_Jefferson</span></span></code></pre></div>
-<p>The <code>.out_of_state</code> column (logical) marks every row where
-geography was modified. Rows where <code>.out_of_state = FALSE</code>
-are unchanged – <code>region</code> still reflects the patient’s
-residential county as ESSENCE recorded it.</p>
-<p>When <code>preserve_original_geographies = TRUE</code>,
-<code>original_region</code> and <code>original_zip_code</code> are
-added before overwriting, retaining pre-reassignment values for audit
-trails or downstream QA. For in-state visits,
-<code>original_region</code> is <code>NA</code> because no change was
-made.</p>
+<p><code>preserve_original_geographies</code> only has an effect in this
+<code>overwrite = TRUE</code> mode – when it applies,
+<code>original_region</code>/<code>original_zip_code</code> are added
+before overwriting, retaining pre-reassignment values as an audit trail.
+For in-state visits, <code>original_region</code> is <code>NA</code>
+because no change was made. In the default (new-column) mode above, this
+parameter is unnecessary and has no effect, since <code>region</code>
+was never modified in the first place.</p>
 <p><strong>When to use
 <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>:</strong></p>
 <ul>
@@ -376,64 +468,63 @@ flag to filter.</li>
 Reassignment<a class="anchor" aria-label="anchor" href="#assign_facility_geography-universal-full-reassignment"></a>
 </h2>
 <p><code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code> takes a fundamentally
-different approach: <strong>every row</strong> has its
-<code>Region</code> replaced with <code>HospitalRegion</code>,
-regardless of whether the patient was in-state, out-of-state, or
-unknown. The resulting <code>Region</code> column no longer reflects
-where patients live – it reflects where they received care.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Universal reassignment: ALL rows get facility geography</span></span>
-<span><span class="va">facility_geo</span> <span class="op">&lt;-</span> <span class="va">ed_clean</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/assign_facility_geography.html">assign_facility_geography</a></span><span class="op">(</span></span>
-<span>    preserve_original_geographies <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="co">#&gt; Facility geography applied to all 160 visits (region and zip).</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># After full reassignment, region = hospital_region for all rows</span></span>
+different approach: <strong>every row</strong> gets a facility-geography
+value in <code>region_facility</code>, regardless of whether the patient
+was in-state, out-of-state, or unknown. <code>region</code> itself is
+untouched, exactly as with <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>.
+<code>region_facility</code> never reflects where patients live – it
+always reflects where they received care.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Universal reassignment: ALL rows get a facility geography value</span></span>
+<span><span class="va">facility_geo</span> <span class="op">&lt;-</span> <span class="va">ed_clean</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/assign_facility_geography.html">assign_facility_geography</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Facility geography applied to all 160 visits in</span></span>
+<span><span class="co">#&gt; `region_facility`/`zip_code_facility`.</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># region_facility vs. the untouched original, for every row</span></span>
 <span><span class="va">facility_geo</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hospital_name</span>, <span class="va">hospital_region</span>, <span class="va">region</span>, <span class="va">original_region</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hospital_name</span>, <span class="va">hospital_region</span>, <span class="va">region</span>, <span class="va">region_facility</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 4</span></span></span>
-<span><span class="co">#&gt;    hospital_name          hospital_region region       original_region</span></span>
+<span><span class="co">#&gt;    hospital_name          hospital_region region       region_facility</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Central Medical Center KY_Jefferson    KY_Jefferson TN_Davidson    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> Central Medical Center KY_Jefferson    KY_Jefferson KY_Kenton      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Central Medical Center KY_Jefferson    KY_Jefferson KY_Campbell    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Central Medical Center KY_Jefferson    KY_Jefferson OH_Hamilton    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> Central Medical Center KY_Jefferson    KY_Jefferson OH_Franklin    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Central Medical Center KY_Jefferson    KY_Jefferson KY_McCracken   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> Central Medical Center KY_Jefferson    KY_Jefferson KY_Daviess     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Central Medical Center KY_Jefferson    KY_Jefferson KY_Daviess     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Central Medical Center KY_Jefferson    KY_Jefferson <span style="color: #BB0000;">NA</span>             </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Central Medical Center KY_Jefferson    KY_Jefferson KY_Campbell</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Confirm: region == hospital_region for every row</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">facility_geo</span><span class="op">$</span><span class="va">region</span> <span class="op">==</span> <span class="va">facility_geo</span><span class="op">$</span><span class="va">hospital_region</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Central Medical Center KY_Jefferson    TN_Davidson  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> Central Medical Center KY_Jefferson    KY_Kenton    KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Central Medical Center KY_Jefferson    KY_Campbell  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Central Medical Center KY_Jefferson    OH_Hamilton  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> Central Medical Center KY_Jefferson    OH_Franklin  KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Central Medical Center KY_Jefferson    KY_McCracken KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> Central Medical Center KY_Jefferson    KY_Daviess   KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Central Medical Center KY_Jefferson    KY_Daviess   KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Central Medical Center KY_Jefferson    <span style="color: #BB0000;">NA</span>           KY_Jefferson   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Central Medical Center KY_Jefferson    KY_Campbell  KY_Jefferson</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Confirm: region_facility == hospital_region for every row</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">facility_geo</span><span class="op">$</span><span class="va">region_facility</span> <span class="op">==</span> <span class="va">facility_geo</span><span class="op">$</span><span class="va">hospital_region</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
-<p>Note that <code>original_region</code> now contains a value for every
-row – including in-state patients – because all rows were modified. This
-is the key difference from <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>,
-where <code>original_region</code> is <code>NA</code> for rows that were
-not changed.</p>
+<p>Unlike <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>, where only
+out-of-state/unknown rows differ between <code>region</code> and
+<code>region_hybrid</code>, here <strong>every</strong> row differs
+between <code>region</code> and <code>region_facility</code> – that’s
+the “universal” part.</p>
 <blockquote>
 <p><strong>Is this only renaming <code>HospitalRegion</code> to
-<code>Region</code>?</strong> Mechanically, yes –
-<code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code> replaces <code>Region</code>
-with <code>HospitalRegion</code> and/or <code>ZipCode</code> with
-<code>HospitalZip</code> for all rows, depending on which columns are
-present in the pull. Not all analysts include both; zip-based geography
-carries its own methodological considerations around spatial resolution
-and boundary alignment that may not be appropriate for every analysis.
-When only <code>HospitalRegion</code> is present, only region is
-reassigned. Some practitioners have applied this rename informally as an
-ad hoc pipeline step. <code>sysPrep</code> formalizes that practice –
-documents the intent, handles whichever geography types are available,
-and makes retaining the originals via
-<code>preserve_original_geographies = TRUE</code> the recommended
-default so the pre-reassignment values are always available for audit or
-comparison. <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code> – the hybrid
-selective approach – has no simple column-rename equivalent, which is
-what motivated formalizing both methods in the same package.</p>
+<code>Region</code>?</strong> Mechanically, close –
+<code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code> writes
+<code>HospitalRegion</code> and/or <code>HospitalZip</code> to
+<code>region_facility</code>/<code>zip_code_facility</code> for all
+rows, depending on which columns are present in the pull. Not all
+analysts include both; zip-based geography carries its own
+methodological considerations around spatial resolution and boundary
+alignment that may not be appropriate for every analysis. When only
+<code>HospitalRegion</code> is present, only region is reassigned. Some
+practitioners have applied this rename informally as an ad hoc pipeline
+step. <code>sysPrep</code> formalizes that practice – documents the
+intent, handles whichever geography types are available, and writes to a
+new column by default so the original values are always available for
+audit or comparison without any extra argument.
+<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code> – the hybrid selective approach
+– has no simple column-rename equivalent, which is what motivated
+formalizing both methods in the same package.</p>
 </blockquote>
 <p>Hospital-level spatial clustering (point-based) concentrates
 observations at individual facility locations and can identify which
@@ -482,29 +573,31 @@ inappropriate common denominator.</li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="the-core-distinction-what-does-region-mean-after-reassignment">The Core Distinction: What Does <code>Region</code> Mean After
-Reassignment?<a class="anchor" aria-label="anchor" href="#the-core-distinction-what-does-region-mean-after-reassignment"></a>
+<h2 id="the-core-distinction-what-do-the-output-columns-mean">The Core Distinction: What Do the Output Columns Mean?<a class="anchor" aria-label="anchor" href="#the-core-distinction-what-do-the-output-columns-mean"></a>
 </h2>
-<p>The choice between the two functions is a choice about what the
-<code>Region</code> column should represent in your analytic
-dataset:</p>
-<p><strong>After <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>:</strong>
-<code>Region</code> = residential geography for in-state patients +
-treating facility geography for out-of-state and unknown-residence
-patients.</p>
+<p>The choice between the two functions is a choice about what geography
+your analysis should be scoped to:</p>
+<p><strong><code>region_hybrid</code></strong> (from
+<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>): residential geography for
+in-state patients + treating facility geography for out-of-state and
+unknown-residence patients.</p>
 <p>This is a <strong>hybrid</strong> with mixed semantics. It is most
 useful when you want to maximize the number of visits attributed to your
 surveillance area while preserving the residential geography of the
 majority.</p>
-<p><strong>After <code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code>:</strong>
-<code>Region</code> = treating facility geography for all patients.</p>
-<p>This is semantically <strong>uniform</strong> – <code>Region</code>
-means the same thing for every row. It is most useful when the
-analytical unit is where care was delivered, not where patients
-live.</p>
-<p>Neither function is universally correct. The choice should be
-documented in your analysis methods and driven by the research
-question.</p>
+<p><strong><code>region_facility</code></strong> (from
+<code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code>): treating facility geography
+for all patients.</p>
+<p>This is semantically <strong>uniform</strong> –
+<code>region_facility</code> means the same thing for every row. It is
+most useful when the analytical unit is where care was delivered, not
+where patients live.</p>
+<p><code>region</code> itself, meanwhile, is never touched by either
+function unless you explicitly opt into <code>overwrite = TRUE</code> –
+so it’s always available as the untouched original, regardless of which
+(or both) of these you compute. Neither function is universally correct.
+The choice should be documented in your analysis methods and driven by
+the research question.</p>
 </div>
 <div class="section level2">
 <h2 id="decision-guide">Decision Guide<a class="anchor" aria-label="anchor" href="#decision-guide"></a>
@@ -556,24 +649,49 @@ geography as fallback</td>
 </table>
 </div>
 <div class="section level2">
-<h2 id="preserve_original_geographies-true">
-<code>preserve_original_geographies = TRUE</code><a class="anchor" aria-label="anchor" href="#preserve_original_geographies-true"></a>
+<h2 id="output-columns-new-by-default-overwrite-as-an-opt-in">Output Columns: New by Default, Overwrite as an Opt-In<a class="anchor" aria-label="anchor" href="#output-columns-new-by-default-overwrite-as-an-opt-in"></a>
 </h2>
-<p>Both functions accept
-<code>preserve_original_geographies = TRUE</code>, which adds
-<code>original_region</code> and <code>original_zip_code</code> columns
-before overwriting.</p>
-<p>For <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>, these columns contain
+<p>Every example above wrote to a new column
+(<code>region_hybrid</code>/<code>region_facility</code>) and left
+<code>region</code>/<code>zip_code</code> alone. That’s the default for
+a reason: it’s non-destructive, so calling either function is always
+safe to try, safe to re-run, and safe to chain – there’s no risk of
+losing the original values just by calling the function.</p>
+<p><code>new_region_col</code>/<code>new_zip_col</code> control the
+target column and default to
+<code>"region_hybrid"</code>/<code>"zip_code_hybrid"</code>
+(<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>) or
+<code>"region_facility"</code>/<code>"zip_code_facility"</code>
+(<code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code>). Pass <code>NULL</code> to
+either to skip that geography type entirely – e.g.
+<code>new_zip_col = NULL</code> to reassign region only.</p>
+<p>If the target you name already exists as a column – whether that’s
+<code>region_col</code>/<code>zip_col</code> itself, or any other
+existing column – the function aborts rather than silently overwriting
+it, unless you set <code>overwrite = TRUE</code>. This is what makes
+reproducing the original in-place-overwrite behavior an explicit,
+visible choice rather than the default:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">essence_clean</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span></span>
+<span>    new_region_col <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>    new_zip_col    <span class="op">=</span> <span class="st">"zip_code"</span>,</span>
+<span>    overwrite      <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+<p><code>preserve_original_geographies = TRUE</code> only has an effect
+in this <code>overwrite = TRUE</code> mode – it adds
+<code>original_region</code>/<code>original_zip_code</code> columns
+holding the pre-overwrite values before they’re replaced. In the default
+new-column mode, it has no effect and is unnecessary, since
+<code>region</code> was never modified in the first place – it already
+<em>is</em> the original.</p>
+<p>For <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code> in overwrite mode,
+<code>original_region</code>/ <code>original_zip_code</code> contain
 pre-reassignment values only for rows where geography changed
-(<code>.out_of_state = TRUE</code>). For in-state visits, they are
-<code>NA</code>.</p>
-<p>For <code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code>, these columns contain
-pre-reassignment values for <strong>every row</strong>, because every
-row is modified.</p>
-<p>This parameter is recommended in production pipelines as an audit
-trail. It adds two columns but enables downstream verification that
-reassignments are occurring as expected and facilitates comparison of
-results computed under residential versus treating geography.</p>
+(<code>.out_of_state = TRUE</code>); for in-state visits they are
+<code>NA</code>. For <code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code> in
+overwrite mode, they contain pre-reassignment values for <strong>every
+row</strong>, because every row is reassigned.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

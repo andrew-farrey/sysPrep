@@ -1,22 +1,27 @@
 # Assign facility geography to all visits for incidence-at-location analysis
 
-Overwrites `Region` and/or `ZipCode` with the treating hospital's
-corresponding geographic fields (`HospitalRegion` and/or `HospitalZip`)
-for **all** visits, regardless of patient residence. This scopes
-geography to true incidence-at-location (to the extent NSSP ESSENCE
-supports it) – by attributing every visit to where care was received
-rather than where the patient resides.
+Writes the treating hospital's corresponding geographic fields
+(`HospitalRegion` and/or `HospitalZip`) to
+`new_region_col`/`new_zip_col` for **all** visits, regardless of patient
+residence. By default this writes new columns
+(`region_facility`/`zip_code_facility`), leaving `Region`/`ZipCode`
+untouched; set `overwrite = TRUE` to overwrite them in place instead.
+This scopes geography to true incidence-at-location (to the extent NSSP
+ESSENCE supports it) – by attributing every visit to where care was
+received rather than where the patient resides.
 
 ## Usage
 
 ``` r
 assign_facility_geography(
   data,
-  geography = c("region", "zip"),
   region_col = Region,
   hospital_region_col = HospitalRegion,
   zip_col = ZipCode,
   hospital_zip_col = HospitalZip,
+  new_region_col = "region_facility",
+  new_zip_col = "zip_code_facility",
+  overwrite = FALSE,
   preserve_original_geographies = FALSE,
   clean_names = TRUE,
   verbose = TRUE
@@ -32,12 +37,6 @@ assign_facility_geography(
   and
   [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md).
 
-- geography:
-
-  Character vector. Which geography types to reassign. One or both of
-  `"region"` and `"zip"`. Defaults to `c("region", "zip")`. Types with
-  missing required columns are skipped with an informative message.
-
 - region_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
@@ -48,24 +47,46 @@ assign_facility_geography(
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the hospital region field. Defaults to
-  `HospitalRegion`.
+  `HospitalRegion`. Required when `new_region_col` is not `NULL`.
 
 - zip_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the patient zip code field. Defaults to
-  `ZipCode`.
+  `ZipCode`. Required when `new_zip_col` is not `NULL`.
 
 - hospital_zip_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the hospital zip code field. Defaults to
-  `HospitalZip`.
+  `HospitalZip`. Required when `new_zip_col` is not `NULL`.
+
+- new_region_col:
+
+  Character string or `NULL`. Name of the column to write facility
+  region values to. Defaults to `"region_facility"` – a new column,
+  leaving `region_col` untouched. Pass `NULL` to skip region entirely.
+  Pass `region_col`'s own name (with `overwrite = TRUE`) to overwrite it
+  in place instead. See Details.
+
+- new_zip_col:
+
+  Character string or `NULL`. Name of the column to write facility zip
+  code values to. Defaults to `"zip_code_facility"`. Same behavior as
+  `new_region_col`, independently, for zip.
+
+- overwrite:
+
+  Logical. If `FALSE` (default), `new_region_col`/ `new_zip_col` naming
+  a column that already exists in `data` aborts rather than silently
+  overwriting it. Set `TRUE` to allow it – this is required to reproduce
+  the original in-place-overwrite behavior. See Details.
 
 - preserve_original_geographies:
 
   Logical. If `TRUE`, adds `original_region` and/or `original_zip_code`
-  columns before overwriting. Defaults to `FALSE`.
+  columns before overwriting. Only has an effect when
+  `overwrite = TRUE`. Defaults to `FALSE`.
 
 - clean_names:
 
@@ -81,11 +102,13 @@ assign_facility_geography(
 
 ## Value
 
-The input data frame with `Region` and/or `ZipCode` overwritten with
-hospital geography for all rows. A `.facility_geography` logical column
-set to `TRUE` for all rows signals that facility geography has been
-applied. When `preserve_original_geographies = TRUE`, `original_region`
-and/or `original_zip_code` columns are also present.
+The input data frame with facility region and/or zip code values written
+to `new_region_col`/`new_zip_col` (or to `region_col`/ `zip_col` in
+place, when `overwrite = TRUE`) for all rows. A `.facility_geography`
+logical column set to `TRUE` for all rows signals that facility
+geography has been applied. When `overwrite = TRUE` and
+`preserve_original_geographies = TRUE`, `original_region` and/or
+`original_zip_code` columns are also present.
 
 ## Details
 
@@ -178,13 +201,32 @@ which
 is closer to preserving – see that function's documentation for the same
 caveat on `Region` field interpretation.
 
+### Geography types and output columns
+
+Both region and zip are attempted by default (`new_region_col` and
+`new_zip_col` both default to a column name). Pass `NULL` to either to
+skip that type entirely. If the source columns required for a requested
+type are absent, that type is skipped with an informative message.
+
+By default, results are written to new columns (`region_facility`/
+`zip_code_facility`), and `region_col`/`zip_col` are never modified. To
+overwrite `region_col`/`zip_col` in place instead (the only behavior
+this function had before this parameter existed), pass their own name to
+`new_region_col`/`new_zip_col` and set `overwrite = TRUE`. `overwrite`
+guards **any** collision with an existing column, not just the source
+column – see
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)'s
+documentation for the full behavior, which is identical here.
+
 ### Preserved geographies
 
-When `preserve_original_geographies = TRUE`, `original_region` and/or
-`original_zip_code` columns are added before overwriting. Since all rows
-are reassigned, these columns retain the original patient residential
-geography for all visits – enabling residential vs. treating geography
-comparisons in a single dataset.
+`preserve_original_geographies` only has an effect in `overwrite = TRUE`
+mode – see
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
+When it does apply here, since all rows are reassigned,
+`original_region`/`original_zip_code` retain the original patient
+residential geography for every visit, enabling residential vs. treating
+geography comparisons in a single dataset.
 
 ## See also
 
@@ -194,68 +236,21 @@ for selective reassignment of out-of-state visits only.
 ## Examples
 
 ``` r
-# Default: overwrite both region and zip for all visits
-essence_clean |> assign_facility_geography()
-#> Facility geography applied to all 160 visits (region and zip).
-#> # A tibble: 160 × 22
-#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
-#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
-#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V121981…
-#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
-#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
-#>  5 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V154413…
-#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V164608…
-#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V176732…
-#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
-#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
-#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
-#> # ℹ 150 more rows
-#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
-#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
-#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   .out_of_state <lgl>, original_region <chr>, original_zip_code <chr>,
-#> #   .facility_geography <lgl>
-
-# Preserve residential geography for comparison
-essence_clean |>
-  assign_facility_geography(preserve_original_geographies = TRUE) |>
-  dplyr::mutate(
-    patient_differs_from_facility = region != original_region
-  )
-#> Facility geography applied to all 160 visits (region and zip).
-#> # A tibble: 160 × 23
-#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
-#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
-#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V121981…
-#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
-#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
-#>  5 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V154413…
-#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V164608…
-#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V176732…
-#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
-#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
-#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
-#> # ℹ 150 more rows
-#> # ℹ 17 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
-#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
-#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   .out_of_state <lgl>, original_region <chr>, original_zip_code <chr>,
-#> #   .facility_geography <lgl>, patient_differs_from_facility <lgl>
-
-# Facility geography for cluster detection
-essence_raw |>
+# Build a deduplicated, filtered base to demonstrate on -- essence_clean
+# itself already has region_hybrid/region_facility applied, so it isn't a
+# fresh starting point for these examples
+ed_clean <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time) |>
-  filter_care_setting() |>
-  assign_facility_geography(preserve_original_geographies = TRUE)
+  filter_care_setting()
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Medical Specialty
 #>   - Urgent Care
 #>   - Primary Care
-#> Facility geography applied to all 129 visits (region and zip).
+
+# Default: new region_facility/zip_code_facility columns for all visits;
+# region/zip_code themselves are never touched
+ed_clean |> assign_facility_geography()
+#> Facility geography applied to all 129 visits in `region_facility`/`zip_code_facility`.
 #> # A tibble: 129 × 21
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
@@ -274,5 +269,66 @@ essence_raw |>
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   original_region <chr>, original_zip_code <chr>, .facility_geography <lgl>
+#> #   region_facility <chr>, zip_code_facility <chr>, .facility_geography <lgl>
+
+# Overwrite region/zip_code in place (the original behavior) -- requires
+# naming the source columns explicitly and opting in with overwrite
+ed_clean |>
+  assign_facility_geography(
+    new_region_col = "region",
+    new_zip_col     = "zip_code",
+    overwrite       = TRUE,
+    preserve_original_geographies = TRUE
+  ) |>
+  dplyr::mutate(
+    patient_differs_from_facility = region != original_region
+  )
+#> Facility geography applied to all 129 visits in `region`/`zip_code`.
+#> # A tibble: 129 × 22
+#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
+#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
+#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
+#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V121981…
+#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
+#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
+#>  5 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V154413…
+#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V164608…
+#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V176732…
+#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
+#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
+#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
+#> # ℹ 119 more rows
+#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   original_region <chr>, original_zip_code <chr>, .facility_geography <lgl>,
+#> #   patient_differs_from_facility <lgl>
+
+# Facility geography for cluster detection, alongside the hybrid approach
+ed_clean |>
+  assign_treating_geography() |>
+  assign_facility_geography()
+#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> Facility geography applied to all 129 visits in `region_facility`/`zip_code_facility`.
+#> # A tibble: 129 × 24
+#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
+#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
+#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
+#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V121981…
+#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
+#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
+#>  5 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V154413…
+#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V164608…
+#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V176732…
+#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
+#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
+#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
+#> # ℹ 119 more rows
+#> # ℹ 18 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   .out_of_state <lgl>, region_hybrid <chr>, zip_code_hybrid <chr>,
+#> #   region_facility <chr>, zip_code_facility <chr>, .facility_geography <lgl>
 ```

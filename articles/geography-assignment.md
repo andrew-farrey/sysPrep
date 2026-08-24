@@ -176,10 +176,57 @@ fundamentally in **which rows are modified**:
 
 |  | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
 |----|----|----|
-| **Rows modified** | Out-of-state + `OTHER_REGION` + `NA` only | **All rows** |
-| **In-state patient geography** | Preserved unchanged | Overwritten |
+| **Default output column** | `region_hybrid` (new column; `Region` untouched) | `region_facility` (new column; `Region` untouched) |
+| **Rows reassigned** | Out-of-state + `OTHER_REGION` + `NA` only | **All rows** |
+| **In-state patient geography** | Reflected as-is in `region_hybrid` | Overwritten with facility geography |
 | **Research question** | Where did this care take place? (for non-residents only) | Where did all care take place? |
-| **Resulting `Region` meaning** | Mixed: residential for in-state, treating for out-of-state | Treating facility county for everyone |
+| **Resulting column meaning** | Mixed: residential for in-state, treating for out-of-state | Treating facility county for everyone |
+
+Both default to writing a new column rather than overwriting `Region` in
+place – `Region` itself is never touched unless you explicitly opt into
+that with `overwrite = TRUE` (covered at the end of this vignette). This
+means calling both functions back to back gives you all three
+geographies side by side with zero extra arguments:
+
+``` r
+
+geo_all <- essence_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last") |>
+  filter_care_setting(
+    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+  ) |>
+  assign_treating_geography() |>
+  assign_facility_geography()
+#> The following `FacilityType` values are not in `keep_types` and will be excluded:
+#>   - Medical Specialty
+#>   - Primary Care
+#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> Facility geography applied to all 160 visits in `region_facility`/`zip_code_facility`.
+
+geo_all |>
+  dplyr::select(hospital_name, region, region_hybrid, region_facility) |>
+  head(10)
+#> # A tibble: 10 × 4
+#>    hospital_name          region       region_hybrid region_facility
+#>    <chr>                  <chr>        <chr>         <chr>          
+#>  1 Central Medical Center TN_Davidson  KY_Jefferson  KY_Jefferson   
+#>  2 Central Medical Center KY_Kenton    KY_Kenton     KY_Jefferson   
+#>  3 Central Medical Center KY_Campbell  KY_Campbell   KY_Jefferson   
+#>  4 Central Medical Center OH_Hamilton  KY_Jefferson  KY_Jefferson   
+#>  5 Central Medical Center OH_Franklin  KY_Jefferson  KY_Jefferson   
+#>  6 Central Medical Center KY_McCracken KY_McCracken  KY_Jefferson   
+#>  7 Central Medical Center KY_Daviess   KY_Daviess    KY_Jefferson   
+#>  8 Central Medical Center KY_Daviess   KY_Daviess    KY_Jefferson   
+#>  9 Central Medical Center NA           KY_Jefferson  KY_Jefferson   
+#> 10 Central Medical Center KY_Campbell  KY_Campbell   KY_Jefferson
+```
+
+`region` is the untouched original for every row; `region_hybrid`
+matches it for in-state visits and substitutes treating geography for
+the rest; `region_facility` substitutes treating geography for **every**
+row, including the in-state majority. One pass over the data, three
+usable geographies – no `preserve_original_geographies`, no manual
+copying.
 
 This distinction matters for how the resulting data should be
 interpreted and which analyses it supports.
@@ -188,13 +235,14 @@ interpreted and which analyses it supports.
 
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
 is a **targeted intervention** on problem rows. It identifies visits
-where the patient geography is unavailable or out-of-area and replaces
-their `Region` with the treating facility’s county. In-state patient
-geography is left exactly as received from ESSENCE.
+where the patient geography is unavailable or out-of-area and writes the
+treating facility’s county, for those visits only, to `region_hybrid`.
+`region` is left exactly as received from ESSENCE for every row –
+in-state and out-of-state alike.
 
-The resulting dataset is a **hybrid**: `Region` contains residential
-geography for patients who provided an in-state address, and treating
-facility geography for patients who could not or did not. This hybrid is
+`region_hybrid` is a **hybrid** column: it holds residential geography
+for patients who provided an in-state address, and treating facility
+geography for patients who could not or did not. This hybrid is
 appropriate for area-based incidence analyses where you want to count as
 many visits as possible within your surveillance area, and where the
 distinction between resident and non-resident burden is not the primary
@@ -212,14 +260,12 @@ ed_clean <- essence_raw |>
 #>   - Medical Specialty
 #>   - Primary Care
 
-# Selective reassignment: only out-of-state and OTHER_REGION rows change
+# Selective reassignment: only out-of-state and OTHER_REGION rows get a
+# reassigned value in region_hybrid; region itself is never touched
 treating_geo <- ed_clean |>
-  assign_treating_geography(
-    site                        = "KY",
-    preserve_original_geographies = TRUE
-  )
+  assign_treating_geography(site = "KY")
 #> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and
-#> assigned treating facility geography.
+#> assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
 ```
 
 ``` r
@@ -235,8 +281,53 @@ dplyr::count(treating_geo, .out_of_state)
 
 ``` r
 
-# Compare region before and after for reassigned rows
+# Compare original region against the hybrid result for reassigned rows --
+# no preserve_original_geographies needed, since region was never modified
 treating_geo |>
+  dplyr::filter(.out_of_state) |>
+  dplyr::select(hospital_name, region, region_hybrid) |>
+  head(10)
+#> # A tibble: 10 × 3
+#>    hospital_name               region       region_hybrid
+#>    <chr>                       <chr>        <chr>        
+#>  1 Central Medical Center      TN_Davidson  KY_Jefferson 
+#>  2 Central Medical Center      OH_Hamilton  KY_Jefferson 
+#>  3 Central Medical Center      OH_Franklin  KY_Jefferson 
+#>  4 Central Medical Center      NA           KY_Jefferson 
+#>  5 Central Medical Center      OTHER_REGION KY_Jefferson 
+#>  6 Central Medical Center      TN_Shelby    KY_Jefferson 
+#>  7 Central Medical Center      OH_Hamilton  KY_Jefferson 
+#>  8 Downtown Emergency Services NA           KY_Fayette   
+#>  9 Hillside FSED               NA           KY_Jefferson 
+#> 10 Hillside FSED               OTHER_REGION KY_Jefferson
+```
+
+The `.out_of_state` column (logical) marks every row where
+`region_hybrid` differs from `region`. Rows where
+`.out_of_state = FALSE` have `region_hybrid == region` – the patient’s
+residential county, unchanged.
+
+If you’d rather overwrite `region`/`zip_code` in place instead of
+getting a `region_hybrid`/`zip_code_hybrid` column – reproducing the
+only behavior this function had before `new_region_col`/`new_zip_col`
+existed – pass their own names explicitly and opt in with
+`overwrite = TRUE`:
+
+``` r
+
+# Opt-in in-place overwrite, with an audit trail of what was replaced
+treating_overwrite <- ed_clean |>
+  assign_treating_geography(
+    site                           = "KY",
+    new_region_col                 = "region",
+    new_zip_col                    = "zip_code",
+    overwrite                      = TRUE,
+    preserve_original_geographies  = TRUE
+  )
+#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and
+#> assigned treating facility geography in `region`/`zip_code`.
+
+treating_overwrite |>
   dplyr::filter(.out_of_state) |>
   dplyr::select(hospital_name, original_region, region) |>
   head(10)
@@ -255,14 +346,13 @@ treating_geo |>
 #> 10 Hillside FSED               OTHER_REGION    KY_Jefferson
 ```
 
-The `.out_of_state` column (logical) marks every row where geography was
-modified. Rows where `.out_of_state = FALSE` are unchanged – `region`
-still reflects the patient’s residential county as ESSENCE recorded it.
-
-When `preserve_original_geographies = TRUE`, `original_region` and
-`original_zip_code` are added before overwriting, retaining
-pre-reassignment values for audit trails or downstream QA. For in-state
-visits, `original_region` is `NA` because no change was made.
+`preserve_original_geographies` only has an effect in this
+`overwrite = TRUE` mode – when it applies,
+`original_region`/`original_zip_code` are added before overwriting,
+retaining pre-reassignment values as an audit trail. For in-state
+visits, `original_region` is `NA` because no change was made. In the
+default (new-column) mode above, this parameter is unnecessary and has
+no effect, since `region` was never modified in the first place.
 
 **When to use
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md):**
@@ -278,71 +368,71 @@ visits, `original_region` is `NA` because no change was made.
 ## `assign_facility_geography()`: Universal Full Reassignment
 
 [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
-takes a fundamentally different approach: **every row** has its `Region`
-replaced with `HospitalRegion`, regardless of whether the patient was
-in-state, out-of-state, or unknown. The resulting `Region` column no
-longer reflects where patients live – it reflects where they received
-care.
+takes a fundamentally different approach: **every row** gets a
+facility-geography value in `region_facility`, regardless of whether the
+patient was in-state, out-of-state, or unknown. `region` itself is
+untouched, exactly as with
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
+`region_facility` never reflects where patients live – it always
+reflects where they received care.
 
 ``` r
 
-# Universal reassignment: ALL rows get facility geography
-facility_geo <- ed_clean |>
-  assign_facility_geography(
-    preserve_original_geographies = TRUE
-  )
-#> Facility geography applied to all 160 visits (region and zip).
+# Universal reassignment: ALL rows get a facility geography value
+facility_geo <- ed_clean |> assign_facility_geography()
+#> Facility geography applied to all 160 visits in
+#> `region_facility`/`zip_code_facility`.
 ```
 
 ``` r
 
-# After full reassignment, region = hospital_region for all rows
+# region_facility vs. the untouched original, for every row
 facility_geo |>
-  dplyr::select(hospital_name, hospital_region, region, original_region) |>
+  dplyr::select(hospital_name, hospital_region, region, region_facility) |>
   head(10)
 #> # A tibble: 10 × 4
-#>    hospital_name          hospital_region region       original_region
+#>    hospital_name          hospital_region region       region_facility
 #>    <chr>                  <chr>           <chr>        <chr>          
-#>  1 Central Medical Center KY_Jefferson    KY_Jefferson TN_Davidson    
-#>  2 Central Medical Center KY_Jefferson    KY_Jefferson KY_Kenton      
-#>  3 Central Medical Center KY_Jefferson    KY_Jefferson KY_Campbell    
-#>  4 Central Medical Center KY_Jefferson    KY_Jefferson OH_Hamilton    
-#>  5 Central Medical Center KY_Jefferson    KY_Jefferson OH_Franklin    
-#>  6 Central Medical Center KY_Jefferson    KY_Jefferson KY_McCracken   
-#>  7 Central Medical Center KY_Jefferson    KY_Jefferson KY_Daviess     
-#>  8 Central Medical Center KY_Jefferson    KY_Jefferson KY_Daviess     
-#>  9 Central Medical Center KY_Jefferson    KY_Jefferson NA             
-#> 10 Central Medical Center KY_Jefferson    KY_Jefferson KY_Campbell
+#>  1 Central Medical Center KY_Jefferson    TN_Davidson  KY_Jefferson   
+#>  2 Central Medical Center KY_Jefferson    KY_Kenton    KY_Jefferson   
+#>  3 Central Medical Center KY_Jefferson    KY_Campbell  KY_Jefferson   
+#>  4 Central Medical Center KY_Jefferson    OH_Hamilton  KY_Jefferson   
+#>  5 Central Medical Center KY_Jefferson    OH_Franklin  KY_Jefferson   
+#>  6 Central Medical Center KY_Jefferson    KY_McCracken KY_Jefferson   
+#>  7 Central Medical Center KY_Jefferson    KY_Daviess   KY_Jefferson   
+#>  8 Central Medical Center KY_Jefferson    KY_Daviess   KY_Jefferson   
+#>  9 Central Medical Center KY_Jefferson    NA           KY_Jefferson   
+#> 10 Central Medical Center KY_Jefferson    KY_Campbell  KY_Jefferson
 ```
 
 ``` r
 
-# Confirm: region == hospital_region for every row
-all(facility_geo$region == facility_geo$hospital_region)
+# Confirm: region_facility == hospital_region for every row
+all(facility_geo$region_facility == facility_geo$hospital_region)
 #> [1] TRUE
 ```
 
-Note that `original_region` now contains a value for every row –
-including in-state patients – because all rows were modified. This is
-the key difference from
+Unlike
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md),
-where `original_region` is `NA` for rows that were not changed.
+where only out-of-state/unknown rows differ between `region` and
+`region_hybrid`, here **every** row differs between `region` and
+`region_facility` – that’s the “universal” part.
 
 > **Is this only renaming `HospitalRegion` to `Region`?** Mechanically,
-> yes –
+> close –
 > [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
-> replaces `Region` with `HospitalRegion` and/or `ZipCode` with
-> `HospitalZip` for all rows, depending on which columns are present in
-> the pull. Not all analysts include both; zip-based geography carries
-> its own methodological considerations around spatial resolution and
-> boundary alignment that may not be appropriate for every analysis.
-> When only `HospitalRegion` is present, only region is reassigned. Some
-> practitioners have applied this rename informally as an ad hoc
-> pipeline step. `sysPrep` formalizes that practice – documents the
-> intent, handles whichever geography types are available, and makes
-> retaining the originals via `preserve_original_geographies = TRUE` the
-> recommended default so the pre-reassignment values are always
-> available for audit or comparison.
+> writes `HospitalRegion` and/or `HospitalZip` to
+> `region_facility`/`zip_code_facility` for all rows, depending on which
+> columns are present in the pull. Not all analysts include both;
+> zip-based geography carries its own methodological considerations
+> around spatial resolution and boundary alignment that may not be
+> appropriate for every analysis. When only `HospitalRegion` is present,
+> only region is reassigned. Some practitioners have applied this rename
+> informally as an ad hoc pipeline step. `sysPrep` formalizes that
+> practice – documents the intent, handles whichever geography types are
+> available, and writes to a new column by default so the original
+> values are always available for audit or comparison without any extra
+> argument.
 > [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
 > – the hybrid selective approach – has no simple column-rename
 > equivalent, which is what motivated formalizing both methods in the
@@ -394,30 +484,33 @@ whether the surveillance question is “which facility?” or “which area?”.
 - Cross-state facility comparisons where residential geography is an
   inappropriate common denominator.
 
-## The Core Distinction: What Does `Region` Mean After Reassignment?
+## The Core Distinction: What Do the Output Columns Mean?
 
-The choice between the two functions is a choice about what the `Region`
-column should represent in your analytic dataset:
+The choice between the two functions is a choice about what geography
+your analysis should be scoped to:
 
-**After
-[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md):**
-`Region` = residential geography for in-state patients + treating
-facility geography for out-of-state and unknown-residence patients.
+**`region_hybrid`** (from
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)):
+residential geography for in-state patients + treating facility
+geography for out-of-state and unknown-residence patients.
 
 This is a **hybrid** with mixed semantics. It is most useful when you
 want to maximize the number of visits attributed to your surveillance
 area while preserving the residential geography of the majority.
 
-**After
-[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md):**
-`Region` = treating facility geography for all patients.
+**`region_facility`** (from
+[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)):
+treating facility geography for all patients.
 
-This is semantically **uniform** – `Region` means the same thing for
-every row. It is most useful when the analytical unit is where care was
-delivered, not where patients live.
+This is semantically **uniform** – `region_facility` means the same
+thing for every row. It is most useful when the analytical unit is where
+care was delivered, not where patients live.
 
-Neither function is universally correct. The choice should be documented
-in your analysis methods and driven by the research question.
+`region` itself, meanwhile, is never touched by either function unless
+you explicitly opt into `overwrite = TRUE` – so it’s always available as
+the untouched original, regardless of which (or both) of these you
+compute. Neither function is universally correct. The choice should be
+documented in your analysis methods and driven by the research question.
 
 ## Decision Guide
 
@@ -430,23 +523,52 @@ in your analysis methods and driven by the research question.
 | Sensitivity analysis: effect of OOS exclusion | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | Use `.out_of_state` flag to toggle OOS visits in/out |
 | Trend analysis, mixed state border facility | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | Avoids flattening in-state residential variation |
 
-## `preserve_original_geographies = TRUE`
+## Output Columns: New by Default, Overwrite as an Opt-In
 
-Both functions accept `preserve_original_geographies = TRUE`, which adds
-`original_region` and `original_zip_code` columns before overwriting.
+Every example above wrote to a new column
+(`region_hybrid`/`region_facility`) and left `region`/`zip_code` alone.
+That’s the default for a reason: it’s non-destructive, so calling either
+function is always safe to try, safe to re-run, and safe to chain –
+there’s no risk of losing the original values just by calling the
+function.
+
+`new_region_col`/`new_zip_col` control the target column and default to
+`"region_hybrid"`/`"zip_code_hybrid"`
+([`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md))
+or `"region_facility"`/`"zip_code_facility"`
+([`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)).
+Pass `NULL` to either to skip that geography type entirely – e.g.
+`new_zip_col = NULL` to reassign region only.
+
+If the target you name already exists as a column – whether that’s
+`region_col`/`zip_col` itself, or any other existing column – the
+function aborts rather than silently overwriting it, unless you set
+`overwrite = TRUE`. This is what makes reproducing the original
+in-place-overwrite behavior an explicit, visible choice rather than the
+default:
+
+``` r
+
+essence_clean |>
+  assign_treating_geography(
+    new_region_col = "region",
+    new_zip_col    = "zip_code",
+    overwrite      = TRUE
+  )
+```
+
+`preserve_original_geographies = TRUE` only has an effect in this
+`overwrite = TRUE` mode – it adds `original_region`/`original_zip_code`
+columns holding the pre-overwrite values before they’re replaced. In the
+default new-column mode, it has no effect and is unnecessary, since
+`region` was never modified in the first place – it already *is* the
+original.
 
 For
-[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md),
-these columns contain pre-reassignment values only for rows where
-geography changed (`.out_of_state = TRUE`). For in-state visits, they
-are `NA`.
-
-For
-[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md),
-these columns contain pre-reassignment values for **every row**, because
-every row is modified.
-
-This parameter is recommended in production pipelines as an audit trail.
-It adds two columns but enables downstream verification that
-reassignments are occurring as expected and facilitates comparison of
-results computed under residential versus treating geography.
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+in overwrite mode, `original_region`/ `original_zip_code` contain
+pre-reassignment values only for rows where geography changed
+(`.out_of_state = TRUE`); for in-state visits they are `NA`. For
+[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
+in overwrite mode, they contain pre-reassignment values for **every
+row**, because every row is reassigned.

@@ -528,7 +528,7 @@ needed before aggregating counts to geographic units:</p>
 <code class="sourceCode R"><span><span class="co"># Prepare for spatial analysis: already one row per encounter</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">region</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">region_hybrid</span><span class="op">)</span></span></code></pre></div>
 <p>If you instead requested <code>return_format = "long"</code> for
 diagnostic purposes, filter to <code>.index_encounter == TRUE</code>
 first – otherwise multi-class episodes would be counted twice, once per

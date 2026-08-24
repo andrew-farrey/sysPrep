@@ -433,7 +433,7 @@ before aggregating counts to geographic units:
 # Prepare for spatial analysis: already one row per encounter
 episodes |>
   assign_treating_geography() |>
-  dplyr::count(region)
+  dplyr::count(region_hybrid)
 ```
 
 If you instead requested `return_format = "long"` for diagnostic

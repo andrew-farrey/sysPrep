@@ -48,9 +48,9 @@
 <li>
 <code><a href="../reference/review_facility_ed_visits.html">review_facility_ed_visits()</a></code>: Flag facility visit count outliers for QA. Supports <code>verbose</code> to suppress informational messages.</li>
 <li>
-<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>: Assign treating facility geography to out-of-state visits. Supports <code>verbose</code> to suppress informational messages.</li>
+<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>: Assign treating facility geography to out-of-state visits. By default writes to new <code>new_region_col</code>/ <code>new_zip_col</code> columns (<code>"region_hybrid"</code>/<code>"zip_code_hybrid"</code>), leaving <code>region_col</code>/<code>zip_col</code> untouched; set <code>overwrite = TRUE</code> to overwrite them in place instead. Supports <code>verbose</code> to suppress informational messages.</li>
 <li>
-<code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code>: Assign facility geography to all visits. Supports <code>verbose</code> to suppress informational messages.</li>
+<code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code>: Assign facility geography to all visits. Same <code>new_region_col</code>/<code>new_zip_col</code>/<code>overwrite</code> behavior as <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>, defaulting to <code>"region_facility"</code>/ <code>"zip_code_facility"</code>. Supports <code>verbose</code> to suppress informational messages.</li>
 </ul></div>
   </main></div>
 
