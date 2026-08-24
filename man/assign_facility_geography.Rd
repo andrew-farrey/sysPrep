@@ -6,11 +6,13 @@
 \usage{
 assign_facility_geography(
   data,
-  geography = c("region", "zip"),
   region_col = Region,
   hospital_region_col = HospitalRegion,
   zip_col = ZipCode,
   hospital_zip_col = HospitalZip,
+  new_region_col = "region_facility",
+  new_zip_col = "zip_code_facility",
+  overwrite = FALSE,
   preserve_original_geographies = FALSE,
   clean_names = TRUE,
   verbose = TRUE
@@ -20,28 +22,41 @@ assign_facility_geography(
 \item{data}{A data frame of ESSENCE visit-level records, typically the
 output of \code{\link[=dedupe]{dedupe()}} and \code{\link[=filter_care_setting]{filter_care_setting()}}.}
 
-\item{geography}{Character vector. Which geography types to reassign.
-One or both of \code{"region"} and \code{"zip"}. Defaults to
-\code{c("region", "zip")}. Types with missing required columns are skipped
-with an informative message.}
-
 \item{region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name for the patient region field. Defaults to \code{Region}.}
 
 \item{hospital_region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
 Unquoted column name for the hospital region field. Defaults to
-\code{HospitalRegion}.}
+\code{HospitalRegion}. Required when \code{new_region_col} is not \code{NULL}.}
 
 \item{zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name for the patient zip code field. Defaults to \code{ZipCode}.}
+column name for the patient zip code field. Defaults to \code{ZipCode}.
+Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{hospital_zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
 Unquoted column name for the hospital zip code field. Defaults to
-\code{HospitalZip}.}
+\code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
+
+\item{new_region_col}{Character string or \code{NULL}. Name of the column to
+write facility region values to. Defaults to \code{"region_facility"} -- a
+new column, leaving \code{region_col} untouched. Pass \code{NULL} to skip region
+entirely. Pass \code{region_col}'s own name (with \code{overwrite = TRUE}) to
+overwrite it in place instead. See Details.}
+
+\item{new_zip_col}{Character string or \code{NULL}. Name of the column to
+write facility zip code values to. Defaults to \code{"zip_code_facility"}.
+Same behavior as \code{new_region_col}, independently, for zip.}
+
+\item{overwrite}{Logical. If \code{FALSE} (default), \code{new_region_col}/
+\code{new_zip_col} naming a column that already exists in \code{data} aborts
+rather than silently overwriting it. Set \code{TRUE} to allow it -- this is
+required to reproduce the original in-place-overwrite behavior. See
+Details.}
 
 \item{preserve_original_geographies}{Logical. If \code{TRUE}, adds
 \code{original_region} and/or \code{original_zip_code} columns before
-overwriting. Defaults to \code{FALSE}.}
+overwriting. Only has an effect when \code{overwrite = TRUE}. Defaults to
+\code{FALSE}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} on output.}
@@ -50,19 +65,23 @@ overwriting. Defaults to \code{FALSE}.}
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}
 }
 \value{
-The input data frame with \code{Region} and/or \code{ZipCode} overwritten
-with hospital geography for all rows. A \code{.facility_geography} logical
-column set to \code{TRUE} for all rows signals that facility geography has
-been applied. When \code{preserve_original_geographies = TRUE},
-\code{original_region} and/or \code{original_zip_code} columns are also present.
+The input data frame with facility region and/or zip code values
+written to \code{new_region_col}/\code{new_zip_col} (or to \code{region_col}/
+\code{zip_col} in place, when \code{overwrite = TRUE}) for all rows. A
+\code{.facility_geography} logical column set to \code{TRUE} for all rows signals
+that facility geography has been applied. When \code{overwrite = TRUE} and
+\code{preserve_original_geographies = TRUE}, \code{original_region} and/or
+\code{original_zip_code} columns are also present.
 }
 \description{
-Overwrites \code{Region} and/or \code{ZipCode} with the treating hospital's
-corresponding geographic fields (\code{HospitalRegion} and/or \code{HospitalZip})
-for \strong{all} visits, regardless of patient residence. This scopes geography
-to true incidence-at-location (to the extent NSSP ESSENCE supports it) --
-by attributing every visit to where care was received rather than where the
-patient resides.
+Writes the treating hospital's corresponding geographic fields
+(\code{HospitalRegion} and/or \code{HospitalZip}) to \code{new_region_col}/\code{new_zip_col}
+for \strong{all} visits, regardless of patient residence. By default this
+writes new columns (\code{region_facility}/\code{zip_code_facility}), leaving
+\code{Region}/\code{ZipCode} untouched; set \code{overwrite = TRUE} to overwrite them in
+place instead. This scopes geography to true incidence-at-location (to
+the extent NSSP ESSENCE supports it) -- by attributing every visit to
+where care was received rather than where the patient resides.
 }
 \details{
 \subsection{Why this function exists}{
@@ -150,31 +169,61 @@ function's documentation for the same caveat on \code{Region} field
 interpretation.
 }
 
+\subsection{Geography types and output columns}{
+
+Both region and zip are attempted by default (\code{new_region_col} and
+\code{new_zip_col} both default to a column name). Pass \code{NULL} to either to
+skip that type entirely. If the source columns required for a requested
+type are absent, that type is skipped with an informative message.
+
+By default, results are written to new columns (\code{region_facility}/
+\code{zip_code_facility}), and \code{region_col}/\code{zip_col} are never modified. To
+overwrite \code{region_col}/\code{zip_col} in place instead (the only behavior this
+function had before this parameter existed), pass their own name to
+\code{new_region_col}/\code{new_zip_col} and set \code{overwrite = TRUE}. \code{overwrite}
+guards \strong{any} collision with an existing column, not just the source
+column -- see \code{\link[=assign_treating_geography]{assign_treating_geography()}}'s documentation for the full
+behavior, which is identical here.
+}
+
 \subsection{Preserved geographies}{
 
-When \code{preserve_original_geographies = TRUE}, \code{original_region} and/or
-\code{original_zip_code} columns are added before overwriting. Since all rows
-are reassigned, these columns retain the original patient residential
-geography for all visits -- enabling residential vs. treating geography
-comparisons in a single dataset.
+\code{preserve_original_geographies} only has an effect in \code{overwrite = TRUE}
+mode -- see \code{\link[=assign_treating_geography]{assign_treating_geography()}}. When it does apply here, since
+all rows are reassigned, \code{original_region}/\code{original_zip_code} retain the
+original patient residential geography for every visit, enabling
+residential vs. treating geography comparisons in a single dataset.
 }
 }
 \examples{
-# Default: overwrite both region and zip for all visits
-essence_clean |> assign_facility_geography()
+# Build a deduplicated, filtered base to demonstrate on -- essence_clean
+# itself already has region_hybrid/region_facility applied, so it isn't a
+# fresh starting point for these examples
+ed_clean <- essence_raw |>
+  dedupe(order_by = Arrived_Date_Time) |>
+  filter_care_setting()
 
-# Preserve residential geography for comparison
-essence_clean |>
-  assign_facility_geography(preserve_original_geographies = TRUE) |>
+# Default: new region_facility/zip_code_facility columns for all visits;
+# region/zip_code themselves are never touched
+ed_clean |> assign_facility_geography()
+
+# Overwrite region/zip_code in place (the original behavior) -- requires
+# naming the source columns explicitly and opting in with overwrite
+ed_clean |>
+  assign_facility_geography(
+    new_region_col = "region",
+    new_zip_col     = "zip_code",
+    overwrite       = TRUE,
+    preserve_original_geographies = TRUE
+  ) |>
   dplyr::mutate(
     patient_differs_from_facility = region != original_region
   )
 
-# Facility geography for cluster detection
-essence_raw |>
-  dedupe(order_by = Arrived_Date_Time) |>
-  filter_care_setting() |>
-  assign_facility_geography(preserve_original_geographies = TRUE)
+# Facility geography for cluster detection, alongside the hybrid approach
+ed_clean |>
+  assign_treating_geography() |>
+  assign_facility_geography()
 
 }
 \seealso{

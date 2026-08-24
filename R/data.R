@@ -108,11 +108,14 @@
 #'
 #' The result of running `essence_raw` through the full `sysPrep` preprocessing
 #' pipeline: deduplication, care setting filtering with FSED correction, and
-#' treating geography assignment for out-of-state visits. Intended to
+#' both geography attribution functions chained on their default (additive)
+#' behavior -- `region`/`zip_code` are the untouched originals throughout;
+#' [assign_treating_geography()] and [assign_facility_geography()] each add
+#' their own new columns alongside them rather than overwriting. Intended to
 #' demonstrate the expected output of the package workflow and to serve as
 #' a reference for function output structure.
 #'
-#' @format A data frame with approximately 160 rows and 21 columns. All
+#' @format A data frame with approximately 160 rows and 24 columns. All
 #'   column names are in snake_case (post [janitor::clean_names()]).
 #' \describe{
 #'   \item{hospital_name}{Character. Synthetic facility name.}
@@ -143,18 +146,28 @@
 #'     `?essence_raw`); `"E"` otherwise. Unchanged by the preprocessing
 #'     pipeline.}
 #'   \item{region}{Character. Patient ESSENCE Region of residence in
-#'     `{SITE}_{REGION}` format. Out-of-state and `OTHER_REGION` visits have
-#'     been reassigned to the treating facility's Region by
-#'     [assign_treating_geography()].}
-#'   \item{zip_code}{Character. Patient zip code (reassigned for
-#'     out-of-state visits).}
+#'     `{SITE}_{REGION}` format, exactly as received -- never modified by
+#'     either geography function.}
+#'   \item{zip_code}{Character. Patient zip code, exactly as received.}
 #'   \item{sex}{Character. `"M"`, `"F"`, or `"U"`.}
 #'   \item{c_patient_age}{Integer. Patient age in years.}
-#'   \item{original_region}{Character. Pre-reassignment `Region` value,
-#'     preserved when `preserve_original_geographies = TRUE`.}
-#'   \item{original_zip_code}{Character. Pre-reassignment `ZipCode` value.}
-#'   \item{.out_of_state}{Logical. `TRUE` for visits where `Region` and/or
-#'     `ZipCode` were reassigned to treating facility geography.}
+#'   \item{.out_of_state}{Logical. `TRUE` for visits where `region` is
+#'     out-of-state, `"OTHER_REGION"`, or unknown residence -- these are the
+#'     visits where `region_hybrid` differs from `region`. Added by
+#'     [assign_treating_geography()].}
+#'   \item{region_hybrid}{Character. `region` for in-state visits;
+#'     `hospital_region` for out-of-state/`OTHER_REGION`/unknown-residence
+#'     visits. Added by [assign_treating_geography()].}
+#'   \item{zip_code_hybrid}{Character. `zip_code` analog of
+#'     `region_hybrid`.}
+#'   \item{region_facility}{Character. `hospital_region` for every visit,
+#'     regardless of patient residence. Added by
+#'     [assign_facility_geography()].}
+#'   \item{zip_code_facility}{Character. `zip_code` analog of
+#'     `region_facility`.}
+#'   \item{.facility_geography}{Logical. Always `TRUE` -- signals that
+#'     facility geography has been computed for every row. Added by
+#'     [assign_facility_geography()].}
 #' }
 #'
 #' @source Derived from [essence_raw] via

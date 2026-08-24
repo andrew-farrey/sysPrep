@@ -5,7 +5,7 @@
 \alias{essence_clean}
 \title{Synthetic cleaned ESSENCE-like ED visit data}
 \format{
-A data frame with approximately 160 rows and 21 columns. All
+A data frame with approximately 160 rows and 24 columns. All
 column names are in snake_case (post \code{\link[janitor:clean_names]{janitor::clean_names()}}).
 \describe{
 \item{hospital_name}{Character. Synthetic facility name.}
@@ -36,18 +36,28 @@ direct-admit continuation row over the original ED row (see
 \code{?essence_raw}); \code{"E"} otherwise. Unchanged by the preprocessing
 pipeline.}
 \item{region}{Character. Patient ESSENCE Region of residence in
-\verb{\{SITE\}_\{REGION\}} format. Out-of-state and \code{OTHER_REGION} visits have
-been reassigned to the treating facility's Region by
-\code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
-\item{zip_code}{Character. Patient zip code (reassigned for
-out-of-state visits).}
+\verb{\{SITE\}_\{REGION\}} format, exactly as received -- never modified by
+either geography function.}
+\item{zip_code}{Character. Patient zip code, exactly as received.}
 \item{sex}{Character. \code{"M"}, \code{"F"}, or \code{"U"}.}
 \item{c_patient_age}{Integer. Patient age in years.}
-\item{original_region}{Character. Pre-reassignment \code{Region} value,
-preserved when \code{preserve_original_geographies = TRUE}.}
-\item{original_zip_code}{Character. Pre-reassignment \code{ZipCode} value.}
-\item{.out_of_state}{Logical. \code{TRUE} for visits where \code{Region} and/or
-\code{ZipCode} were reassigned to treating facility geography.}
+\item{.out_of_state}{Logical. \code{TRUE} for visits where \code{region} is
+out-of-state, \code{"OTHER_REGION"}, or unknown residence -- these are the
+visits where \code{region_hybrid} differs from \code{region}. Added by
+\code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
+\item{region_hybrid}{Character. \code{region} for in-state visits;
+\code{hospital_region} for out-of-state/\code{OTHER_REGION}/unknown-residence
+visits. Added by \code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
+\item{zip_code_hybrid}{Character. \code{zip_code} analog of
+\code{region_hybrid}.}
+\item{region_facility}{Character. \code{hospital_region} for every visit,
+regardless of patient residence. Added by
+\code{\link[=assign_facility_geography]{assign_facility_geography()}}.}
+\item{zip_code_facility}{Character. \code{zip_code} analog of
+\code{region_facility}.}
+\item{.facility_geography}{Logical. Always \code{TRUE} -- signals that
+facility geography has been computed for every row. Added by
+\code{\link[=assign_facility_geography]{assign_facility_geography()}}.}
 }
 }
 \source{
@@ -60,7 +70,10 @@ essence_clean
 \description{
 The result of running \code{essence_raw} through the full \code{sysPrep} preprocessing
 pipeline: deduplication, care setting filtering with FSED correction, and
-treating geography assignment for out-of-state visits. Intended to
+both geography attribution functions chained on their default (additive)
+behavior -- \code{region}/\code{zip_code} are the untouched originals throughout;
+\code{\link[=assign_treating_geography]{assign_treating_geography()}} and \code{\link[=assign_facility_geography]{assign_facility_geography()}} each add
+their own new columns alongside them rather than overwriting. Intended to
 demonstrate the expected output of the package workflow and to serve as
 a reference for function output structure.
 }

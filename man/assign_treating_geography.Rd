@@ -7,11 +7,13 @@
 assign_treating_geography(
   data,
   site = "KY",
-  geography = c("region", "zip"),
   region_col = Region,
   hospital_region_col = HospitalRegion,
   zip_col = ZipCode,
   hospital_zip_col = HospitalZip,
+  new_region_col = "region_hybrid",
+  new_zip_col = "zip_code_hybrid",
+  overwrite = FALSE,
   preserve_original_geographies = FALSE,
   clean_names = TRUE,
   verbose = TRUE
@@ -25,29 +27,42 @@ output of \code{\link[=dedupe]{dedupe()}} and \code{\link[=filter_care_setting]{
 visits. Defaults to \code{"KY"}. Visits whose \code{Region} does not begin with
 \code{paste0(site, "_")} are treated as out-of-state.}
 
-\item{geography}{Character vector. Which geography types to reassign.
-One or both of \code{"region"} and \code{"zip"}. Defaults to
-\code{c("region", "zip")}. Types with missing required columns are skipped
-with an informative message.}
-
 \item{region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name for the patient region field. Defaults to \code{Region}.}
 
 \item{hospital_region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
 Unquoted column name for the hospital region field. Defaults to
-\code{HospitalRegion}. Required when \code{"region"} is in \code{geography}.}
+\code{HospitalRegion}. Required when \code{new_region_col} is not \code{NULL}.}
 
 \item{zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name for the patient zip code field. Defaults to \code{ZipCode}.
-Required when \code{"zip"} is in \code{geography}.}
+Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{hospital_zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
 Unquoted column name for the hospital zip code field. Defaults to
-\code{HospitalZip}. Required when \code{"zip"} is in \code{geography}.}
+\code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
+
+\item{new_region_col}{Character string or \code{NULL}. Name of the column to
+write reassigned region values to. Defaults to \code{"region_hybrid"} -- a
+new column, leaving \code{region_col} untouched. Pass \code{NULL} to skip region
+reassignment entirely. Pass \code{region_col}'s own name (with
+\code{overwrite = TRUE}) to overwrite it in place instead of writing a new
+column. See Details.}
+
+\item{new_zip_col}{Character string or \code{NULL}. Name of the column to
+write reassigned zip code values to. Defaults to \code{"zip_code_hybrid"}.
+Same behavior as \code{new_region_col}, independently, for zip.}
+
+\item{overwrite}{Logical. If \code{FALSE} (default), \code{new_region_col}/
+\code{new_zip_col} naming a column that already exists in \code{data} aborts
+rather than silently overwriting it. Set \code{TRUE} to allow it -- this is
+required to reproduce the original in-place-overwrite behavior. See
+Details.}
 
 \item{preserve_original_geographies}{Logical. If \code{TRUE}, adds
 \code{original_region} and/or \code{original_zip_code} columns containing
-pre-overwrite values before reassignment. Defaults to \code{FALSE}.}
+pre-overwrite values before reassignment. Only has an effect when
+\code{overwrite = TRUE}. Defaults to \code{FALSE}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} on output.}
@@ -56,19 +71,23 @@ pre-overwrite values before reassignment. Defaults to \code{FALSE}.}
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}
 }
 \value{
-The input data frame with \code{Region} and/or \code{ZipCode} reassigned for
-out-of-state and \code{OTHER_REGION} visits. A \code{.out_of_state} logical column
-is added indicating which rows were reassigned. When
-\code{preserve_original_geographies = TRUE}, \code{original_region} and/or
-\code{original_zip_code} columns are also present.
+The input data frame with reassigned region and/or zip code
+values written to \code{new_region_col}/\code{new_zip_col} (or to \code{region_col}/
+\code{zip_col} in place, when \code{overwrite = TRUE}). A \code{.out_of_state} logical
+column is added indicating which rows were reassigned. When
+\code{overwrite = TRUE} and \code{preserve_original_geographies = TRUE},
+\code{original_region} and/or \code{original_zip_code} columns are also present.
 }
 \description{
 Identifies visits where the patient's recorded \code{Region} does not belong to
 the site of interest -- including out-of-state residents and visits with
-\code{OTHER_REGION} or missing \code{Region} values -- and replaces their \code{Region}
-and/or \code{ZipCode} with the treating hospital's corresponding geographic
-fields (\code{HospitalRegion} and/or \code{HospitalZip}). In-state patient visits
-are left unchanged.
+\code{OTHER_REGION} or missing \code{Region} values -- and writes the treating
+hospital's corresponding geographic fields (\code{HospitalRegion} and/or
+\code{HospitalZip}) for those visits to \code{new_region_col}/\code{new_zip_col}. By
+default this writes new columns (\code{region_hybrid}/\code{zip_code_hybrid}),
+leaving \code{Region}/\code{ZipCode} untouched; set \code{overwrite = TRUE} to overwrite
+them in place instead. In-state patient visits keep their original
+geography either way.
 }
 \details{
 \subsection{Why this function exists}{
@@ -110,13 +129,26 @@ on the prefix mismatch below. For example, with \code{site = "KY"}:
 }
 }
 
-\subsection{Geography types}{
+\subsection{Geography types and output columns}{
 
-Both \code{"region"} and \code{"zip"} are attempted by default. If the columns
-required for a geography type are absent, that type is skipped with an
-informative message. Specify \code{geography = "region"} or \code{geography = "zip"}
-explicitly to suppress messages about the other type when columns are
-intentionally absent.
+Both region and zip are attempted by default (\code{new_region_col} and
+\code{new_zip_col} both default to a column name). Pass \code{NULL} to either to
+skip that type entirely -- e.g. \code{new_zip_col = NULL} to reassign only
+region. If the source columns required for a requested type are absent,
+that type is skipped with an informative message regardless of
+\code{new_region_col}/\code{new_zip_col}.
+
+By default, results are written to new columns (\code{region_hybrid}/
+\code{zip_code_hybrid}), and \code{region_col}/\code{zip_col} are never modified -- safe
+to call repeatedly without risk of losing the original values. To
+overwrite \code{region_col}/\code{zip_col} in place instead (the only behavior this
+function had before this parameter existed), pass their own name to
+\code{new_region_col}/\code{new_zip_col} and set \code{overwrite = TRUE}:
+\code{assign_treating_geography(new_region_col = "region", overwrite = TRUE)}.
+\code{overwrite} guards \strong{any} collision with an existing column, not just
+the source column -- if \code{new_region_col}/\code{new_zip_col} names a column
+that already exists in \code{data} for any reason, \code{overwrite = TRUE} is
+required or the function aborts rather than silently overwriting it.
 }
 
 \subsection{Hybrid geography assignment and cluster detection}{
@@ -182,32 +214,49 @@ visitor rows under one semantic.
 
 \subsection{Preserved geographies}{
 
-When \code{preserve_original_geographies = TRUE}, \code{original_region} and/or
-\code{original_zip_code} columns are added before overwriting, retaining
-pre-assignment values for QA, audit trails, or residential vs. treating
-geography comparisons.
+\code{preserve_original_geographies} only has an effect in \code{overwrite = TRUE}
+mode. When \code{new_region_col}/\code{new_zip_col} write to new columns (the
+default), \code{region_col}/\code{zip_col} are never touched, so there is nothing
+to preserve -- the original values already remain exactly where they
+were. When \code{overwrite = TRUE} and \code{preserve_original_geographies = TRUE},
+\code{original_region} and/or \code{original_zip_code} columns are added before
+overwriting, retaining the pre-overwrite values for QA, audit trails, or
+residential vs. treating geography comparisons.
 }
 }
 \examples{
-# Default: reassign both region and zip for out-of-state visits
-essence_clean |> assign_treating_geography()
+# Build a deduplicated, filtered base to demonstrate on -- essence_clean
+# itself already has region_hybrid/region_facility applied, so it isn't a
+# fresh starting point for these examples
+ed_clean <- essence_raw |>
+  dedupe(order_by = Arrived_Date_Time) |>
+  filter_care_setting()
+
+# Default: new region_hybrid/zip_code_hybrid columns for out-of-state
+# visits; region/zip_code themselves are never touched
+ed_clean |> assign_treating_geography()
 
 # Region only -- ZipCode not in pull
-essence_clean |> assign_treating_geography(geography = "region")
+ed_clean |> assign_treating_geography(new_zip_col = NULL)
 
 # Non-Kentucky site
-essence_clean |> assign_treating_geography(site = "OH")
+ed_clean |> assign_treating_geography(site = "OH")
 
-# Preserve original values for QA
-essence_clean |>
-  assign_treating_geography(preserve_original_geographies = TRUE) |>
+# Overwrite region/zip_code in place (the original behavior) -- requires
+# naming the source columns explicitly and opting in with overwrite
+ed_clean |>
+  assign_treating_geography(
+    new_region_col = "region",
+    new_zip_col     = "zip_code",
+    overwrite       = TRUE,
+    preserve_original_geographies = TRUE
+  ) |>
   dplyr::filter(region != original_region)
 
-# Full pipeline
-essence_raw |>
-  dedupe(order_by = Arrived_Date_Time) |>
-  filter_care_setting() |>
-  assign_treating_geography(preserve_original_geographies = TRUE)
+# Hybrid + facility geography side by side
+ed_clean |>
+  assign_treating_geography() |>
+  assign_facility_geography()
 
 }
 \seealso{

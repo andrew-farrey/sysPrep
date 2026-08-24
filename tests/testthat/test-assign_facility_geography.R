@@ -8,11 +8,12 @@ test_that("assign_facility_geography() sets .facility_geography = TRUE for all r
   expect_equal(nrow(result), 10L)
 })
 
-test_that("assign_facility_geography() overwrites region with hospital_region for all rows", {
-  data        <- make_essence_data(n = 10L)
-  result      <- suppressMessages(assign_facility_geography(data))
-  data_clean  <- janitor::clean_names(data)
-  expect_equal(result$region, data_clean$hospital_region)
+test_that("assign_facility_geography() writes region_facility by default, leaving region untouched", {
+  data       <- make_essence_data(n = 10L)
+  result     <- suppressMessages(assign_facility_geography(data))
+  data_clean <- janitor::clean_names(data)
+  expect_equal(result$region_facility, data_clean$hospital_region)
+  expect_equal(result$region, data_clean$region)
 })
 
 test_that("assign_facility_geography() reassigns rows regardless of original Region value", {
@@ -23,21 +24,80 @@ test_that("assign_facility_geography() reassigns rows regardless of original Reg
   expect_true(has_other)  # fixture should include at least one OTHER_REGION
 
   result <- suppressMessages(assign_facility_geography(data))
-  # After reassignment, no OTHER_REGION should remain in region
-  expect_false(any(result$region == "OTHER_REGION"))
-  # All region values should match hospital_region
-  expect_equal(result$region, result$hospital_region)
+  # region_facility should never retain OTHER_REGION, and should always
+  # match hospital_region -- region itself is untouched (still has it)
+  expect_false(any(result$region_facility == "OTHER_REGION"))
+  expect_equal(result$region_facility, result$hospital_region)
+  expect_true(any(result$region == "OTHER_REGION"))
 })
 
-test_that("assign_facility_geography() adds original_region when preserve = TRUE", {
+test_that("assign_facility_geography() preserve_original_geographies has no effect in default (new-column) mode", {
   data   <- make_essence_data(n = 10L)
   result <- suppressMessages(
     assign_facility_geography(data, preserve_original_geographies = TRUE)
   )
+  expect_false("original_region" %in% names(result))
+})
+
+test_that("assign_facility_geography() adds original_region in overwrite mode", {
+  data   <- make_essence_data(n = 10L)
+  result <- suppressMessages(
+    assign_facility_geography(
+      data,
+      new_region_col                = "region",
+      new_zip_col                   = NULL,
+      overwrite                     = TRUE,
+      preserve_original_geographies = TRUE
+    )
+  )
   expect_true("original_region" %in% names(result))
-  # original_region should contain the pre-reassignment values
   data_clean <- janitor::clean_names(data)
   expect_equal(result$original_region, data_clean$region)
+})
+
+test_that("assign_facility_geography() overwrite = TRUE allows overwriting region in place", {
+  data   <- make_essence_data(n = 10L)
+  result <- suppressMessages(
+    assign_facility_geography(
+      data,
+      new_region_col = "region",
+      new_zip_col    = NULL,
+      overwrite      = TRUE
+    )
+  )
+  data_clean <- janitor::clean_names(data)
+  expect_equal(result$region, data_clean$hospital_region)
+})
+
+test_that("assign_facility_geography() aborts when new_region_col collides with an existing column and overwrite = FALSE", {
+  data <- make_essence_data(n = 5L)
+  expect_error(
+    assign_facility_geography(data, new_region_col = "region", new_zip_col = NULL),
+    "overwrite"
+  )
+})
+
+test_that("assign_facility_geography() aborts when new_region_col collides with the .facility_geography marker column", {
+  data <- make_essence_data(n = 5L)
+  expect_error(
+    assign_facility_geography(
+      data, new_region_col = ".facility_geography", new_zip_col = NULL
+    ),
+    "\\.facility_geography"
+  )
+})
+
+test_that("assign_facility_geography() new_zip_col = NULL skips zip entirely", {
+  data   <- make_essence_data(n = 5L)
+  result <- suppressMessages(assign_facility_geography(data, new_zip_col = NULL))
+  expect_false("zip_code_facility" %in% names(result))
+})
+
+test_that("assign_facility_geography() new_region_col = NULL skips region entirely", {
+  data   <- make_essence_data(n = 5L)
+  result <- suppressMessages(assign_facility_geography(data, new_region_col = NULL))
+  expect_false("region_facility" %in% names(result))
+  expect_true("zip_code_facility" %in% names(result))
 })
 
 test_that("assign_facility_geography() skips zip gracefully when HospitalZip absent", {
@@ -48,10 +108,9 @@ test_that("assign_facility_geography() skips zip gracefully when HospitalZip abs
     "HospitalZip"
   )
   result <- suppressMessages(assign_facility_geography(data))
-  # Region should still be reassigned
   expect_true(".facility_geography" %in% names(result))
   data_clean <- janitor::clean_names(data)
-  expect_equal(result$region, data_clean$hospital_region)
+  expect_equal(result$region_facility, data_clean$hospital_region)
 })
 
 test_that("assign_facility_geography() clean_names = FALSE returns data frame with expected columns", {

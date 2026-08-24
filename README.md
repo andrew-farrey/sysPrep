@@ -87,7 +87,8 @@ clean <- essence_raw |>
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   ) |>
   # Step 3: Assign treating facility geography to out-of-state visits
-  assign_treating_geography(preserve_original_geographies = TRUE)
+  # (writes region_hybrid/zip_code_hybrid; Region/ZipCode stay untouched)
+  assign_treating_geography()
 
 # Check for facility-level anomalies
 clean |> review_facility_ed_visits(method = "both", date_col = Date)
@@ -107,6 +108,29 @@ episodes <- link_encounters(ed_clean, inpatient_clean)
 # Distribution of care pathways
 episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
+```
+
+For comparing residential vs. treating geography side by side -- both
+geography functions write to new columns by default, so chaining them adds
+`region_hybrid` and `region_facility` without disturbing `region` itself
+(built fresh here rather than reusing `clean` above, since `clean` already
+ran `assign_treating_geography()` once as step 3 of its own pipeline):
+
+```r
+geo_all <- essence_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last") |>
+  filter_care_setting(
+    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+  ) |>
+  assign_treating_geography() |>
+  assign_facility_geography()
+
+geo_all |>
+  dplyr::select(hospital_name, region, region_hybrid, region_facility)
+# region: untouched original
+# region_hybrid: residential geography, with treating geography substituted
+#   only for out-of-state/unknown-residence visits
+# region_facility: treating geography for every visit
 ```
 
 ## Documentation

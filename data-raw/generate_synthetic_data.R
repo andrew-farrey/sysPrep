@@ -238,14 +238,19 @@ essence_raw <- dplyr::bind_rows(
   )
 
 # ── Build essence_clean by running the pipeline ───────────────────────────────
+# Chains both geography functions on their new (additive) defaults: region/
+# zip_code stay exactly as received, region_hybrid/zip_code_hybrid and
+# region_facility/zip_code_facility are added alongside them. This mirrors
+# the recommended pipeline shown in getting-started.Rmd, README.md, and
+# vignette("geography-assignment") -- essence_clean should demonstrate the
+# same call readers are told to run themselves ----
 essence_clean <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   ) |>
-  assign_treating_geography(
-    preserve_original_geographies = TRUE
-  )
+  assign_treating_geography() |>
+  assign_facility_geography()
 
 # ── Save as package data ──────────────────────────────────────────────────────
 # version = 2 is required -- usethis::use_data() defaults to version = 3 which

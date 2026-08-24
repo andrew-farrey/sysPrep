@@ -21,6 +21,12 @@
 * `review_facility_ed_visits()`: Flag facility visit count outliers for QA.
   Supports `verbose` to suppress informational messages.
 * `assign_treating_geography()`: Assign treating facility geography to
-  out-of-state visits. Supports `verbose` to suppress informational messages.
+  out-of-state visits. By default writes to new `new_region_col`/
+  `new_zip_col` columns (`"region_hybrid"`/`"zip_code_hybrid"`), leaving
+  `region_col`/`zip_col` untouched; set `overwrite = TRUE` to overwrite them
+  in place instead. Supports `verbose` to suppress informational messages.
 * `assign_facility_geography()`: Assign facility geography to all visits.
-  Supports `verbose` to suppress informational messages.
+  Same `new_region_col`/`new_zip_col`/`overwrite` behavior as
+  `assign_treating_geography()`, defaulting to `"region_facility"`/
+  `"zip_code_facility"`. Supports `verbose` to suppress informational
+  messages.

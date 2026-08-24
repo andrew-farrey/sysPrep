@@ -150,32 +150,93 @@ cli_duplicate_ids_footer <- function(x) {
   )
 }
 
+# resolve_geography_output_col() ----
+# Shared by assign_treating_geography() and assign_facility_geography():
+# resolves a `new_region_col`/`new_zip_col` argument (a plain character
+# string naming the output column, or NULL to skip that geography type
+# entirely) to its clean_names()-normalized form. Aborts if the resolved
+# name collides with `reserved_col` -- the bookkeeping column
+# (`.out_of_state`/`.facility_geography`) the calling function itself adds,
+# which would silently break the return-value contract callers rely on.
+# `reserved_col` is passed dot-prefixed (matching how it's referenced
+# everywhere else), but janitor::make_clean_names() -- unlike
+# clean_names_safe() -- has no dot-preservation logic and always strips a
+# leading dot, so the comparison strips it from `reserved_col` too rather
+# than comparing directly.
+# Aborts if the resolved name already exists as a column in `data` unless
+# `overwrite = TRUE` -- this is what makes writing to a new column
+# non-destructive by default and requires an explicit, visible opt-in
+# (`overwrite = TRUE`) before any existing column (the source column
+# itself, or any other) can be silently clobbered.
+resolve_geography_output_col <- function(new_col, data, overwrite,
+                                         reserved_col, arg_name) {
+  if (is.null(new_col)) return(NULL)
+
+  output_col_str <- janitor::make_clean_names(new_col)
+
+  if (identical(output_col_str, sub("^\\.", "", reserved_col))) {
+    rlang::abort(
+      paste0(
+        "`", arg_name, " = \"", new_col, "\"` collides with `",
+        reserved_col, "`, the bookkeeping column this function adds. ",
+        "Choose a different column name."
+      )
+    )
+  }
+
+  if (output_col_str %in% names(data) && !overwrite) {
+    rlang::abort(
+      paste0(
+        "Column `", output_col_str, "` already exists in `data`. Set ",
+        "`overwrite = TRUE` to overwrite it, or choose a different `",
+        arg_name, "` value."
+      )
+    )
+  }
+
+  output_col_str
+}
+
 # assign_geography_reassignment() ----
 # Shared by assign_treating_geography() and assign_facility_geography():
 # applies the "preserve original values, then reassign from hospital
 # columns" logic common to both. `mask` is a logical vector (same length as
 # nrow(data)) marking which rows get reassigned -- assign_treating_geography()
 # passes `.out_of_state` (selective); assign_facility_geography() passes an
-# all-TRUE vector (universal). `original_region`/`original_zip_code` are only
+# all-TRUE vector (universal).
+#
+# `region_output_col_str`/`zip_output_col_str` are the resolved target
+# column names from resolve_geography_output_col() above -- by default a
+# new column distinct from `region_col_str`/`zip_col_str` (source left
+# untouched), or the source column itself when `overwrite = TRUE` was used
+# to opt into in-place overwrite. `region_target_exists`/`zip_target_exists`
+# indicate whether that target already held a value before this call (which
+# resolve_geography_output_col() only allows when `overwrite = TRUE`) --
+# `preserve_original_geographies`'s `original_region`/`original_zip_code`
+# columns are only added when the target already existed, since writing to
+# a genuinely new column already leaves the original untouched and a copy
+# would be redundant. `original_region`/`original_zip_code` are only
 # populated (non-NA) for rows where `mask` is TRUE, so "unmodified row" is
 # always identifiable via `is.na(original_region)` regardless of caller.
 assign_geography_reassignment <- function(data, do_region, do_zip,
                                           region_col_str, hosp_region_col_str,
                                           zip_col_str, hosp_zip_col_str,
+                                          region_output_col_str, zip_output_col_str,
+                                          region_target_exists, zip_target_exists,
                                           preserve_original_geographies,
                                           mask) {
 
   if (preserve_original_geographies) {
-    if (do_region) {
+    if (region_target_exists) {
       data <- dplyr::mutate(
         data,
-        original_region = dplyr::if_else(mask, .data[[region_col_str]], NA)
+        original_region = dplyr::if_else(mask, .data[[region_output_col_str]], NA)
       )
     }
-    if (do_zip) {
+    if (zip_target_exists) {
       data <- dplyr::mutate(
         data,
-        original_zip_code = dplyr::if_else(mask, .data[[zip_col_str]], NA)
+        original_zip_code = dplyr::if_else(mask, .data[[zip_output_col_str]], NA)
       )
     }
   }
@@ -183,7 +244,7 @@ assign_geography_reassignment <- function(data, do_region, do_zip,
   if (do_region) {
     data <- dplyr::mutate(
       data,
-      "{region_col_str}" := dplyr::if_else(
+      "{region_output_col_str}" := dplyr::if_else(
         mask, .data[[hosp_region_col_str]], .data[[region_col_str]]
       )
     )
@@ -192,7 +253,7 @@ assign_geography_reassignment <- function(data, do_region, do_zip,
   if (do_zip) {
     data <- dplyr::mutate(
       data,
-      "{zip_col_str}" := dplyr::if_else(
+      "{zip_output_col_str}" := dplyr::if_else(
         mask, .data[[hosp_zip_col_str]], .data[[zip_col_str]]
       )
     )

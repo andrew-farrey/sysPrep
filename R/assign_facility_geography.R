@@ -2,12 +2,14 @@
 # assign_facility_geography() ----
 #' Assign facility geography to all visits for incidence-at-location analysis
 #'
-#' Overwrites `Region` and/or `ZipCode` with the treating hospital's
-#' corresponding geographic fields (`HospitalRegion` and/or `HospitalZip`)
-#' for **all** visits, regardless of patient residence. This scopes geography
-#' to true incidence-at-location (to the extent NSSP ESSENCE supports it) --
-#' by attributing every visit to where care was received rather than where the
-#' patient resides.
+#' Writes the treating hospital's corresponding geographic fields
+#' (`HospitalRegion` and/or `HospitalZip`) to `new_region_col`/`new_zip_col`
+#' for **all** visits, regardless of patient residence. By default this
+#' writes new columns (`region_facility`/`zip_code_facility`), leaving
+#' `Region`/`ZipCode` untouched; set `overwrite = TRUE` to overwrite them in
+#' place instead. This scopes geography to true incidence-at-location (to
+#' the extent NSSP ESSENCE supports it) -- by attributing every visit to
+#' where care was received rather than where the patient resides.
 #'
 #' @details
 #' ## Why this function exists
@@ -86,80 +88,120 @@
 #' function's documentation for the same caveat on `Region` field
 #' interpretation.
 #'
+#' ## Geography types and output columns
+#' Both region and zip are attempted by default (`new_region_col` and
+#' `new_zip_col` both default to a column name). Pass `NULL` to either to
+#' skip that type entirely. If the source columns required for a requested
+#' type are absent, that type is skipped with an informative message.
+#'
+#' By default, results are written to new columns (`region_facility`/
+#' `zip_code_facility`), and `region_col`/`zip_col` are never modified. To
+#' overwrite `region_col`/`zip_col` in place instead (the only behavior this
+#' function had before this parameter existed), pass their own name to
+#' `new_region_col`/`new_zip_col` and set `overwrite = TRUE`. `overwrite`
+#' guards **any** collision with an existing column, not just the source
+#' column -- see [assign_treating_geography()]'s documentation for the full
+#' behavior, which is identical here.
+#'
 #' ## Preserved geographies
-#' When `preserve_original_geographies = TRUE`, `original_region` and/or
-#' `original_zip_code` columns are added before overwriting. Since all rows
-#' are reassigned, these columns retain the original patient residential
-#' geography for all visits -- enabling residential vs. treating geography
-#' comparisons in a single dataset.
+#' `preserve_original_geographies` only has an effect in `overwrite = TRUE`
+#' mode -- see [assign_treating_geography()]. When it does apply here, since
+#' all rows are reassigned, `original_region`/`original_zip_code` retain the
+#' original patient residential geography for every visit, enabling
+#' residential vs. treating geography comparisons in a single dataset.
 #'
 #' @param data A data frame of ESSENCE visit-level records, typically the
 #'   output of [dedupe()] and [filter_care_setting()].
-#' @param geography Character vector. Which geography types to reassign.
-#'   One or both of `"region"` and `"zip"`. Defaults to
-#'   `c("region", "zip")`. Types with missing required columns are skipped
-#'   with an informative message.
 #' @param region_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name for the patient region field. Defaults to `Region`.
 #' @param hospital_region_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
 #'   Unquoted column name for the hospital region field. Defaults to
-#'   `HospitalRegion`.
+#'   `HospitalRegion`. Required when `new_region_col` is not `NULL`.
 #' @param zip_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name for the patient zip code field. Defaults to `ZipCode`.
+#'   Required when `new_zip_col` is not `NULL`.
 #' @param hospital_zip_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
 #'   Unquoted column name for the hospital zip code field. Defaults to
-#'   `HospitalZip`.
+#'   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
+#' @param new_region_col Character string or `NULL`. Name of the column to
+#'   write facility region values to. Defaults to `"region_facility"` -- a
+#'   new column, leaving `region_col` untouched. Pass `NULL` to skip region
+#'   entirely. Pass `region_col`'s own name (with `overwrite = TRUE`) to
+#'   overwrite it in place instead. See Details.
+#' @param new_zip_col Character string or `NULL`. Name of the column to
+#'   write facility zip code values to. Defaults to `"zip_code_facility"`.
+#'   Same behavior as `new_region_col`, independently, for zip.
+#' @param overwrite Logical. If `FALSE` (default), `new_region_col`/
+#'   `new_zip_col` naming a column that already exists in `data` aborts
+#'   rather than silently overwriting it. Set `TRUE` to allow it -- this is
+#'   required to reproduce the original in-place-overwrite behavior. See
+#'   Details.
 #' @param preserve_original_geographies Logical. If `TRUE`, adds
 #'   `original_region` and/or `original_zip_code` columns before
-#'   overwriting. Defaults to `FALSE`.
+#'   overwriting. Only has an effect when `overwrite = TRUE`. Defaults to
+#'   `FALSE`.
 #' @param clean_names Logical. If `TRUE` (default), applies
 #'   [janitor::clean_names()] on output.
 #' @param verbose Logical. If `FALSE`, suppresses informational messages
 #'   (`rlang::inform()`); warnings and errors are always shown regardless.
 #'
-#' @return The input data frame with `Region` and/or `ZipCode` overwritten
-#'   with hospital geography for all rows. A `.facility_geography` logical
-#'   column set to `TRUE` for all rows signals that facility geography has
-#'   been applied. When `preserve_original_geographies = TRUE`,
-#'   `original_region` and/or `original_zip_code` columns are also present.
+#' @return The input data frame with facility region and/or zip code values
+#'   written to `new_region_col`/`new_zip_col` (or to `region_col`/
+#'   `zip_col` in place, when `overwrite = TRUE`) for all rows. A
+#'   `.facility_geography` logical column set to `TRUE` for all rows signals
+#'   that facility geography has been applied. When `overwrite = TRUE` and
+#'   `preserve_original_geographies = TRUE`, `original_region` and/or
+#'   `original_zip_code` columns are also present.
 #'
 #' @examples
-#' # Default: overwrite both region and zip for all visits
-#' essence_clean |> assign_facility_geography()
+#' # Build a deduplicated, filtered base to demonstrate on -- essence_clean
+#' # itself already has region_hybrid/region_facility applied, so it isn't a
+#' # fresh starting point for these examples
+#' ed_clean <- essence_raw |>
+#'   dedupe(order_by = Arrived_Date_Time) |>
+#'   filter_care_setting()
 #'
-#' # Preserve residential geography for comparison
-#' essence_clean |>
-#'   assign_facility_geography(preserve_original_geographies = TRUE) |>
+#' # Default: new region_facility/zip_code_facility columns for all visits;
+#' # region/zip_code themselves are never touched
+#' ed_clean |> assign_facility_geography()
+#'
+#' # Overwrite region/zip_code in place (the original behavior) -- requires
+#' # naming the source columns explicitly and opting in with overwrite
+#' ed_clean |>
+#'   assign_facility_geography(
+#'     new_region_col = "region",
+#'     new_zip_col     = "zip_code",
+#'     overwrite       = TRUE,
+#'     preserve_original_geographies = TRUE
+#'   ) |>
 #'   dplyr::mutate(
 #'     patient_differs_from_facility = region != original_region
 #'   )
 #'
-#' # Facility geography for cluster detection
-#' essence_raw |>
-#'   dedupe(order_by = Arrived_Date_Time) |>
-#'   filter_care_setting() |>
-#'   assign_facility_geography(preserve_original_geographies = TRUE)
+#' # Facility geography for cluster detection, alongside the hybrid approach
+#' ed_clean |>
+#'   assign_treating_geography() |>
+#'   assign_facility_geography()
 #'
 #' @seealso [assign_treating_geography()] for selective reassignment of
 #'   out-of-state visits only.
 #' @export
 assign_facility_geography <- function(data,
-                                      geography                     = c("region", "zip"),
                                       region_col                    = Region,
                                       hospital_region_col           = HospitalRegion,
                                       zip_col                       = ZipCode,
                                       hospital_zip_col              = HospitalZip,
+                                      new_region_col                = "region_facility",
+                                      new_zip_col                   = "zip_code_facility",
+                                      overwrite                     = FALSE,
                                       preserve_original_geographies = FALSE,
                                       clean_names                   = TRUE,
                                       verbose                       = TRUE) {
 
-  geography <- match.arg(geography, choices = c("region", "zip"),
-                         several.ok = TRUE)
-
   # Normalize names ----
   data <- clean_names_safe(data)
 
-  # Resolve columns gracefully ----
+  # Resolve source columns gracefully ----
   region_sym      <- resolve_col_optional(data, rlang::ensym(region_col))
   hosp_region_sym <- resolve_col_optional(data, rlang::ensym(hospital_region_col))
   zip_sym         <- resolve_col_optional(data, rlang::ensym(zip_col))
@@ -170,8 +212,10 @@ assign_facility_geography <- function(data,
   zip_col_str         <- if (!is.null(zip_sym))         rlang::as_string(zip_sym)
   hosp_zip_col_str    <- if (!is.null(hosp_zip_sym))    rlang::as_string(hosp_zip_sym)
 
-  do_region <- "region" %in% geography
-  do_zip    <- "zip"    %in% geography
+  # Which geography types to process is driven directly by new_region_col/
+  # new_zip_col -- NULL skips that type entirely ----
+  do_region <- !is.null(new_region_col)
+  do_zip    <- !is.null(new_zip_col)
 
   geog_flags <- validate_geography_cols(
     verbose, do_region, do_zip,
@@ -186,22 +230,45 @@ assign_facility_geography <- function(data,
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
-  # Preserve original geographies and overwrite all rows with facility
-  # geography (mask = all rows, since this function is universal) ----
+  # Resolve output columns -- aborts on a reserved-name collision, or on an
+  # existing-column collision unless overwrite = TRUE. By default
+  # new_region_col/new_zip_col name new columns, leaving region_col/zip_col
+  # untouched; passing the source column's own name plus overwrite = TRUE
+  # reproduces the original in-place-overwrite behavior ----
+  region_output_col_str <- if (do_region) {
+    resolve_geography_output_col(
+      new_region_col, data, overwrite, ".facility_geography", "new_region_col"
+    )
+  } else {
+    NULL
+  }
+  zip_output_col_str <- if (do_zip) {
+    resolve_geography_output_col(
+      new_zip_col, data, overwrite, ".facility_geography", "new_zip_col"
+    )
+  } else {
+    NULL
+  }
+
+  region_target_exists <- do_region && region_output_col_str %in% names(data)
+  zip_target_exists    <- do_zip    && zip_output_col_str    %in% names(data)
+
+  # Preserve original geographies (only meaningful when the target already
+  # held a value, i.e. overwrite = TRUE was used) and reassign all rows with
+  # facility geography (mask = all rows, since this function is universal) ----
   data <- assign_geography_reassignment(
     data, do_region, do_zip,
     region_col_str, hosp_region_col_str,
     zip_col_str, hosp_zip_col_str,
+    region_output_col_str, zip_output_col_str,
+    region_target_exists, zip_target_exists,
     preserve_original_geographies,
     mask = rep(TRUE, nrow(data))
   )
 
   data <- dplyr::mutate(data, .facility_geography = TRUE)
 
-  geog_applied <- c(
-    if (do_region) "region" else NULL,
-    if (do_zip)    "zip"    else NULL
-  )
+  output_cols <- c(region_output_col_str, zip_output_col_str)
 
   if (nrow(data) == 0L) {
     inform_if(verbose, "No rows in data after processing. Returning empty data frame.")
@@ -209,8 +276,8 @@ assign_facility_geography <- function(data,
     inform_if(
       verbose,
       paste0(
-        "Facility geography applied to all ", nrow(data), " visits (",
-        paste(geog_applied, collapse = " and "), ")."
+        "Facility geography applied to all ", nrow(data), " visits in `",
+        paste(output_cols, collapse = "`/`"), "`."
       )
     )
   }
