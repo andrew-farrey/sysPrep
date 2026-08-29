@@ -144,9 +144,9 @@ dups
 #> 
 #> ── Overall ──
 #> 
-#> • Total rows in pull: 193
-#> • Unique visits (facility x ID): 180
-#> • Duplicated Visit IDs: 13 (7.2%)
+#> • Total rows in pull: 197
+#> • Unique visits (facility x ID): 184
+#> • Duplicated Visit IDs: 13 (7.1%)
 #> • Excess rows to remove: 13
 #> 
 #> ── By Facility (most duplicated first) ──
@@ -156,7 +156,7 @@ dups
 #>   <chr>                <int>                  <int>         <int>          <dbl>
 #> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       19                      2             2           10.5
+#> 3 North County Hos…       20                      2             2           10  
 #> 4 Lakeside Communi…       21                      1             1            4.8
 #> 5 River Valley Med…       15                      1             1            6.7
 #> ── Duplicated Visit IDs ──
@@ -174,7 +174,7 @@ dups$overall
 #> # A tibble: 1 × 5
 #>   n_total_rows n_unique_visits n_duplicated_visit_ids n_excess_rows
 #>          <int>           <int>                  <int>         <int>
-#> 1          193             180                     13            13
+#> 1          197             184                     13            13
 #> # ℹ 1 more variable: pct_duplicated <dbl>
 
 # Per-facility counts (facilities with duplicates only)
@@ -184,7 +184,7 @@ dups$by_facility
 #>   <chr>                <int>                  <int>         <int>          <dbl>
 #> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       19                      2             2           10.5
+#> 3 North County Hos…       20                      2             2           10  
 #> 4 Lakeside Communi…       21                      1             1            4.8
 #> 5 River Valley Med…       15                      1             1            6.7
 ```
@@ -244,7 +244,7 @@ classified
 #> 
 #> ── Visit Groups ──
 #> 
-#> 180 facility × Visit_ID groups total. Access full detail via $visit_groups.
+#> 184 facility × Visit_ID groups total. Access full detail via $visit_groups.
 ```
 
 ``` r
@@ -313,7 +313,7 @@ dplyr::count(typed, dup_type)
 #> # A tibble: 6 × 2
 #>   dup_type                         n
 #>   <chr>                        <int>
-#> 1 no_duplication                 167
+#> 1 no_duplication                 171
 #> 2 patient_class_change             4
 #> 3 pid_change                       4
 #> 4 type_unknown                    10
@@ -332,9 +332,9 @@ The function retains exactly one row per `facility × visit_col` group.
 deduped <- dedupe(essence_raw, order_by = Arrived_Date_Time, keep = "last")
 
 cat("Rows before: ", nrow(essence_raw), "\n")
-#> Rows before:  193
+#> Rows before:  197
 cat("Rows after:  ", nrow(deduped), "\n")
-#> Rows after:   180
+#> Rows after:   184
 cat("Rows removed:", nrow(essence_raw) - nrow(deduped), "\n")
 #> Rows removed: 13
 ```
@@ -346,7 +346,7 @@ summarize_duplicates(deduped)$overall
 #> # A tibble: 1 × 5
 #>   n_total_rows n_unique_visits n_duplicated_visit_ids n_excess_rows
 #>          <int>           <int>                  <int>         <int>
-#> 1          180             180                      0             0
+#> 1          184             184                      0             0
 #> # ℹ 1 more variable: pct_duplicated <dbl>
 ```
 

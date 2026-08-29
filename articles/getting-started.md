@@ -89,32 +89,33 @@ reproduces all four categories of ESSENCE data quality problems.
 ``` r
 
 dplyr::glimpse(essence_raw)
-#> Rows: 193
-#> Columns: 18
-#> $ HospitalName        <chr> "Lakeside Community Hospital", "Hillside FSED", "C…
-#> $ Hospital            <int> 1004, 1007, 1001, 1002, 1005, 1001, 1002, 1002, 10…
-#> $ FacilityType        <chr> "Emergency Care", "Urgent Care", "Emergency Care",…
-#> $ HospitalRegion      <chr> "KY_Boone", "KY_Jefferson", "KY_Jefferson", "KY_Ke…
-#> $ HospitalZip         <chr> "41042", "40202", "40201", "41011", "40507", "4020…
-#> $ Visit_ID            <chr> "V28668850", "V15836698", "V13846187", "V64229194"…
-#> $ C_BioSense_ID       <chr> "202302231004P45186313", "202309061007P46918911", …
-#> $ C_Unique_Patient_ID <chr> "P45186313", "P46918911", "P16845892", "P88783040"…
-#> $ Date                <date> 2023-02-23, 2023-09-06, 2023-07-15, 2023-08-29, 2…
-#> $ C_Visit_Date_Time   <dttm> 2023-02-23 15:52:02, 2023-09-06 07:43:01, 2023-07…
-#> $ Arrived_Date_Time   <dttm> 2023-02-23 17:15:12, 2023-09-06 08:45:11, 2023-07…
+#> Rows: 197
+#> Columns: 19
+#> $ HospitalName        <chr> "Lakeside Community Hospital", "Metro Health Syste…
+#> $ Hospital            <int> 1004, 1005, 1010, 1007, 1001, 1007, 1004, 1003, 10…
+#> $ FacilityType        <chr> "Emergency Care", "Emergency Care", "Medical Speci…
+#> $ HospitalRegion      <chr> "KY_Boone", "KY_Fayette", "KY_Fayette", "KY_Jeffer…
+#> $ HospitalZip         <chr> "41042", "40507", "40508", "40202", "40201", "4020…
+#> $ Visit_ID            <chr> "V19653107", "V65845208", "V77502144", "V78782496"…
+#> $ C_BioSense_ID       <chr> "202303291004P34604690", "202311011005P34188228", …
+#> $ C_Unique_Patient_ID <chr> "P34604690", "P34188228", "P31690339", "P82183105"…
+#> $ Date                <date> 2023-03-29, 2023-11-01, 2023-09-14, 2023-08-12, 2…
+#> $ C_Visit_Date_Time   <dttm> 2023-03-29 20:42:54, 2023-11-01 08:20:28, 2023-09…
+#> $ Arrived_Date_Time   <dttm> 2023-03-29 21:14:53, 2023-11-01 09:29:13, 2023-11…
 #> $ HasBeenE            <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
-#> $ HasBeenAdmitted     <int> 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,…
+#> $ HasBeenAdmitted     <int> 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0,…
 #> $ C_Patient_Class     <chr> "E", "E", "E", "E", "E", "E", "E", "E", "E", "E", …
-#> $ Region              <chr> "KY_Kenton", NA, "KY_Campbell", "KY_Warren", "KY_B…
-#> $ ZipCode             <chr> "41011", NA, "41011", "42101", "41042", "42301", "…
-#> $ Sex                 <chr> "M", "F", "F", "F", "F", "F", "M", "F", "M", "M", …
-#> $ C_Patient_Age       <int> 30, 57, 41, 37, 56, 64, 33, 37, 42, 18, 36, 59, 46…
+#> $ Region              <chr> "WV_Cabell", "KY_McCracken", "KY_McCracken", "KY_M…
+#> $ ZipCode             <chr> "25701", "42001", "40201", "40390", "42701", "4020…
+#> $ Sex                 <chr> "F", "F", "F", "M", "F", "M", "M", "F", "U", "F", …
+#> $ C_Patient_Age       <int> 35, 30, 22, 42, 29, 35, 39, 24, 79, 56, 26, 54, 83…
+#> $ PullSource          <chr> "ED", "ED", "ED", "ED", "ED", "ED", "ED", "ED", "E…
 ```
 
-The dataset contains approximately 190 rows and 17 columns. Key features
+The dataset contains approximately 197 rows and 19 columns. Key features
 embedded in `essence_raw`:
 
-- **11 duplicate rows** across four mechanisms: standard
+- **13 duplicate rows** across four mechanisms: standard
   retransmissions, midnight-crossing date changes, patient identifier
   corrections, and one compound case combining two mechanisms
   simultaneously.
@@ -124,6 +125,13 @@ embedded in `essence_raw`:
   misclassified as `"Urgent Care"` – they are valid ED providers but
   require facility type correction.
 - **Out-of-state and `OTHER_REGION` records** in the `Region` column.
+- **A `PullSource` column** marking which of two separately-run ESSENCE
+  queries (`HasBeenE = 1` vs. `HasBeenAdmitted = 1`) each row would have
+  come back in – used in
+  [`vignette("encounter-linkage")`](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.md)
+  to demonstrate
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  without a second real ESSENCE pull.
 
 For full column documentation, see
 [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md).
@@ -150,7 +158,7 @@ clean <- essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Medical Specialty
 #>   - Primary Care
-#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> 27 of 164 visits (16.5%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
 ```
 
 **Step 1 – Deduplication**
@@ -205,9 +213,9 @@ clean_quiet <- essence_raw |>
 ``` r
 
 cat("Raw rows:   ", nrow(essence_raw), "\n")
-#> Raw rows:    193
+#> Raw rows:    197
 cat("Clean rows: ", nrow(clean), "\n")
-#> Clean rows:  160
+#> Clean rows:  164
 cat("\nRows removed at each step:\n")
 #> 
 #> Rows removed at each step:
@@ -231,7 +239,7 @@ cat("\nNew columns added by assign_treating_geography():\n")
 #> 
 #> New columns added by assign_treating_geography():
 cat(" ", paste(setdiff(names(clean), names(essence_raw)), collapse = ", "), "\n")
-#>   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, .out_of_state, region_hybrid, zip_code_hybrid
+#>   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, pull_source, .out_of_state, region_hybrid, zip_code_hybrid
 ```
 
 ``` r
@@ -241,7 +249,7 @@ dplyr::count(clean, .out_of_state)
 #> # A tibble: 2 × 2
 #>   .out_of_state     n
 #>   <lgl>         <int>
-#> 1 FALSE           133
+#> 1 FALSE           137
 #> 2 TRUE             27
 ```
 
@@ -282,8 +290,8 @@ place instead if that’s what your pipeline needs.
 
 - [`vignette("encounter-linkage")`](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.md):
   The care pathway artifact problem, `HasBeen_` column structure,
-  single- and two-pull linkage, and burden estimation from multi-class
-  episode data.
+  linking a separately queried ED and admission pull, and burden
+  estimation from multi-class episode data.
 
 - [`vignette("geography-assignment")`](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.md):
   When to use

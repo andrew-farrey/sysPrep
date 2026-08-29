@@ -56,7 +56,7 @@ values are entirely synthetic. No real patient or facility data are included.</p
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A data frame with approximately 193 rows and 18 columns:</p><dl><dt>HospitalName</dt>
+    <p>A data frame with approximately 197 rows and 19 columns:</p><dl><dt>HospitalName</dt>
 <dd><p>Character. Synthetic facility name.</p></dd>
 
 <dt>Hospital</dt>
@@ -104,11 +104,12 @@ record. Use as <code>order_by</code> in <code><a href="dedupe.html">dedupe()</a>
 transmitted version of each record.</p></dd>
 
 <dt>HasBeenE</dt>
-<dd><p>Integer. <code>1</code> if the visit has been classified as an
-emergency visit. <code>0</code> on the two <code>patient_class_change</code> duplicate rows
-(see Details), which represent a direct-admit continuation of an ED
-visit; all other records have <code>HasBeenE = 1</code>, consistent with a
-<code>HasBeenE = 1</code> filtered ESSENCE pull.</p></dd>
+<dd><p>Integer. <code>1</code> for <code>PullSource = "ED"</code> rows, consistent
+with a <code>HasBeenE = 1</code> filtered ESSENCE pull. <code>0</code> on all
+<code>PullSource = "Admission"</code> rows (see Details): the two
+<code>patient_class_change</code> duplicate rows, which represent a
+mis-submitted direct-admit continuation of an ED visit, and four
+genuine direct admissions with no preceding ED visit at all.</p></dd>
 
 <dt>HasBeenAdmitted</dt>
 <dd><p>Integer. <code>1</code> if the visit resulted in
@@ -138,6 +139,15 @@ Details.</p></dd>
 
 <dt>C_Patient_Age</dt>
 <dd><p>Integer. Patient age in years.</p></dd>
+
+<dt>PullSource</dt>
+<dd><p>Character, <code>"ED"</code> or <code>"Admission"</code>. Not a real
+ESSENCE field – marks which of two separately-run ESSENCE queries
+(<code>HasBeenE = 1</code> vs. <code>HasBeenAdmitted = 1</code>) this row would have come
+back in, so <code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code> can split <code>essence_raw</code>
+back into the two pulls <code><a href="link_encounters.html">link_encounters()</a></code> is designed to
+recombine. Drop this column (or filter and discard it) before
+treating a subset of <code>essence_raw</code> as a real single ESSENCE pull.</p></dd>
 
 
 </dl></div>
@@ -173,15 +183,17 @@ midnight-crossing visit where <code>Admit_Date_Time</code> was updated.</p></dd>
 <dt><code>patient_class_change</code></dt>
 <dd><p>2 visits with a second row carrying
 <code>C_Patient_Class = "I"</code> (<code>HasBeenE</code>/<code>HasBeenAdmitted</code> flipped to
-match) against the original row's <code>"E"</code>, and a later
-<code>Arrived_Date_Time</code> – representing an ED visit and its direct-admit
-continuation transmitted as two records sharing one <code>Visit_ID</code>
-rather than one record with an updated <code>C_Patient_Class_List</code>. Since
-<code>dedupe(keep = "last")</code> keeps the more recent row by
-<code>Arrived_Date_Time</code>, these two visits survive into <a href="essence_clean.html">essence_clean</a>
-as <code>c_patient_class = "I"</code> – the ED encounter is silently dropped by
-deduplication alone, illustrating the gap <code><a href="link_encounters.html">link_encounters()</a></code> is
-designed to catch instead.</p></dd>
+match) against the original row's <code>"E"</code>, and later <code>C_Visit_Date_Time</code>/
+<code>Arrived_Date_Time</code> values – representing an ED visit and its
+direct-admit continuation transmitted as two records sharing one
+<code>Visit_ID</code> rather than one record with an updated
+<code>C_Patient_Class_List</code>. Since <code>dedupe(keep = "last")</code> keeps the more
+recent row by <code>Arrived_Date_Time</code>, these two visits survive into
+<a href="essence_clean.html">essence_clean</a> as <code>c_patient_class = "I"</code> – the ED encounter is
+silently dropped by deduplication alone, illustrating the gap
+<code><a href="link_encounters.html">link_encounters()</a></code> is designed to catch instead. These are also the
+<code>PullSource = "Admission"</code> rows that share a <code>HospitalName x Visit_ID</code> key with a real <code>PullSource = "ED"</code> row – see
+<code>PullSource</code> above.</p></dd>
 
 <dt><code>visit_date_change+pid_change</code></dt>
 <dd><p>1 visit exhibiting both
@@ -189,6 +201,17 @@ mechanisms simultaneously.</p></dd>
 
 
 </dl></div>
+
+<div class="section">
+<h3 id="genuine-direct-admissions">Genuine direct admissions<a class="anchor" aria-label="anchor" href="#genuine-direct-admissions"></a></h3>
+
+
+<p>4 additional visits with <code>HasBeenE = 0</code>, <code>HasBeenAdmitted = 1</code>, and a
+<code>Visit_ID</code> that appears nowhere else in <code>essence_raw</code> – true direct
+admissions with no preceding ED visit at all (<code>PullSource = "Admission"</code>), structurally invisible to a <code>HasBeenE = 1</code> query and
+distinct from the <code>patient_class_change</code> rows above, which share a key
+with a real ED row. See <code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code>.</p>
+</div>
 
 <div class="section">
 <h3 id="non-ed-providers">Non-ED providers<a class="anchor" aria-label="anchor" href="#non-ed-providers"></a></h3>
@@ -211,7 +234,9 @@ are included. These should be excluded by <code><a href="filter_care_setting.htm
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><a href="essence_clean.html">essence_clean</a> for the processed version of this dataset;
-<code><a href="dedupe.html">dedupe()</a></code>, <code><a href="filter_care_setting.html">filter_care_setting()</a></code>, <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>.</p></div>
+<code><a href="dedupe.html">dedupe()</a></code>, <code><a href="filter_care_setting.html">filter_care_setting()</a></code>, <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>,
+<code><a href="link_encounters.html">link_encounters()</a></code> for how <code>PullSource</code> is used to demonstrate
+two-pull encounter linkage.</p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

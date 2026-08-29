@@ -90,11 +90,11 @@ are structurally invisible to a <code>HasBeenE = 1</code> query.</p>
 
 
 <dt id="arg-inpatient-admission-data">inpatient_admission_data<a class="anchor" aria-label="anchor" href="#arg-inpatient-admission-data"></a></dt>
-<dd><p>Optional. A deduplicated data frame of
+<dd><p>Required. A deduplicated data frame of
 inpatient visits queried with <code>HasBeenAdmitted = 1</code> or <code>HasBeenI = 1</code>.
 Rows with <code>HasBeenE = 1</code> are automatically removed to prevent duplicate
-rows for the same underlying record. If <code>NULL</code> (default), only visits
-present in <code>ed_data</code> are linked.</p></dd>
+rows for the same underlying record. <code>link_encounters()</code> aborts if this
+is <code>NULL</code> – see Details.</p></dd>
 
 
 <dt id="arg-facility-col">facility_col<a class="anchor" aria-label="anchor" href="#arg-facility-col"></a></dt>
@@ -240,21 +240,23 @@ Useful for inspecting the raw linkage mechanism directly.</p>
 </div>
 
 <div class="section">
-<h3 id="single-pull-vs-two-pull-approach">Single-pull vs. two-pull approach<a class="anchor" aria-label="anchor" href="#single-pull-vs-two-pull-approach"></a></h3>
+<h3 id="why-inpatient-admission-data-is-required">Why <code>inpatient_admission_data</code> is required<a class="anchor" aria-label="anchor" href="#why-inpatient-admission-data-is-required"></a></h3>
 
 
-<p><strong>Single-pull</strong> (<code>inpatient_admission_data = NULL</code>, the default): Uses
-<code>C_Patient_Class_List</code> or <code>HasBeen_</code> flags within the ED pull to detect
-visits that transitioned to inpatient care.</p>
-<p><strong>Two-pull</strong> (<code>inpatient_admission_data</code> supplied): Supplements the ED pull
-with a separately queried inpatient pull (<code>HasBeenAdmitted = 1</code>). Rows with
-<code>HasBeenE = 1</code> are automatically removed from the inpatient pull to prevent
-duplicate rows for the same underlying record. This is the recommended
-approach when direct admission volume is material to the surveillance
-question, and is required to detect the continuity-break artifact
-when the direct-admit record is entirely absent from the ED pull (i.e.
-<code>HasBeenE = 0</code> on that record, so it would never appear in a <code>HasBeenE = 1</code>
-query).</p>
+<p><code>link_encounters()</code> supplements the ED pull with a separately queried
+inpatient pull (<code>HasBeenAdmitted = 1</code> or <code>HasBeenI = 1</code>). Rows with
+<code>HasBeenE = 1</code> are automatically removed from the inpatient pull to
+prevent duplicate rows for the same underlying record.</p>
+<p>A <code>HasBeenE = 1</code> pull cannot resolve the care pathway artifact problem on
+its own, in either direction: a genuine direct admission (<code>HasBeenE = 0</code>)
+is structurally absent from it by construction, and an ED-to-inpatient
+escalation that <em>is</em> visible within it already lives on one
+already-deduplicated record (both <code>HasBeenE</code> and <code>HasBeenAdmitted</code> set),
+which needs no linking – there was never a second record to link
+against. Supplying <code>inpatient_admission_data</code> is what makes linking
+possible at all; <code>link_encounters()</code> aborts without it rather than
+silently returning <code>ed_data</code> unchanged with cosmetic metadata columns
+appended.</p>
 <p><strong>Do not row-bind <code>ed_data</code> and <code>inpatient_admission_data</code> into one data
 frame and call <code><a href="dedupe.html">dedupe()</a></code> on the combined result instead of using the
 two-pull approach above.</strong> <code><a href="dedupe.html">dedupe()</a></code>'s <code>keep</code> strategies are not aware
@@ -386,7 +388,12 @@ survives filtering to one row per episode. In collapsed format, always
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Split the synthetic pull into the two separately-queried ESSENCE pulls</span></span></span>
+<span class="r-in"><span><span class="co"># link_encounters() expects (see `PullSource` in `?essence_raw`)</span></span></span>
+<span class="r-in"><span><span class="va">ed_pull</span>        <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">essence_raw</span>, <span class="va">PullSource</span> <span class="op">==</span> <span class="st">"ED"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">admission_pull</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">essence_raw</span>, <span class="va">PullSource</span> <span class="op">==</span> <span class="st">"Admission"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">ed_pull</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="filter_care_setting.html">filter_care_setting</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span></span></span>
@@ -394,29 +401,35 @@ survives filtering to one row per episode. In collapsed format, always
 <span class="r-msg co"><span class="r-pr">#&gt;</span> The following `FacilityType` values are not in `keep_types` and will be excluded:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
+<span class="r-in"><span><span class="va">inpatient_clean</span> <span class="op">&lt;-</span> <span class="fu"><a href="dedupe.html">dedupe</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">admission_pull</span>, order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Default: one row per true encounter, merged</span></span></span>
-<span class="r-in"><span><span class="va">episodes</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span><span class="va">ed_clean</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># One row per true encounter, merged</span></span></span>
+<span class="r-in"><span><span class="va">episodes</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span><span class="va">ed_clean</span>, <span class="va">inpatient_clean</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">episodes</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 160</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 164</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Inspect the distribution of care pathways</span></span></span>
 <span class="r-in"><span><span class="va">episodes</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 2</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 2</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   .patient_class_sequence     n</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> ED                        122</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Admitted                    2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Direct Admit                4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> ED-&gt;Direct Admit            2</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Long format: inspect the raw linkage mechanism directly</span></span></span>
-<span class="r-in"><span><span class="va">episodes_long</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span><span class="va">ed_clean</span>, return_format <span class="op">=</span> <span class="st">"long"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">episodes_long</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">ed_clean</span>, <span class="va">inpatient_clean</span>, return_format <span class="op">=</span> <span class="st">"long"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Two-pull linkage with a custom merge strategy for a site-specific field</span></span></span>
+<span class="r-in"><span><span class="co"># Real usage: two separate ESSENCE queries, each deduplicated on its own</span></span></span>
 <span class="r-in"><span><span class="va">ed_clean</span>        <span class="op">&lt;-</span> <span class="va">essence_ed</span>        <span class="op">|&gt;</span> <span class="fu"><a href="dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">inpatient_clean</span> <span class="op">&lt;-</span> <span class="va">essence_inpatient</span> <span class="op">|&gt;</span> <span class="fu"><a href="dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>

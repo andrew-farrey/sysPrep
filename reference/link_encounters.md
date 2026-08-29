@@ -39,11 +39,11 @@ link_encounters(
 
 - inpatient_admission_data:
 
-  Optional. A deduplicated data frame of inpatient visits queried with
+  Required. A deduplicated data frame of inpatient visits queried with
   `HasBeenAdmitted = 1` or `HasBeenI = 1`. Rows with `HasBeenE = 1` are
   automatically removed to prevent duplicate rows for the same
-  underlying record. If `NULL` (default), only visits present in
-  `ed_data` are linked.
+  underlying record. `link_encounters()` aborts if this is `NULL` – see
+  Details.
 
 - facility_col:
 
@@ -195,21 +195,23 @@ Set `return_format = "long"` to get the diagnostic long-format output
 instead – one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.
 
-### Single-pull vs. two-pull approach
+### Why `inpatient_admission_data` is required
 
-**Single-pull** (`inpatient_admission_data = NULL`, the default): Uses
-`C_Patient_Class_List` or `HasBeen_` flags within the ED pull to detect
-visits that transitioned to inpatient care.
+`link_encounters()` supplements the ED pull with a separately queried
+inpatient pull (`HasBeenAdmitted = 1` or `HasBeenI = 1`). Rows with
+`HasBeenE = 1` are automatically removed from the inpatient pull to
+prevent duplicate rows for the same underlying record.
 
-**Two-pull** (`inpatient_admission_data` supplied): Supplements the ED
-pull with a separately queried inpatient pull (`HasBeenAdmitted = 1`).
-Rows with `HasBeenE = 1` are automatically removed from the inpatient
-pull to prevent duplicate rows for the same underlying record. This is
-the recommended approach when direct admission volume is material to the
-surveillance question, and is required to detect the continuity-break
-artifact when the direct-admit record is entirely absent from the ED
-pull (i.e. `HasBeenE = 0` on that record, so it would never appear in a
-`HasBeenE = 1` query).
+A `HasBeenE = 1` pull cannot resolve the care pathway artifact problem
+on its own, in either direction: a genuine direct admission
+(`HasBeenE = 0`) is structurally absent from it by construction, and an
+ED-to-inpatient escalation that *is* visible within it already lives on
+one already-deduplicated record (both `HasBeenE` and `HasBeenAdmitted`
+set), which needs no linking – there was never a second record to link
+against. Supplying `inpatient_admission_data` is what makes linking
+possible at all; `link_encounters()` aborts without it rather than
+silently returning `ed_data` unchanged with cosmetic metadata columns
+appended.
 
 **Do not row-bind `ed_data` and `inpatient_admission_data` into one data
 frame and call
@@ -352,7 +354,12 @@ for geography attribution.
 ## Examples
 
 ``` r
-ed_clean <- essence_raw |>
+# Split the synthetic pull into the two separately-queried ESSENCE pulls
+# link_encounters() expects (see `PullSource` in `?essence_raw`)
+ed_pull        <- dplyr::filter(essence_raw, PullSource == "ED")
+admission_pull <- dplyr::filter(essence_raw, PullSource == "Admission")
+
+ed_clean <- ed_pull |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
@@ -360,29 +367,35 @@ ed_clean <- essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Medical Specialty
 #>   - Primary Care
+inpatient_clean <- dedupe(
+  admission_pull, order_by = Arrived_Date_Time, keep = "last"
+)
 
-# Default: one row per true encounter, merged
-episodes <- link_encounters(ed_clean)
+# One row per true encounter, merged
+episodes <- link_encounters(ed_clean, inpatient_clean)
 #> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 nrow(episodes)
-#> [1] 160
+#> [1] 164
 
 # Inspect the distribution of care pathways
 episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
-#> # A tibble: 3 × 2
+#> # A tibble: 4 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
 #> 1 ED                        122
 #> 2 Admitted->ED               36
-#> 3 Admitted                    2
+#> 3 Direct Admit                4
+#> 4 ED->Direct Admit            2
 
 # Long format: inspect the raw linkage mechanism directly
-episodes_long <- link_encounters(ed_clean, return_format = "long")
+episodes_long <- link_encounters(
+  ed_clean, inpatient_clean, return_format = "long"
+)
 #> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 
 if (FALSE) { # \dontrun{
-# Two-pull linkage with a custom merge strategy for a site-specific field
+# Real usage: two separate ESSENCE queries, each deduplicated on its own
 ed_clean        <- essence_ed        |> dedupe(order_by = Arrived_Date_Time)
 inpatient_clean <- essence_inpatient |> dedupe(order_by = Arrived_Date_Time)
 

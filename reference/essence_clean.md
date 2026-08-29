@@ -20,7 +20,7 @@ essence_clean
 
 ## Format
 
-A data frame with approximately 160 rows and 24 columns. All column
+A data frame with approximately 164 rows and 25 columns. All column
 names are in snake_case (post
 [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)).
 
@@ -74,7 +74,8 @@ names are in snake_case (post
 
   Integer. `1` for an ED pull; `0` on the two visits where a
   `patient_class_change` direct-admit row outranked the ED row under
-  `dedupe(keep = "last")` – see `c_patient_class` and
+  `dedupe(keep = "last")`, plus the four genuine direct admissions with
+  no ED row at all – see `c_patient_class` and
   [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md).
 
 - has_been_admitted:
@@ -84,8 +85,8 @@ names are in snake_case (post
 - c_patient_class:
 
   Character. ESSENCE-derived single-letter patient class. `"I"` on the
-  two visits where deduplication kept the direct-admit continuation row
-  over the original ED row (see
+  visits where deduplication kept a direct-admit row over (or with no)
+  original ED row (see
   [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md));
   `"E"` otherwise. Unchanged by the preprocessing pipeline.
 
@@ -139,6 +140,14 @@ names are in snake_case (post
   Logical. Always `TRUE` – signals that facility geography has been
   computed for every row. Added by
   [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md).
+
+- pull_source:
+
+  Character, `"ED"` or `"Admission"`. Carried through from
+  `essence_raw`'s `PullSource`, converted to snake_case by
+  [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
+  like any other column; not a real ESSENCE field – see
+  [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md).
 
 ## Source
 

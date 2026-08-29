@@ -295,8 +295,8 @@ out-of-state visits only.</p></div>
 <span class="r-in"><span><span class="co"># Default: new region_facility/zip_code_facility columns for all visits;</span></span></span>
 <span class="r-in"><span><span class="co"># region/zip_code themselves are never touched</span></span></span>
 <span class="r-in"><span><span class="va">ed_clean</span> <span class="op">|&gt;</span> <span class="fu">assign_facility_geography</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Facility geography applied to all 129 visits in `region_facility`/`zip_code_facility`.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 129 × 21</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Facility geography applied to all 131 visits in `region_facility`/`zip_code_facility`.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 131 × 22</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
@@ -309,12 +309,13 @@ out-of-state visits only.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V179024…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 119 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 15 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 121 more rows</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 16 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region_facility &lt;chr&gt;, zip_code_facility &lt;chr&gt;, .facility_geography &lt;lgl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   pull_source &lt;chr&gt;, region_facility &lt;chr&gt;, zip_code_facility &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .facility_geography &lt;lgl&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Overwrite region/zip_code in place (the original behavior) -- requires</span></span></span>
 <span class="r-in"><span><span class="co"># naming the source columns explicitly and opting in with overwrite</span></span></span>
@@ -328,8 +329,8 @@ out-of-state visits only.</p></div>
 <span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    patient_differs_from_facility <span class="op">=</span> <span class="va">region</span> <span class="op">!=</span> <span class="va">original_region</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Facility geography applied to all 129 visits in `region`/`zip_code`.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 129 × 22</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Facility geography applied to all 131 visits in `region`/`zip_code`.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 131 × 23</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
@@ -342,21 +343,21 @@ out-of-state visits only.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V179024…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 119 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 16 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 121 more rows</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 17 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   original_region &lt;chr&gt;, original_zip_code &lt;chr&gt;, .facility_geography &lt;lgl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   patient_differs_from_facility &lt;lgl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   pull_source &lt;chr&gt;, original_region &lt;chr&gt;, original_zip_code &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .facility_geography &lt;lgl&gt;, patient_differs_from_facility &lt;lgl&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Facility geography for cluster detection, alongside the hybrid approach</span></span></span>
 <span class="r-in"><span><span class="va">ed_clean</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="assign_treating_geography.html">assign_treating_geography</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">assign_facility_geography</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Facility geography applied to all 129 visits in `region_facility`/`zip_code_facility`.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 129 × 24</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> 24 of 131 visits (18.3%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Facility geography applied to all 131 visits in `region_facility`/`zip_code_facility`.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 131 × 25</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
@@ -369,13 +370,13 @@ out-of-state visits only.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V179024…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 119 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 18 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 121 more rows</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 19 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .out_of_state &lt;lgl&gt;, region_hybrid &lt;chr&gt;, zip_code_hybrid &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region_facility &lt;chr&gt;, zip_code_facility &lt;chr&gt;, .facility_geography &lt;lgl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   pull_source &lt;chr&gt;, .out_of_state &lt;lgl&gt;, region_hybrid &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   zip_code_hybrid &lt;chr&gt;, region_facility &lt;chr&gt;, zip_code_facility &lt;chr&gt;, …</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
