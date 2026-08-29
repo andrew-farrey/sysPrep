@@ -1,15 +1,28 @@
 
 # test-link_encounters.R ----
 
+test_that("link_encounters() aborts when inpatient_admission_data is omitted", {
+  data <- make_essence_data(n = 5L)
+  expect_error(link_encounters(data), "inpatient_admission_data")
+})
+
+test_that("link_encounters() aborts when inpatient_admission_data is explicitly NULL", {
+  data <- make_essence_data(n = 5L)
+  expect_error(
+    link_encounters(data, inpatient_admission_data = NULL),
+    "inpatient_admission_data"
+  )
+})
+
 test_that("link_encounters() returns long-format data with patient_class", {
   data <- make_essence_data(n = 10L)
-  result <- link_encounters(data)
+  result <- link_encounters(data, data[0L, ])
   expect_true("patient_class" %in% names(result))
 })
 
 test_that("link_encounters() adds episode metadata columns", {
   data <- make_essence_data(n = 5L)
-  result <- link_encounters(data)
+  result <- link_encounters(data, data[0L, ])
   expect_true(all(c(".episode_id", ".episode_n_rows", ".index_encounter") %in%
                   names(result)))
 })
@@ -17,7 +30,7 @@ test_that("link_encounters() adds episode metadata columns", {
 test_that("link_encounters() produces two rows for ED+Admitted visits in long format", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(HasBeenAdmitted = 1L)
-  result <- link_encounters(data, return_format = "long")
+  result <- link_encounters(data, data[0L, ], return_format = "long")
   # Each visit has HasBeenE = 1 and HasBeenAdmitted = 1 -> 2 rows each
   expect_equal(nrow(result), 6L)
 })
@@ -25,13 +38,13 @@ test_that("link_encounters() produces two rows for ED+Admitted visits in long fo
 test_that("link_encounters() aborts without HasBeenE", {
   data <- make_essence_data(n = 5L) |>
     dplyr::select(-HasBeenE)
-  expect_error(link_encounters(data), "HasBeenE")
+  expect_error(link_encounters(data, data[0L, ]), "HasBeenE")
 })
 
 test_that("link_encounters() aborts without HasBeenAdmitted or HasBeenI", {
   data <- make_essence_data(n = 5L) |>
     dplyr::select(-HasBeenAdmitted)
-  expect_error(link_encounters(data), "HasBeenAdmitted")
+  expect_error(link_encounters(data, data[0L, ]), "HasBeenAdmitted")
 })
 
 test_that("link_encounters() removes HasBeenE=1 rows from inpatient_admission_data", {
@@ -47,7 +60,7 @@ test_that("link_encounters() removes HasBeenE=1 rows from inpatient_admission_da
 test_that("link_encounters() produces one ED row per visit when HasBeenAdmitted = 0", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenAdmitted = 0L)
-  result <- link_encounters(data)
+  result <- link_encounters(data, data[0L, ])
   expect_true(all(result$patient_class == "ED"))
   expect_equal(nrow(result), 5L)
 })
@@ -55,7 +68,7 @@ test_that("link_encounters() produces one ED row per visit when HasBeenAdmitted 
 test_that("link_encounters() .index_encounter = TRUE on ED row of multi-class episodes in long format", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(HasBeenAdmitted = 1L)
-  result <- link_encounters(data, return_format = "long")
+  result <- link_encounters(data, data[0L, ], return_format = "long")
   multi_class   <- dplyr::filter(result, .episode_n_rows > 1L)
   ed_rows       <- dplyr::filter(multi_class, patient_class == "ED")
   admitted_rows <- dplyr::filter(multi_class, patient_class == "Admitted")
@@ -66,7 +79,7 @@ test_that("link_encounters() .index_encounter = TRUE on ED row of multi-class ep
 test_that("link_encounters() .patient_class_sequence breaks ties alphabetically when classes share one C_Visit_Date_Time", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(HasBeenAdmitted = 1L)
-  result <- link_encounters(data)
+  result <- link_encounters(data, data[0L, ])
   multi_rows <- dplyr::filter(result, .episode_n_rows > 1L)
   # ED and Admitted come from the same row/timestamp here, so they tie and
   # fall back to alphabetical order as the tiebreak.
@@ -103,7 +116,7 @@ test_that("link_encounters() .patient_class_sequence uses C_Patient_Class_MDT_Up
       "{1};2023-01-01 10:00:00.000;|{2};2023-01-01 08:00:00.000;"
   )
   result <- suppressMessages(
-    link_encounters(data, return_format = "long")
+    link_encounters(data, data[0L, ], return_format = "long")
   )
   # position 2 ("I") was assigned at 08:00, before position 1 ("E") at 10:00
   expect_true(all(result$.patient_class_sequence == "Inpatient->ED"))
@@ -140,7 +153,7 @@ test_that("link_encounters() warns and falls back to alphabetical order when no 
     HasBeenAdmitted = 1L
   )
   expect_warning(
-    result <- suppressMessages(link_encounters(data, return_format = "long")),
+    result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long")),
     "chronological ordering"
   )
   expect_true(all(result$.patient_class_sequence == "Admitted->ED"))
@@ -157,7 +170,7 @@ test_that("link_encounters() parses a 3-class C_Patient_Class_MDT_Updates value 
       "|{3};2026-06-08 21:29:51.000;"
     )
   )
-  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long"))
   expect_true(all(result$.patient_class_sequence == "Obstetrics->ED->Inpatient"))
 })
 
@@ -170,7 +183,7 @@ test_that("link_encounters() falls back to a position's C_Visit_Date_Time when i
     C_Patient_Class_MDT_Updates  = "{1};2023-01-01 10:00:00.000;",
     C_Visit_Date_Time            = as.POSIXct("2023-01-01 09:00:00")
   )
-  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long"))
   expect_true("patient_class" %in% names(result))
   expect_false(any(is.na(result$.patient_class_sequence)))
 })
@@ -184,7 +197,7 @@ test_that("link_encounters() warns and falls back when C_Patient_Class_MDT_Updat
     C_Visit_Date_Time           = as.POSIXct("2023-01-01 09:00:00")
   )
   expect_warning(
-    result <- suppressMessages(link_encounters(data, return_format = "long")),
+    result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long")),
     "could not be parsed"
   )
   expect_false(any(is.na(result$.patient_class_sequence)))
@@ -198,22 +211,14 @@ test_that("link_encounters() parses ISO 8601 'T'-separated timestamps inside C_P
     C_Patient_Class_MDT_Updates =
       "{1};2023-01-01T10:00:00;|{2};2023-01-01T08:00:00;"
   )
-  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long"))
   expect_true(all(result$.patient_class_sequence == "Inpatient->ED"))
-})
-
-test_that("link_encounters() works with inpatient_admission_data = NULL", {
-  data <- make_essence_data(n = 5L) |>
-    dplyr::mutate(HasBeenAdmitted = 0L)
-  result <- link_encounters(data, inpatient_admission_data = NULL)
-  expect_s3_class(result, "data.frame")
-  expect_equal(nrow(result), 5L)
 })
 
 test_that("link_encounters() prefers HasBeenAdmitted over HasBeenI when both present", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenI = sample(c(0L, 1L), 5L, replace = TRUE))
-  expect_message(link_encounters(data), "HasBeenAdmitted")
+  expect_message(link_encounters(data, data[0L, ]), "HasBeenAdmitted")
 })
 
 test_that("link_encounters() assigns Direct Admit to inpatient_admission_data rows", {
@@ -230,7 +235,7 @@ test_that("link_encounters() assigns Direct Admit to inpatient_admission_data ro
 
 test_that("link_encounters() clean_names = FALSE returns data frame with expected columns", {
   data   <- make_essence_data(n = 5L)
-  result <- link_encounters(data, clean_names = FALSE)
+  result <- link_encounters(data, data[0L, ], clean_names = FALSE)
   expect_s3_class(result, "data.frame")
   expect_true("patient_class"   %in% names(result))
   expect_true(".episode_id"     %in% names(result))
@@ -241,7 +246,7 @@ test_that("link_encounters() uses C_Patient_Class_List when present and informs"
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(C_Patient_Class_List = "E")
   expect_message(
-    result <- link_encounters(data),
+    result <- link_encounters(data, data[0L, ]),
     "C_Patient_Class_List"
   )
   expect_true("patient_class" %in% names(result))
@@ -250,7 +255,7 @@ test_that("link_encounters() uses C_Patient_Class_List when present and informs"
 test_that("link_encounters() C_Patient_Class_List code form maps to patient class labels in long format", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(C_Patient_Class_List = c("EI", "E", "D"))
-  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long"))
   expect_true("Inpatient"    %in% result$patient_class)
   expect_true("ED"           %in% result$patient_class)
   expect_true("Direct Admit" %in% result$patient_class)
@@ -261,7 +266,7 @@ test_that("link_encounters() C_Patient_Class_List label form maps to same patien
     dplyr::mutate(
       C_Patient_Class_List = c("Emergency,Inpatient", "Emergency", "Inpatient")
     )
-  result <- suppressMessages(link_encounters(data, return_format = "long"))
+  result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long"))
   expect_true("Inpatient" %in% result$patient_class)
   expect_true("ED"        %in% result$patient_class)
 })
@@ -270,7 +275,7 @@ test_that("link_encounters() warns when HasBeenO = 1 visits are present", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenO = c(1L, 0L, 0L, 0L, 0L))
   expect_warning(
-    link_encounters(data),
+    link_encounters(data, data[0L, ]),
     "Outpatient"
   )
 })
@@ -278,14 +283,14 @@ test_that("link_encounters() warns when HasBeenO = 1 visits are present", {
 test_that("link_encounters() verbose = FALSE suppresses HasBeenAdmitted-preferred message", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenI = sample(c(0L, 1L), 5L, replace = TRUE))
-  expect_no_message(link_encounters(data, verbose = FALSE))
+  expect_no_message(link_encounters(data, data[0L, ], verbose = FALSE))
 })
 
 test_that("link_encounters() warns on HasBeenO regardless of verbose", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenO = c(1L, 0L, 0L, 0L, 0L))
   expect_warning(
-    link_encounters(data, verbose = FALSE),
+    link_encounters(data, data[0L, ], verbose = FALSE),
     "Outpatient"
   )
 })
@@ -655,7 +660,7 @@ test_that("link_encounters() preserves NA (not -Inf) for has_been_ columns in ED
 test_that("link_encounters() .index_encounter is TRUE in collapsed output for a multi-row episode with no ED row", {
   data <- make_essence_data(n = 1L) |>
     dplyr::mutate(C_Patient_Class_List = "ID")
-  result <- suppressMessages(link_encounters(data))
+  result <- suppressMessages(link_encounters(data, data[0L, ]))
   expect_equal(nrow(result), 1L)
   expect_true(result$.index_encounter)
 })

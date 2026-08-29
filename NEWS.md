@@ -18,6 +18,18 @@
   `Discharge_Disposition`/`DispositionCategory` reconciled via configurable
   `merge_fields` strategies. `return_format = "long"` preserves the prior
   unmerged output. Supports `verbose` to suppress informational messages.
+  **Breaking:** `inpatient_admission_data` is now required -- the prior
+  single-pull mode (`ed_data` alone) could not detect a genuine direct
+  admission (structurally absent from a `HasBeenE = 1` pull) and was a
+  no-op on an already-deduplicated ED-to-inpatient escalation, so
+  `link_encounters()` now aborts with an actionable message instead of
+  silently returning `ed_data` unchanged. Query a second ESSENCE pull
+  filtered to `HasBeenAdmitted = 1` (or `HasBeenI = 1`), deduplicate it
+  separately, and pass it as `inpatient_admission_data`.
+* `essence_raw`: Gained a `PullSource` column (`"ED"`/`"Admission"`, not
+  a real ESSENCE field) and 4 genuine direct-admission rows, so
+  `vignette("encounter-linkage")` and `link_encounters()`'s own examples
+  can demonstrate two-pull linkage from one synthetic dataset.
 * `review_facility_ed_visits()`: Flag facility visit count outliers for QA.
   Supports `verbose` to suppress informational messages.
 * `assign_treating_geography()`: Assign treating facility geography to

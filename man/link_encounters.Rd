@@ -24,11 +24,11 @@ link_encounters(
 \code{HasBeenAdmitted}/\code{HasBeenI} (the standard ESSENCE pull fields), or
 \code{C_Patient_Class_List} for more granular and informative output.}
 
-\item{inpatient_admission_data}{Optional. A deduplicated data frame of
+\item{inpatient_admission_data}{Required. A deduplicated data frame of
 inpatient visits queried with \code{HasBeenAdmitted = 1} or \code{HasBeenI = 1}.
 Rows with \code{HasBeenE = 1} are automatically removed to prevent duplicate
-rows for the same underlying record. If \code{NULL} (default), only visits
-present in \code{ed_data} are linked.}
+rows for the same underlying record. \code{link_encounters()} aborts if this
+is \code{NULL} -- see Details.}
 
 \item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name identifying the facility. Defaults to \code{HospitalName}.
@@ -160,21 +160,23 @@ instead -- one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.
 }
 
-\subsection{Single-pull vs. two-pull approach}{
+\subsection{Why \code{inpatient_admission_data} is required}{
 
-\strong{Single-pull} (\code{inpatient_admission_data = NULL}, the default): Uses
-\code{C_Patient_Class_List} or \code{HasBeen_} flags within the ED pull to detect
-visits that transitioned to inpatient care.
+\code{link_encounters()} supplements the ED pull with a separately queried
+inpatient pull (\code{HasBeenAdmitted = 1} or \code{HasBeenI = 1}). Rows with
+\code{HasBeenE = 1} are automatically removed from the inpatient pull to
+prevent duplicate rows for the same underlying record.
 
-\strong{Two-pull} (\code{inpatient_admission_data} supplied): Supplements the ED pull
-with a separately queried inpatient pull (\code{HasBeenAdmitted = 1}). Rows with
-\code{HasBeenE = 1} are automatically removed from the inpatient pull to prevent
-duplicate rows for the same underlying record. This is the recommended
-approach when direct admission volume is material to the surveillance
-question, and is required to detect the continuity-break artifact
-when the direct-admit record is entirely absent from the ED pull (i.e.
-\code{HasBeenE = 0} on that record, so it would never appear in a \code{HasBeenE = 1}
-query).
+A \code{HasBeenE = 1} pull cannot resolve the care pathway artifact problem on
+its own, in either direction: a genuine direct admission (\code{HasBeenE = 0})
+is structurally absent from it by construction, and an ED-to-inpatient
+escalation that \emph{is} visible within it already lives on one
+already-deduplicated record (both \code{HasBeenE} and \code{HasBeenAdmitted} set),
+which needs no linking -- there was never a second record to link
+against. Supplying \code{inpatient_admission_data} is what makes linking
+possible at all; \code{link_encounters()} aborts without it rather than
+silently returning \code{ed_data} unchanged with cosmetic metadata columns
+appended.
 
 \strong{Do not row-bind \code{ed_data} and \code{inpatient_admission_data} into one data
 frame and call \code{\link[=dedupe]{dedupe()}} on the combined result instead of using the
@@ -298,14 +300,22 @@ survives filtering to one row per episode. In collapsed format, always
 }
 }
 \examples{
-ed_clean <- essence_raw |>
+# Split the synthetic pull into the two separately-queried ESSENCE pulls
+# link_encounters() expects (see `PullSource` in `?essence_raw`)
+ed_pull        <- dplyr::filter(essence_raw, PullSource == "ED")
+admission_pull <- dplyr::filter(essence_raw, PullSource == "Admission")
+
+ed_clean <- ed_pull |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
+inpatient_clean <- dedupe(
+  admission_pull, order_by = Arrived_Date_Time, keep = "last"
+)
 
-# Default: one row per true encounter, merged
-episodes <- link_encounters(ed_clean)
+# One row per true encounter, merged
+episodes <- link_encounters(ed_clean, inpatient_clean)
 nrow(episodes)
 
 # Inspect the distribution of care pathways
@@ -313,10 +323,12 @@ episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
 
 # Long format: inspect the raw linkage mechanism directly
-episodes_long <- link_encounters(ed_clean, return_format = "long")
+episodes_long <- link_encounters(
+  ed_clean, inpatient_clean, return_format = "long"
+)
 
 \dontrun{
-# Two-pull linkage with a custom merge strategy for a site-specific field
+# Real usage: two separate ESSENCE queries, each deduplicated on its own
 ed_clean        <- essence_ed        |> dedupe(order_by = Arrived_Date_Time)
 inpatient_clean <- essence_inpatient |> dedupe(order_by = Arrived_Date_Time)
 

@@ -9,7 +9,7 @@
 #' All facility names, visit identifiers, patient identifiers, and geographic
 #' values are entirely synthetic. No real patient or facility data are included.
 #'
-#' @format A data frame with approximately 193 rows and 18 columns:
+#' @format A data frame with approximately 197 rows and 19 columns:
 #' \describe{
 #'   \item{HospitalName}{Character. Synthetic facility name.}
 #'   \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -36,11 +36,12 @@
 #'   \item{Arrived_Date_Time}{POSIXct. Timestamp when NSSP received the
 #'     record. Use as `order_by` in [dedupe()] to retain the most recently
 #'     transmitted version of each record.}
-#'   \item{HasBeenE}{Integer. `1` if the visit has been classified as an
-#'     emergency visit. `0` on the two `patient_class_change` duplicate rows
-#'     (see Details), which represent a direct-admit continuation of an ED
-#'     visit; all other records have `HasBeenE = 1`, consistent with a
-#'     `HasBeenE = 1` filtered ESSENCE pull.}
+#'   \item{HasBeenE}{Integer. `1` for `PullSource = "ED"` rows, consistent
+#'     with a `HasBeenE = 1` filtered ESSENCE pull. `0` on all
+#'     `PullSource = "Admission"` rows (see Details): the two
+#'     `patient_class_change` duplicate rows, which represent a
+#'     mis-submitted direct-admit continuation of an ED visit, and four
+#'     genuine direct admissions with no preceding ED visit at all.}
 #'   \item{HasBeenAdmitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission (discharge-disposition aware).}
 #'   \item{C_Patient_Class}{Character. ESSENCE-derived single-letter patient
@@ -58,6 +59,13 @@
 #'     `OTHER_REGION` records.}
 #'   \item{Sex}{Character. `"M"`, `"F"`, or `"U"` (unknown).}
 #'   \item{C_Patient_Age}{Integer. Patient age in years.}
+#'   \item{PullSource}{Character, `"ED"` or `"Admission"`. Not a real
+#'     ESSENCE field -- marks which of two separately-run ESSENCE queries
+#'     (`HasBeenE = 1` vs. `HasBeenAdmitted = 1`) this row would have come
+#'     back in, so `vignette("encounter-linkage")` can split `essence_raw`
+#'     back into the two pulls [link_encounters()] is designed to
+#'     recombine. Drop this column (or filter and discard it) before
+#'     treating a subset of `essence_raw` as a real single ESSENCE pull.}
 #' }
 #'
 #' @details
@@ -72,18 +80,29 @@
 #'     `C_Unique_Patient_ID` -- representing a corrected patient identifier.}
 #'   \item{`patient_class_change`}{2 visits with a second row carrying
 #'     `C_Patient_Class = "I"` (`HasBeenE`/`HasBeenAdmitted` flipped to
-#'     match) against the original row's `"E"`, and a later
-#'     `Arrived_Date_Time` -- representing an ED visit and its direct-admit
-#'     continuation transmitted as two records sharing one `Visit_ID`
-#'     rather than one record with an updated `C_Patient_Class_List`. Since
-#'     `dedupe(keep = "last")` keeps the more recent row by
-#'     `Arrived_Date_Time`, these two visits survive into [essence_clean]
-#'     as `c_patient_class = "I"` -- the ED encounter is silently dropped by
-#'     deduplication alone, illustrating the gap `link_encounters()` is
-#'     designed to catch instead.}
+#'     match) against the original row's `"E"`, and later `C_Visit_Date_Time`/
+#'     `Arrived_Date_Time` values -- representing an ED visit and its
+#'     direct-admit continuation transmitted as two records sharing one
+#'     `Visit_ID` rather than one record with an updated
+#'     `C_Patient_Class_List`. Since `dedupe(keep = "last")` keeps the more
+#'     recent row by `Arrived_Date_Time`, these two visits survive into
+#'     [essence_clean] as `c_patient_class = "I"` -- the ED encounter is
+#'     silently dropped by deduplication alone, illustrating the gap
+#'     `link_encounters()` is designed to catch instead. These are also the
+#'     `PullSource = "Admission"` rows that share a `HospitalName x
+#'     Visit_ID` key with a real `PullSource = "ED"` row -- see
+#'     `PullSource` above.}
 #'   \item{`visit_date_change+pid_change`}{1 visit exhibiting both
 #'     mechanisms simultaneously.}
 #' }
+#'
+#' ## Genuine direct admissions
+#' 4 additional visits with `HasBeenE = 0`, `HasBeenAdmitted = 1`, and a
+#' `Visit_ID` that appears nowhere else in `essence_raw` -- true direct
+#' admissions with no preceding ED visit at all (`PullSource =
+#' "Admission"`), structurally invisible to a `HasBeenE = 1` query and
+#' distinct from the `patient_class_change` rows above, which share a key
+#' with a real ED row. See `vignette("encounter-linkage")`.
 #'
 #' ## Non-ED providers
 #' 20 records from a `"Primary Care"` and a `"Medical Specialty"` facility
@@ -101,7 +120,9 @@
 #'   supplemental inpatient pull structured as `va_hosp` (Facility Location,
 #'   Full Details).
 #' @seealso [essence_clean] for the processed version of this dataset;
-#'   [dedupe()], [filter_care_setting()], [assign_treating_geography()].
+#'   [dedupe()], [filter_care_setting()], [assign_treating_geography()],
+#'   [link_encounters()] for how `PullSource` is used to demonstrate
+#'   two-pull encounter linkage.
 "essence_raw"
 
 #' Synthetic cleaned ESSENCE-like ED visit data
@@ -115,7 +136,7 @@
 #' demonstrate the expected output of the package workflow and to serve as
 #' a reference for function output structure.
 #'
-#' @format A data frame with approximately 160 rows and 24 columns. All
+#' @format A data frame with approximately 164 rows and 25 columns. All
 #'   column names are in snake_case (post [janitor::clean_names()]).
 #' \describe{
 #'   \item{hospital_name}{Character. Synthetic facility name.}
@@ -136,15 +157,15 @@
 #'   \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 #'   \item{has_been_e}{Integer. `1` for an ED pull; `0` on the two visits
 #'     where a `patient_class_change` direct-admit row outranked the ED row
-#'     under `dedupe(keep = "last")` -- see `c_patient_class` and
+#'     under `dedupe(keep = "last")`, plus the four genuine direct
+#'     admissions with no ED row at all -- see `c_patient_class` and
 #'     `?essence_raw`.}
 #'   \item{has_been_admitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission.}
 #'   \item{c_patient_class}{Character. ESSENCE-derived single-letter patient
-#'     class. `"I"` on the two visits where deduplication kept the
-#'     direct-admit continuation row over the original ED row (see
-#'     `?essence_raw`); `"E"` otherwise. Unchanged by the preprocessing
-#'     pipeline.}
+#'     class. `"I"` on the visits where deduplication kept a direct-admit
+#'     row over (or with no) original ED row (see `?essence_raw`); `"E"`
+#'     otherwise. Unchanged by the preprocessing pipeline.}
 #'   \item{region}{Character. Patient ESSENCE Region of residence in
 #'     `{SITE}_{REGION}` format, exactly as received -- never modified by
 #'     either geography function.}
@@ -168,6 +189,10 @@
 #'   \item{.facility_geography}{Logical. Always `TRUE` -- signals that
 #'     facility geography has been computed for every row. Added by
 #'     [assign_facility_geography()].}
+#'   \item{pull_source}{Character, `"ED"` or `"Admission"`. Carried through
+#'     from `essence_raw`'s `PullSource`, converted to snake_case by
+#'     [janitor::clean_names()] like any other column; not a real ESSENCE
+#'     field -- see `?essence_raw`.}
 #' }
 #'
 #' @source Derived from [essence_raw] via

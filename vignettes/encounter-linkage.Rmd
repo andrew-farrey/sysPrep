@@ -164,134 +164,48 @@ discharge-disposition aware: it captures ED visits that resulted in inpatient
 admission via discharge disposition codes, which `HasBeenI` may not flag in
 all ESSENCE configurations.
 
-## Single-Pull Linkage
+## Linking ED and Inpatient Pulls
 
-By default (`return_format = "collapsed"`), `link_encounters()` merges each
-episode's rows into a single composite row rather than returning long-format
-duplicates that must be filtered afterward. A visit with `HasBeenE = 1` and
-`HasBeenAdmitted = 1` is still detected internally as two rows -- one
-representing the ED contact, one representing the inpatient escalation -- but
-those rows are reconciled into one merged row: `HasBeen_` flags are taken as
-the max across the episode's rows, and fields named in `merge_fields`
-(`CCDD`, `CCDDParsed`, `CCDDCategory_flat`, `C_Death`, `Discharge_Disposition`,
-and `DispositionCategory` by default) are reconciled using a strategy suited
-to that field, so information recorded only on the inpatient row is not
-silently discarded when the ED row is kept as the surviving primary row.
+`link_encounters()` always requires two separately queried ESSENCE pulls: an
+ED pull (`HasBeenE = 1`) and an inpatient pull (`HasBeenAdmitted = 1` or
+`HasBeenI = 1`). There is no single-pull mode. A `HasBeenE = 1` pull cannot
+resolve the care pathway artifact problem on its own in either direction: a
+genuine direct admission (`HasBeenE = 0`) is structurally absent from it by
+construction, so there is nothing to link against; and an ED-to-inpatient
+escalation that *is* visible within it already lives on one
+already-deduplicated record (both `HasBeenE` and `HasBeenAdmitted` set),
+which needs no linking, since there was never a second record to link
+against. `link_encounters()` aborts if `inpatient_admission_data` is
+omitted, rather than silently returning `ed_data` unchanged with cosmetic
+metadata columns appended.
+
+`essence_raw` includes a `PullSource` column (`"ED"` or `"Admission"`) --
+not a real ESSENCE field, added purely so this vignette can split one
+synthetic dataset back into the two pulls a real analysis would have queried
+separately:
+
+```{r split-pulls}
+ed_pull        <- essence_raw |> dplyr::filter(PullSource == "ED")
+admission_pull <- essence_raw |> dplyr::filter(PullSource == "Admission")
+
+nrow(ed_pull)
+nrow(admission_pull)
+```
+
+Deduplicate each pull separately before linking:
 
 ```{r prepare}
-# Deduplicate and filter before linking
-ed_clean <- essence_raw |>
+ed_clean <- ed_pull |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
-```
 
-```{r single-pull}
-episodes <- link_encounters(ed_clean)
-
-dplyr::glimpse(episodes)
-```
-
-`nrow(episodes)` is already the unduplicated encounter count -- no additional
-filtering step is required with the default collapsed output:
-
-```{r episode-count}
-nrow(episodes)
-```
-
-Four episode metadata columns are added to every row, regardless of
-`return_format`:
-
-**`.episode_id`** -- A character key combining facility and visit identifier,
-shared across all rows belonging to the same encounter. Used internally to
-group rows into episodes and available for joining or filtering downstream.
-
-**`.patient_class_sequence`** -- A collapsed string of the patient classes
-present in the episode, in the order they actually occurred (using
-`C_Visit_Date_Time`, `Date`+`Time`, or `C_Patient_Class_MDT_Updates` when
-available -- see `?link_encounters`). A single-pull ED record with both
-`HasBeenE = 1` and `HasBeenAdmitted = 1` set has no way to distinguish when
-each flag was assigned, so its two classes tie and fall back to alphabetical
-order: `.patient_class_sequence = "Admitted->ED"`. Two-pull linkage, where
-the ED and direct-admit records are genuinely separate rows with their own
-timestamps, can instead reflect a true reversal -- e.g.
-`"Direct Admit->ED"` when the direct-admit record's timestamp precedes the
-ED record's. An episode built from a single ED row has
-`.patient_class_sequence = "ED"`. This column enables filtering to specific
-episode types (e.g., `filter(.patient_class_sequence == "Admitted->ED")` to
-isolate escalating visits) even though the underlying rows have already been
-merged.
-
-**`.episode_n_rows`** -- The number of original rows the episode was built
-from before merging. Episodes with no escalation have `.episode_n_rows = 1`;
-ED + Admitted episodes collapsed from two original rows have
-`.episode_n_rows = 2`.
-
-**`.index_encounter`** -- In collapsed output (the default), always `TRUE`,
-since every row already represents exactly one merged encounter; the column
-is retained for schema consistency with the diagnostic long-format output
-described below, not because a filtering step is required.
-
-```{r burden-single}
-# Distribution of care pathways -- already one row per encounter
-episodes |>
-  dplyr::count(.patient_class_sequence, sort = TRUE)
-```
-
-### Inspecting the Raw Linkage Mechanism: `return_format = "long"`
-
-Set `return_format = "long"` to see the pre-merge rows directly -- for
-example, to audit which fields differed between the ED and inpatient records
-before they were reconciled, or to understand the linkage mechanism itself.
-No merge is applied in this mode.
-
-```{r long-format}
-episodes_long <- link_encounters(ed_clean, return_format = "long")
-
-dplyr::count(episodes_long, patient_class)
-```
-
-In long format, `.index_encounter` marks the row that survives a "one row per
-episode" filter -- `TRUE` on the ED row when both ED and Admitted rows are
-present, or on the single row for ED-only or Direct Admit-only episodes:
-
-```{r long-index}
-episodes_long |>
-  dplyr::filter(.index_encounter) |>
-  dplyr::count(.patient_class_sequence, sort = TRUE)
-```
-
-This matches the collapsed-format encounter count above, since the same rows
-are merged into (or, in long format, selected as) the encounter of record.
-
-## Two-Pull Linkage
-
-To capture direct admissions, run a second ESSENCE query filtered to
-`HasBeenAdmitted = 1` (or `HasBeenI = 1`), deduplicate it separately, and
-supply it as `inpatient_admission_data`. Rows with `HasBeenE = 1` in the
-inpatient pull are automatically removed to prevent double-counting -- these
-visits are already present in the ED pull.
-
-```{r two-pull, eval = FALSE}
-# Query ESSENCE for HasBeenAdmitted = 1 separately, then:
-inpatient_clean <- essence_inpatient |>
+inpatient_clean <- admission_pull |>
   dedupe(order_by = Arrived_Date_Time, keep = "last")
-
-episodes_full <- link_encounters(ed_clean, inpatient_clean)
-
-# Direct admissions are now visible
-dplyr::filter(episodes_full, patient_class == "Direct Admit")
 ```
 
-When `inpatient_admission_data` is supplied, `link_encounters()` removes rows
-with `HasBeenE = 1` from that pull (informing you of how many were dropped)
-and labels the remaining rows `patient_class = "Direct Admit"` before
-merging. A direct-admit visit that shares no facility x visit_id with an ED
-row has no rows to merge with, so it survives collapsing as its own
-single-row episode with `.patient_class_sequence = "Direct Admit"`.
-
-> **Can I just row-bind the ED and direct-admit pulls and run `dedupe()`
+> **Can I just row-bind the ED and admission pulls and run `dedupe()`
 > on the result, instead of passing them separately?**
 > No -- this risks silently losing visits. `dedupe()`'s
 > `facility_col x visit_col` grouping does not distinguish an ED record
@@ -304,6 +218,118 @@ single-row episode with `.patient_class_sequence = "Direct Admit"`.
 > Always deduplicate each pull separately (as shown above) and pass both
 > to `link_encounters()` as separate arguments; let `link_encounters()`,
 > not `dedupe()`, perform the combination.
+
+By default (`return_format = "collapsed"`), `link_encounters()` merges each
+episode's rows into a single composite row rather than returning long-format
+duplicates that must be filtered afterward. Rows with `HasBeenE = 1` in the
+admission pull are automatically removed first (they are already present in
+the ED pull); the remainder are labeled `patient_class = "Direct Admit"` and
+combined with the ED pull's own rows. Within a merged episode, `HasBeen_`
+flags are taken as the max across the episode's rows, and fields named in
+`merge_fields` (`CCDD`, `CCDDParsed`, `CCDDCategory_flat`, `C_Death`,
+`Discharge_Disposition`, and `DispositionCategory` by default) are
+reconciled using a strategy suited to that field, so information recorded
+only on the admission row is not silently discarded when the ED row is kept
+as the surviving primary row.
+
+```{r episodes}
+episodes <- link_encounters(ed_clean, inpatient_clean)
+
+dplyr::glimpse(episodes)
+```
+
+`nrow(episodes)` is already the true unduplicated encounter count -- smaller
+than the naive combined denominator, since some admission-pull rows merged
+into an existing ED episode instead of adding a new one:
+
+```{r episode-count}
+nrow(ed_clean) + nrow(inpatient_clean) # naive combined denominator
+nrow(episodes)                         # true unduplicated encounter count
+```
+
+Four episode metadata columns are added to every row, regardless of
+`return_format`:
+
+**`.episode_id`** -- A character key combining facility and visit identifier,
+shared across all rows belonging to the same encounter. Used internally to
+group rows into episodes and available for joining or filtering downstream.
+
+**`.patient_class_sequence`** -- A collapsed string of the patient classes
+present in the episode, in the order they actually occurred (using
+`C_Visit_Date_Time`, `Date`+`Time`, or `C_Patient_Class_MDT_Updates` when
+available -- see `?link_encounters`). The ED and admission records are
+genuinely separate rows with their own timestamps, so this can reflect a
+true reversal -- e.g. `"Direct Admit->ED"` if an admission record's
+timestamp somehow precedes the ED record's, versus the expected
+`"ED->Direct Admit"` for a normal continuity-break artifact (ED visit,
+then mis-submitted admission continuation). An episode built from a single
+row has `.patient_class_sequence` equal to that row's own class (e.g.
+`"ED"`, or `"Direct Admit"` for a genuine direct admission with no ED
+counterpart). This column enables filtering to specific episode types
+(e.g., `filter(.patient_class_sequence == "ED->Direct Admit")` to isolate
+the continuity-break cases) even though the underlying rows have already
+been merged.
+
+**`.episode_n_rows`** -- The number of original rows the episode was built
+from before merging. Episodes with no linkage have `.episode_n_rows = 1`;
+episodes merged from an ED row and an admission row have
+`.episode_n_rows = 2`.
+
+**`.index_encounter`** -- In collapsed output (the default), always `TRUE`,
+since every row already represents exactly one merged encounter; the column
+is retained for schema consistency with the diagnostic long-format output
+described below, not because a filtering step is required.
+
+```{r burden-pathways}
+# Distribution of care pathways -- already one row per encounter
+episodes |>
+  dplyr::count(.patient_class_sequence, sort = TRUE)
+```
+
+`"ED"` visits never touched the admission pull at all. `"Admitted->ED"`
+visits escalated to inpatient care within the ED pull itself (`HasBeenE = 1`
+and `HasBeenAdmitted = 1` on one already-deduplicated record) -- these need
+no cross-pull linking, since there was only ever one record. `"Direct
+Admit"` visits are genuine admissions with no preceding ED encounter at
+all, structurally invisible to a `HasBeenE = 1` query and only captured
+because a second pull was queried. `"ED->Direct Admit"` visits are the
+continuity-break artifact itself: an ED visit and its mis-submitted
+direct-admit continuation, reported under two different `C_BioSense_ID`
+values sharing one `HospitalName x Visit_ID`, correctly merged into a
+single encounter instead of being counted twice.
+
+```{r direct-admits}
+dplyr::filter(episodes, patient_class == "Direct Admit") |>
+  dplyr::select(hospital_name, visit_id, .patient_class_sequence)
+```
+
+### Inspecting the Raw Linkage Mechanism: `return_format = "long"`
+
+Set `return_format = "long"` to see the pre-merge rows directly -- for
+example, to audit which fields differed between the ED and admission records
+before they were reconciled, or to understand the linkage mechanism itself.
+No merge is applied in this mode.
+
+```{r long-format}
+episodes_long <- link_encounters(
+  ed_clean, inpatient_clean, return_format = "long"
+)
+
+dplyr::count(episodes_long, patient_class)
+```
+
+In long format, `.index_encounter` marks the row that survives a "one row per
+episode" filter -- `TRUE` on the ED row when both ED and admission rows are
+present, or on the single row for ED-only or Direct Admit-only episodes:
+
+```{r long-index}
+episodes_long |>
+  dplyr::filter(.index_encounter) |>
+  dplyr::count(.patient_class_sequence, sort = TRUE)
+```
+
+This matches the collapsed-format encounter count above, since the same rows
+are merged into (or, in long format, selected as) the encounter of record.
 
 ## Burden Estimation from Linked Data
 
@@ -319,19 +345,23 @@ burden
 ```
 
 This yields one count per clinical encounter. Visits that generated both an
-ED signal and an Admitted signal are merged into a single row (using the ED
+ED signal and an admission signal are merged into a single row (using the ED
 row as primary) and counted once. Visits that generated only an ED signal are
-counted once. With two-pull linkage, direct admissions add their own counts
-without inflating the ED rows.
+counted once. Direct admissions add their own counts without inflating the
+ED rows.
 
 The `.patient_class_sequence` breakdown is informative for understanding the
 severity composition of the case count:
 
 - `"ED"` -- Emergency department visit without inpatient admission
 - `"Admitted->ED"` -- Emergency department visit that escalated to inpatient
-  admission (merged into a single row, primary values from the ED row)
-- `"Direct Admit"` -- Inpatient admission without ED encounter (only visible
-  with two-pull linkage)
+  admission within the ED pull alone (merged into a single row, primary
+  values from the ED row)
+- `"Direct Admit"` -- Genuine inpatient admission with no preceding ED
+  encounter at all, only visible because a second pull was queried
+- `"ED->Direct Admit"` -- The continuity-break artifact: an ED visit and
+  its mis-submitted direct-admit continuation, reported as two records and
+  correctly merged into one encounter
 
 For most ESSENCE-based incidence analyses, the sum across all
 `.patient_class_sequence` categories in the (already unduplicated) collapsed

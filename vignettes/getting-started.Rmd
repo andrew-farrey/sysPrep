@@ -101,10 +101,10 @@ all four categories of ESSENCE data quality problems.
 dplyr::glimpse(essence_raw)
 ```
 
-The dataset contains approximately 190 rows and 17 columns. Key features
+The dataset contains approximately 197 rows and 19 columns. Key features
 embedded in `essence_raw`:
 
-- **11 duplicate rows** across four mechanisms: standard retransmissions,
+- **13 duplicate rows** across four mechanisms: standard retransmissions,
   midnight-crossing date changes, patient identifier corrections, and one
   compound case combining two mechanisms simultaneously.
 - **20 non-ED provider records** from a `"Primary Care"` and a
@@ -113,6 +113,10 @@ embedded in `essence_raw`:
   misclassified as `"Urgent Care"` -- they are valid ED providers but require
   facility type correction.
 - **Out-of-state and `OTHER_REGION` records** in the `Region` column.
+- **A `PullSource` column** marking which of two separately-run ESSENCE
+  queries (`HasBeenE = 1` vs. `HasBeenAdmitted = 1`) each row would have
+  come back in -- used in `vignette("encounter-linkage")` to demonstrate
+  `link_encounters()` without a second real ESSENCE pull.
 
 For full column documentation, see `?essence_raw`.
 
@@ -233,8 +237,8 @@ needs.
   deduplication strategy.
 
 - `vignette("encounter-linkage")`: The care pathway artifact problem,
-  `HasBeen_` column structure, single- and two-pull linkage, and burden
-  estimation from multi-class episode data.
+  `HasBeen_` column structure, linking a separately queried ED and
+  admission pull, and burden estimation from multi-class episode data.
 
 - `vignette("geography-assignment")`: When to use `assign_treating_geography()`
   versus `assign_facility_geography()`, the `Region` field format, and

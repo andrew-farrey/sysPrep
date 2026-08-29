@@ -5,7 +5,7 @@
 \alias{essence_clean}
 \title{Synthetic cleaned ESSENCE-like ED visit data}
 \format{
-A data frame with approximately 160 rows and 24 columns. All
+A data frame with approximately 164 rows and 25 columns. All
 column names are in snake_case (post \code{\link[janitor:clean_names]{janitor::clean_names()}}).
 \describe{
 \item{hospital_name}{Character. Synthetic facility name.}
@@ -26,15 +26,15 @@ encounter.}
 \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 \item{has_been_e}{Integer. \code{1} for an ED pull; \code{0} on the two visits
 where a \code{patient_class_change} direct-admit row outranked the ED row
-under \code{dedupe(keep = "last")} -- see \code{c_patient_class} and
+under \code{dedupe(keep = "last")}, plus the four genuine direct
+admissions with no ED row at all -- see \code{c_patient_class} and
 \code{?essence_raw}.}
 \item{has_been_admitted}{Integer. \code{1} if the visit resulted in
 inpatient admission.}
 \item{c_patient_class}{Character. ESSENCE-derived single-letter patient
-class. \code{"I"} on the two visits where deduplication kept the
-direct-admit continuation row over the original ED row (see
-\code{?essence_raw}); \code{"E"} otherwise. Unchanged by the preprocessing
-pipeline.}
+class. \code{"I"} on the visits where deduplication kept a direct-admit
+row over (or with no) original ED row (see \code{?essence_raw}); \code{"E"}
+otherwise. Unchanged by the preprocessing pipeline.}
 \item{region}{Character. Patient ESSENCE Region of residence in
 \verb{\{SITE\}_\{REGION\}} format, exactly as received -- never modified by
 either geography function.}
@@ -58,6 +58,10 @@ regardless of patient residence. Added by
 \item{.facility_geography}{Logical. Always \code{TRUE} -- signals that
 facility geography has been computed for every row. Added by
 \code{\link[=assign_facility_geography]{assign_facility_geography()}}.}
+\item{pull_source}{Character, \code{"ED"} or \code{"Admission"}. Carried through
+from \code{essence_raw}'s \code{PullSource}, converted to snake_case by
+\code{\link[janitor:clean_names]{janitor::clean_names()}} like any other column; not a real ESSENCE
+field -- see \code{?essence_raw}.}
 }
 }
 \source{

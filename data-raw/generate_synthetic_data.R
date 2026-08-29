@@ -89,7 +89,13 @@ base_visits <- tibble::tibble(
       HasBeenE        == 1L ~ "E",
       HasBeenAdmitted == 1L ~ "I",
       TRUE                  ~ NA_character_
-    )
+    ),
+    # Marks which of two separately-run ESSENCE queries (HasBeenE = 1 vs.
+    # HasBeenAdmitted = 1) this row would have come back in -- not a real
+    # ESSENCE field, added purely so vignette("encounter-linkage") can split
+    # essence_raw back into the two pulls link_encounters() is designed to
+    # recombine. All base ED visits belong to the ED pull ----
+    PullSource    = "ED"
   )
 
 # Assign patient regions (mix of in-state, out-of-state, OTHER_REGION) ----
@@ -162,7 +168,8 @@ non_ed_visits <- tibble::tibble(
       HasBeenE        == 1L ~ "E",
       HasBeenAdmitted == 1L ~ "I",
       TRUE                  ~ NA_character_
-    )
+    ),
+    PullSource    = "ED"
   )
 
 # ── Add duplicate records of each type ───────────────────────────────────────
@@ -206,7 +213,11 @@ compound_dups <- compound_base |>
 # carrying a different C_Patient_Class value -- classify_duplicates()
 # detects this from any distinct C_Patient_Class values across duplicate
 # rows, not a specific from/to pair; an ED-to-inpatient transition (E -> I)
-# is used here only as a common, realistic illustration ----
+# is used here only as a common, realistic illustration. This is also the
+# continuity-break case link_encounters() addresses: PullSource is
+# flipped to "Admission" since this row is what a separately-run
+# HasBeenAdmitted = 1 query would have returned, sharing HospitalName x
+# Visit_ID with the original "ED"-pull row still sitting in base_visits ----
 class_change_base <- base_visits |> dplyr::slice_sample(n = 2L)
 class_change_dups <- class_change_base |>
   dplyr::mutate(
@@ -214,8 +225,54 @@ class_change_dups <- class_change_base |>
     HasBeenE          = 0L,
     HasBeenAdmitted   = 1L,
     C_Patient_Class   = "I",
-    Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE)
+    # Advance both timestamps (not just Arrived_Date_Time) so
+    # link_encounters()'s chronological ordering shows the ED visit
+    # genuinely preceding its direct-admit continuation
+    # ("ED->Direct Admit") instead of tying on an identical
+    # C_Visit_Date_Time and falling back to alphabetical order ----
+    C_Visit_Date_Time = C_Visit_Date_Time + sample(1800:5400, 2L, replace = TRUE),
+    Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE),
+    PullSource      = "Admission"
   )
+
+# genuine direct admissions: HasBeenE = 0, HasBeenAdmitted = 1, with a brand
+# new Visit_ID that appears nowhere else in essence_raw -- the
+# "invisibility gap" case link_encounters() exists to capture, distinct
+# from class_change_dups above (which share a Visit_ID with a real ED row).
+# Also tagged PullSource = "Admission" ----
+n_direct_admit <- 4L
+
+direct_admits <- tibble::tibble(
+  HospitalName        = sample(ed_facilities$HospitalName, n_direct_admit, replace = TRUE),
+  Visit_ID            = new_visit_id(n_direct_admit),
+  C_Unique_Patient_ID = new_pid(n_direct_admit),
+  Date                = sample(seq(as.Date("2023-01-01"), as.Date("2023-12-31"), by = "day"),
+                               n_direct_admit, replace = TRUE),
+  HasBeenE            = 0L,
+  HasBeenAdmitted     = 1L,
+  Sex                 = sample(c("M", "F", "U"), n_direct_admit, replace = TRUE, prob = c(0.48, 0.48, 0.04)),
+  C_Patient_Age       = sample(18:85, n_direct_admit, replace = TRUE)
+) |>
+  dplyr::left_join(
+    dplyr::select(ed_facilities, HospitalName, Hospital, FacilityType,
+                  HospitalRegion, HospitalZip),
+    by = "HospitalName"
+  ) |>
+  dplyr::mutate(
+    C_BioSense_ID     = make_biosense_id(Date, Hospital, C_Unique_Patient_ID),
+    C_Patient_Class   = "I",
+    Region            = sample(ky_regions, n_direct_admit, replace = TRUE),
+    ZipCode           = sample(ky_zips,    n_direct_admit, replace = TRUE),
+    C_Visit_Date_Time = as.POSIXct(
+      paste0(Date, " ", sprintf("%02d:%02d:%02d",
+                                sample(0:23, n_direct_admit, replace = TRUE),
+                                sample(0:59, n_direct_admit, replace = TRUE),
+                                sample(0:59, n_direct_admit, replace = TRUE))),
+      tz = "America/New_York"
+    ),
+    PullSource      = "Admission"
+  ) |>
+  dplyr::mutate(Arrived_Date_Time = C_Visit_Date_Time + sample(0:7200, n_direct_admit, replace = TRUE))
 
 # ── Combine all records into essence_raw ─────────────────────────────────────
 essence_raw <- dplyr::bind_rows(
@@ -225,7 +282,8 @@ essence_raw <- dplyr::bind_rows(
   date_change_dups,
   pid_change_dups,
   compound_dups,
-  class_change_dups
+  class_change_dups,
+  direct_admits
 ) |>
   # Shuffle row order to simulate a real pull
   dplyr::slice_sample(prop = 1) |>
@@ -234,7 +292,7 @@ essence_raw <- dplyr::bind_rows(
     Visit_ID, C_BioSense_ID, C_Unique_Patient_ID,
     Date, C_Visit_Date_Time, Arrived_Date_Time,
     HasBeenE, HasBeenAdmitted, C_Patient_Class,
-    Region, ZipCode, Sex, C_Patient_Age
+    Region, ZipCode, Sex, C_Patient_Age, PullSource
   )
 
 # ── Build essence_clean by running the pipeline ───────────────────────────────
