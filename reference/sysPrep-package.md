@@ -34,10 +34,10 @@ Useful links:
 
 ## Author
 
-**Maintainer**: Andrew Farrey <afarrey11@gmail.com>
+**Maintainer**: Andrew Farrey <afarrey11@outlook.com>
 ([ORCID](https://orcid.org/0000-0003-4279-0998))
 
 Authors:
 
-- Andrew Farrey <afarrey11@gmail.com>
+- Andrew Farrey <afarrey11@outlook.com>
   ([ORCID](https://orcid.org/0000-0003-4279-0998))
