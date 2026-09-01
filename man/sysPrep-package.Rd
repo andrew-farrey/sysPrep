@@ -28,11 +28,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Andrew Farrey \email{afarrey11@gmail.com} (\href{https://orcid.org/0000-0003-4279-0998}{ORCID})
+\strong{Maintainer}: Andrew Farrey \email{afarrey11@outlook.com} (\href{https://orcid.org/0000-0003-4279-0998}{ORCID})
 
 Authors:
 \itemize{
-  \item Andrew Farrey \email{afarrey11@gmail.com} (\href{https://orcid.org/0000-0003-4279-0998}{ORCID})
+  \item Andrew Farrey \email{afarrey11@outlook.com} (\href{https://orcid.org/0000-0003-4279-0998}{ORCID})
 }
 
 }
