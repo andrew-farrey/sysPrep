@@ -200,6 +200,10 @@ directly:
 citation("sysPrep")
 ```
 
+Citation metadata is also available in
+[`CITATION.cff`](https://andrew-farrey.github.io/sysPrep/CITATION.cff)
+(used by GitHub’s “Cite this repository” feature and by Zenodo).
+
 ## License
 
 MIT © Andrew Farrey
