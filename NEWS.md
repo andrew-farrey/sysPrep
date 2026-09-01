@@ -1,5 +1,8 @@
 # sysPrep 0.0.0.9000
 
+* Added `CITATION.cff` (Citation File Format) at the package root for
+  GitHub's "Cite this repository" feature and Zenodo DOI metadata, alongside
+  the existing `inst/CITATION` used by `citation("sysPrep")`.
 * Functions validated against the NSSP ESSENCE `va_er` (Patient Location,
   Full Details) and `va_hosp` (Facility Location, Full Details) data sources.
 * `dedupe()`: Remove duplicate ESSENCE records with flexible keep strategy.

@@ -9,6 +9,7 @@
 ^tests/CLAUDE\.md$
 ^vignettes/CLAUDE\.md$
 ^cran-comments\.md$
+^CITATION\.cff$
 ^revdep$
 ^\.gitkeep$
 ^data/\.gitkeep$

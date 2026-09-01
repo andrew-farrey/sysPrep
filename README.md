@@ -191,6 +191,9 @@ If you use `sysPrep` in published work, please cite the package directly:
 citation("sysPrep")
 ```
 
+Citation metadata is also available in [`CITATION.cff`](CITATION.cff)
+(used by GitHub's "Cite this repository" feature and by Zenodo).
+
 ## License
 
 MIT © Andrew Farrey
