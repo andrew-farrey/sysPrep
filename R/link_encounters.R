@@ -429,6 +429,15 @@ link_encounters <- function(ed_data,
     }
 
     # Prefer HasBeenAdmitted over HasBeenI when both present ----
+    # `HasBeenI` is excluded from the pivot below (so it doesn't contribute
+    # a second, redundant "Admitted" row for the same admission) but its
+    # column and true 0/1 values are left in `ed_data` untouched -- an
+    # earlier version of this code dropped the `HasBeenI` column outright,
+    # which discarded its real values for every `ed_data` row and surfaced
+    # as `has_been_i = NA` on all of them after `bind_rows()` with
+    # `inpatient_admission_data` (whose own `HasBeenI` column, untouched,
+    # supplied the only non-NA values in the output) ----
+    exclude_from_pivot <- character(0)
     if (has_been_admitted && has_been_i) {
       inform_if(
         verbose,
@@ -438,22 +447,30 @@ link_encounters <- function(ed_data,
           "disposition aware and inclusive of ED-to-inpatient escalations."
         )
       )
-      ed_data <- dplyr::select(
-        ed_data,
-        -dplyr::all_of(rlang::as_string(has_been_i_col))
-      )
+      exclude_from_pivot <- rlang::as_string(has_been_i_col)
     }
 
-    # Warn about outpatient visits ----
+    # Inform about outpatient/observation visits ----
+    # A `HasBeenO = 1` co-occurring flag is ordinary ESSENCE data, not a
+    # sign of anything wrong -- a patient can genuinely be seen in
+    # outpatient/observation care and also be triaged in the ED or
+    # admitted on the same record. In `link_encounters()`'s intended usage
+    # (an ED pull and an inpatient/direct-admit pull), every episode also
+    # has an ED or Admitted component, so the "Outpatient" pivot row it
+    # contributes is never the primary row and never appears as the
+    # collapsed output's `patient_class` value -- it only surfaces in
+    # `.patient_class_sequence` and in `return_format = "long"` output ----
     if (!is.null(has_been_o_col)) {
       has_been_o_str <- rlang::as_string(has_been_o_col)
       if (any(ed_data[[has_been_o_str]] == 1L, na.rm = TRUE)) {
-        rlang::warn(
+        inform_if(
+          verbose,
           paste0(
-            "Outpatient visits detected (`HasBeenO = 1`). These will be labeled ",
-            "'Outpatient' in `patient_class` and retained. For overdose or injury ",
-            "burden estimation, consider filtering to `HasBeenE = 1` and/or ",
-            "`HasBeenAdmitted = 1` at the ESSENCE query level to reduce data volume."
+            "Outpatient/observation visits detected (`HasBeenO = 1`). These ",
+            "contribute an 'Outpatient' entry to `.patient_class_sequence` ",
+            "but will not appear as the collapsed output's `patient_class` ",
+            "value for an episode that also includes an ED or inpatient-",
+            "admission record, which is the typical case for two-pull input."
           )
         )
       }
@@ -566,7 +583,7 @@ link_encounters <- function(ed_data,
     )
 
     # Pivot HasBeen_ flags to long format -- preserve a copy of each
-    # has_been_* column under a "_orig" name first, since pivot_longer()
+    # pivoted column under a "_orig" name first, since pivot_longer()
     # consumes (removes) the columns it pivots on. Every synthetic row
     # produced from one original record describes that same record, so
     # each should retain that record's true has_been_* values regardless
@@ -576,20 +593,25 @@ link_encounters <- function(ed_data,
     # has_been_e = 1 and has_been_admitted = 1, not just the flag that
     # produced them. Without this, has_been_* end up NA (or, worse,
     # silently wrong after cross-pull max() reconciliation) for any row
-    # that never came from inpatient_admission_data directly ----
+    # that never came from inpatient_admission_data directly. `HasBeenI`
+    # (when excluded above to prefer `HasBeenAdmitted`) is deliberately
+    # left out of the pivot entirely rather than dropped from the data --
+    # since it's never pivoted, it's never consumed, and its true 0/1
+    # value survives on every row with no `_orig` handling needed ----
     has_been_cols <- grep("^has_been_", names(ed_data), value = TRUE)
-    has_been_orig_cols <- paste0(has_been_cols, "_orig")
+    pivot_cols      <- setdiff(has_been_cols, exclude_from_pivot)
+    pivot_orig_cols <- paste0(pivot_cols, "_orig")
 
     ed_long <- ed_data |>
       dplyr::mutate(
         dplyr::across(
-          dplyr::all_of(has_been_cols),
+          dplyr::all_of(pivot_cols),
           ~ .x,
           .names = "{.col}_orig"
         )
       ) |>
       tidyr::pivot_longer(
-        dplyr::all_of(has_been_cols),
+        dplyr::all_of(pivot_cols),
         names_to  = "patient_class",
         values_to = "present"
       ) |>
@@ -607,7 +629,7 @@ link_encounters <- function(ed_data,
       dplyr::select(-present) |>
       dplyr::rename_with(
         ~ sub("_orig$", "", .x),
-        dplyr::all_of(has_been_orig_cols)
+        dplyr::all_of(pivot_orig_cols)
       )
 
   }

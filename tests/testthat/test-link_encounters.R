@@ -308,13 +308,14 @@ test_that("link_encounters() C_Patient_Class_List label form maps to same patien
   expect_true("ED"        %in% result$patient_class)
 })
 
-test_that("link_encounters() warns when HasBeenO = 1 visits are present", {
+test_that("link_encounters() informs (not warns) when HasBeenO = 1 visits are present", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenO = c(1L, 0L, 0L, 0L, 0L))
-  expect_warning(
+  expect_message(
     link_encounters(data, data[0L, ]),
     "Outpatient"
   )
+  expect_no_warning(link_encounters(data, data[0L, ]))
 })
 
 test_that("link_encounters() verbose = FALSE suppresses HasBeenAdmitted-preferred message", {
@@ -323,13 +324,24 @@ test_that("link_encounters() verbose = FALSE suppresses HasBeenAdmitted-preferre
   expect_no_message(link_encounters(data, data[0L, ], verbose = FALSE))
 })
 
-test_that("link_encounters() warns on HasBeenO regardless of verbose", {
+test_that("link_encounters() verbose = FALSE suppresses the HasBeenO message", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenO = c(1L, 0L, 0L, 0L, 0L))
-  expect_warning(
-    link_encounters(data, data[0L, ], verbose = FALSE),
-    "Outpatient"
-  )
+  expect_no_message(link_encounters(data, data[0L, ], verbose = FALSE))
+})
+
+test_that("link_encounters() preserves true HasBeenI values (not NA) when HasBeenAdmitted is also present", {
+  # Regression test: HasBeenI used to be dropped outright from ed_data to
+  # keep it out of the patient_class pivot, which discarded its real 0/1
+  # values for every ed_data row -- they only survived on rows sourced
+  # from inpatient_admission_data after bind_rows(), showing as NA
+  # everywhere else. HasBeenI should now be excluded from the pivot without
+  # losing its values.
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(HasBeenI = c(1L, 0L, 1L, 0L, 1L))
+  result <- suppressMessages(link_encounters(data, data[0L, ]))
+  expect_false(any(is.na(result$has_been_i)))
+  expect_equal(sort(result$has_been_i), sort(data$HasBeenI))
 })
 
 # merge strategy helper tests ----
