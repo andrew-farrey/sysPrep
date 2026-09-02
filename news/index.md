@@ -16,6 +16,27 @@
   now preserves each row’s true original `HasBeen_` values across the
   pivot, so every episode shows correct `0`/`1` values – never `NA`, and
   never an incorrect reconciled value.
+- **Bug fix** in
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md):
+  in the same `HasBeen_`-flag fallback path, when `ed_data` contained
+  both `HasBeenAdmitted` and `HasBeenI`, `HasBeenI` was dropped from
+  `ed_data` entirely to keep it from contributing a redundant “Admitted”
+  row to the patient-class pivot – which discarded its real `0`/`1`
+  values for every `ed_data` row. After `bind_rows()` with
+  `inpatient_admission_data`, only rows sourced from the inpatient pull
+  retained a real `has_been_i` value; every ED-pull row showed `NA`.
+  `HasBeenI` is now excluded from the pivot without being removed from
+  the data, so its true value is preserved on every row.
+- The message issued when `HasBeenO = 1` visits are present is now an
+  informational message (suppressible via `verbose = FALSE`) rather than
+  a warning, and no longer implies these visits will show
+  `patient_class = "Outpatient"` in the default collapsed output – they
+  won’t, whenever the same episode also includes an ED or
+  inpatient-admission record (the norm for
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)’s
+  two-pull input), since only the primary row’s `patient_class` survives
+  collapsing. `HasBeenO = 1` is ordinary co-occurring ESSENCE data, not
+  a data quality concern.
 - Added `CITATION.cff` (Citation File Format) at the package root for
   GitHub’s “Cite this repository” feature and Zenodo DOI metadata,
   alongside the existing `inst/CITATION` used by `citation("sysPrep")`.
