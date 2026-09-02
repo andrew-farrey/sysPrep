@@ -252,6 +252,22 @@ test_that("link_encounters() uses C_Patient_Class_List when present and informs"
   expect_true("patient_class" %in% names(result))
 })
 
+test_that("link_encounters() warns and retains NA patient_class for missing/empty C_Patient_Class_List values", {
+  data <- tibble::tibble(
+    HospitalName         = c("Central Medical Center", "Central Medical Center"),
+    Visit_ID             = c("V00000001", "V00000002"),
+    C_Patient_Class_List = c("E", NA_character_),
+    C_Visit_Date_Time    = as.POSIXct(c("2023-01-01 08:00:00", "2023-01-01 09:00:00"))
+  )
+  expect_warning(
+    result <- suppressMessages(
+      link_encounters(data, data[0L, ], return_format = "long")
+    ),
+    "missing or empty"
+  )
+  expect_true(any(is.na(result$patient_class)))
+})
+
 test_that("link_encounters() C_Patient_Class_List code form maps to patient class labels in long format", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(C_Patient_Class_List = c("EI", "E", "D"))
@@ -338,6 +354,26 @@ test_that("merge_union_ccdd() drops duplicate values within each half", {
   expect_equal(result, "abdominal pain;opioid overdose|R10.9;T40.6")
 })
 
+test_that("merge_union_delimited() returns NA when all values are NA/empty", {
+  result <- merge_union_delimited(c(NA_character_, ""), delimiter = ";")
+  expect_true(is.na(result))
+})
+
+test_that("merge_union_ccdd() returns NA when all values are NA/empty", {
+  result <- merge_union_ccdd(c(NA_character_, ""), delimiter = ";")
+  expect_true(is.na(result))
+})
+
+test_that("merge_union_ccdd() handles a value with an empty CC half", {
+  result <- merge_union_ccdd("|R10.9", delimiter = ";")
+  expect_equal(result, "|R10.9")
+})
+
+test_that("merge_union_ccdd() handles a value with no pipe (empty DD half)", {
+  result <- merge_union_ccdd("abdominal pain", delimiter = ";")
+  expect_equal(result, "abdominal pain|")
+})
+
 test_that("merge_prefer_yes() returns Yes when any value is Yes", {
   result <- merge_prefer_yes(c("No", "Yes"), primary_value = "No")
   expect_equal(result, "Yes")
@@ -385,6 +421,27 @@ test_that("merge_field_value() aborts on an unknown strategy", {
     ),
     "Unknown merge strategy"
   )
+})
+
+# parse_mdt_updates() ----
+
+test_that("parse_mdt_updates() returns all NA when mdt_str is NA", {
+  result <- parse_mdt_updates(NA_character_, n_classes = 2L)
+  expect_true(all(is.na(result)))
+})
+
+test_that("parse_mdt_updates() returns all NA when mdt_str is an empty string", {
+  result <- parse_mdt_updates("", n_classes = 2L)
+  expect_true(all(is.na(result)))
+})
+
+test_that("parse_mdt_updates() skips empty segments between pipe delimiters", {
+  result <- parse_mdt_updates(
+    "{1};2023-01-01 10:00:00.000;||{2};2023-01-01 08:00:00.000;",
+    n_classes = 2L
+  )
+  expect_equal(result[1], "2023-01-01 10:00:00.000")
+  expect_equal(result[2], "2023-01-01 08:00:00.000")
 })
 
 # safe_as_posixct() ----
@@ -469,6 +526,14 @@ test_that("compute_patient_class_sequence() falls back to alphabetical order whe
     class_time    = as.POSIXct(c(NA, NA))
   )
   expect_equal(result, "Direct Admit->ED")
+})
+
+test_that("compute_patient_class_sequence() returns NA when all patient_class values are NA", {
+  result <- compute_patient_class_sequence(
+    patient_class = c(NA_character_, NA_character_),
+    class_time    = as.POSIXct(c(NA, NA))
+  )
+  expect_true(is.na(result))
 })
 
 test_that("compute_patient_class_sequence() puts classes with no timestamp last when some classes have one", {

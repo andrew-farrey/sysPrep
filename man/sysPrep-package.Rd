@@ -22,7 +22,7 @@ it just once.
 Useful links:
 \itemize{
   \item \url{https://github.com/andrew-farrey/sysPrep}
-  \item \url{https://andrew-farrey.github.io/sysPrep}
+  \item \url{https://andrew-farrey.github.io/sysPrep/}
   \item Report bugs at \url{https://github.com/andrew-farrey/sysPrep/issues}
 }
 

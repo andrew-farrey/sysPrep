@@ -35,3 +35,15 @@ test_that("resolve_col_optional() returns symbol when column is present", {
   result <- sysPrep:::resolve_col_optional(data, rlang::sym("hospital_name"))
   expect_equal(rlang::as_string(result), "hospital_name")
 })
+
+test_that("resolve_geography_output_col() returns NULL when new_col is NULL", {
+  data   <- tibble::tibble(hospital_name = "A")
+  result <- sysPrep:::resolve_geography_output_col(
+    new_col      = NULL,
+    data         = data,
+    overwrite    = FALSE,
+    reserved_col = ".out_of_state",
+    arg_name     = "new_region_col"
+  )
+  expect_null(result)
+})

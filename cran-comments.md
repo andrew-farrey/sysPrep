@@ -10,8 +10,10 @@
   ubuntu-latest (release, devel), ubuntu-latest (oldrel-1), macOS-latest
   (release), windows-latest (release) -- all passing as of the latest push
   (2026-09-01); see the Actions tab for current status
-* win-builder (devel, release) -- TODO: run via `devtools::check_win_devel()`
-  / `check_win_release()` and replace this line with actual results
+* win-builder (R-devel, R Under development (unstable) (2026-08-31 r90457
+  ucrt), x86_64-w64-mingw32) -- checked 2026-09-02: 1 NOTE (see below).
+  win-builder (R-release) -- TODO: run via `devtools::check_win_release()`
+  and replace this line with actual results
 * R-hub -- TODO: run `rhub::rhub_setup()` (writes
   `.github/workflows/rhub.yaml`, not yet added), commit + push, then
   `rhub::rhub_check()`, and replace this line with actual results
@@ -30,3 +32,17 @@ it operates on data frames returned by the ESSENCE API (accessible via
 the separate `Rnssp` package). Functions have been validated against 
 records from the ESSENCE `va_er` (Patient Location, Full Details) and 
 `va_hosp` (Facility Location, Full Details) data sources.
+
+This is a new submission. The win-builder (R-devel) check reported one
+NOTE, expected for a first submission:
+
+* "Version contains large components (0.0.0.9000)" -- will be resolved
+  when the version is bumped for actual CRAN submission.
+* "Possibly misspelled words in DESCRIPTION: NSSP, Syndromic, syndromic"
+  -- these are correct: NSSP is the National Syndromic Surveillance
+  Program (a real, proper-noun program name), and "syndromic" is a
+  standard epidemiological term, not a typo.
+* The URL/file-URI items flagged in that same check (a redirecting
+  pkgdown URL and a `CITATION.cff` link in README.md not present in the
+  built tarball) were fixed 2026-09-02 and should not reappear on the
+  next win-builder run.

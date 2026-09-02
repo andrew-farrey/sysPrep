@@ -25,7 +25,7 @@ version: 0.0.0.9000
 date-released: '2026-09-01'
 license: MIT
 repository-code: 'https://github.com/andrew-farrey/sysPrep'
-url: 'https://andrew-farrey.github.io/sysPrep'
+url: 'https://andrew-farrey.github.io/sysPrep/'
 keywords:
   - syndromic surveillance
   - ESSENCE

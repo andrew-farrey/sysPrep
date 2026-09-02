@@ -109,6 +109,33 @@ test_that("review_facility_ed_visits() warns on missing date_col regardless of v
   )
 })
 
+test_that("review_facility_ed_visits() informs when facility types are combined without group_by_type", {
+  data <- make_essence_data(n = 20L) |>
+    dplyr::mutate(
+      FacilityType = rep(c("Emergency Care", "Urgent Care"), length.out = 20L)
+    )
+  expect_message(
+    review_facility_ed_visits(data, group_by_type = FALSE),
+    "Outlier detection across all facility types combined"
+  )
+})
+
+test_that("review_facility_ed_visits() informs when no facilities remain after processing", {
+  data <- dplyr::filter(make_essence_data(n = 1L), FALSE)
+  expect_message(
+    review_facility_ed_visits(data),
+    "No facilities in data"
+  )
+})
+
+test_that("review_facility_ed_visits() clean_names = FALSE returns a data frame without error", {
+  data <- make_essence_data(n = 20L)
+  result <- suppressMessages(
+    review_facility_ed_visits(data, clean_names = FALSE)
+  )
+  expect_s3_class(result, "data.frame")
+})
+
 test_that("review_facility_ed_visits() .outlier_flag is TRUE iff .outlier_low or .outlier_high", {
   big   <- lapply(1:4, function(i) {
     make_essence_data(n = 20L) |>

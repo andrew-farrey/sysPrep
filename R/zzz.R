@@ -22,7 +22,7 @@
     "This is an independent R package and is not affiliated with the National\n",
     "Syndromic Surveillance Program (NSSP) or the Centers for Disease\n",
     "Control and Prevention (CDC).\n\n",
-    "Docs:      https://andrew-farrey.github.io/sysPrep\n",
+    "Docs:      https://andrew-farrey.github.io/sysPrep/\n",
     "Vignettes: browseVignettes(\"sysPrep\")\n\n",
     "Built with \u2764\ufe0f by a member of the NSSP Community of Practice.\n",
     "\n",
