@@ -261,18 +261,16 @@
 #'   and `.index_encounter`.
 #'
 #' @examples
-#' # Split the synthetic pull into the two separately-queried ESSENCE pulls
-#' # link_encounters() expects (see `PullSource` in `?essence_raw`)
-#' ed_pull        <- dplyr::filter(essence_raw, PullSource == "ED")
-#' admission_pull <- dplyr::filter(essence_raw, PullSource == "Admission")
-#'
-#' ed_clean <- ed_pull |>
+#' # essence_ed_raw and essence_inp_raw are two small synthetic datasets
+#' # representing the two separately queried ESSENCE pulls link_encounters()
+#' # expects -- see `?essence_ed_raw`/`?essence_inp_raw`
+#' ed_clean <- essence_ed_raw |>
 #'   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
 #'   filter_care_setting(
 #'     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
 #'   )
 #' inpatient_clean <- dedupe(
-#'   admission_pull, order_by = Arrived_Date_Time, keep = "last"
+#'   essence_inp_raw, order_by = Arrived_Date_Time, keep = "last"
 #' )
 #'
 #' # One row per true encounter, merged
@@ -544,10 +542,31 @@ link_encounters <- function(ed_data,
       )
     )
 
-    # Pivot HasBeen_ flags to long format ----
+    # Pivot HasBeen_ flags to long format -- preserve a copy of each
+    # has_been_* column under a "_orig" name first, since pivot_longer()
+    # consumes (removes) the columns it pivots on. Every synthetic row
+    # produced from one original record describes that same record, so
+    # each should retain that record's true has_been_* values regardless
+    # of which flag triggered its own creation -- e.g. an "Admitted->ED"
+    # escalation splits one row (HasBeenE = 1, HasBeenAdmitted = 1) into
+    # two synthetic rows ("ED" and "Admitted"), and both must still show
+    # has_been_e = 1 and has_been_admitted = 1, not just the flag that
+    # produced them. Without this, has_been_* end up NA (or, worse,
+    # silently wrong after cross-pull max() reconciliation) for any row
+    # that never came from inpatient_admission_data directly ----
+    has_been_cols <- grep("^has_been_", names(ed_data), value = TRUE)
+    has_been_orig_cols <- paste0(has_been_cols, "_orig")
+
     ed_long <- ed_data |>
+      dplyr::mutate(
+        dplyr::across(
+          dplyr::all_of(has_been_cols),
+          ~ .x,
+          .names = "{.col}_orig"
+        )
+      ) |>
       tidyr::pivot_longer(
-        dplyr::starts_with("has_been_"),
+        dplyr::all_of(has_been_cols),
         names_to  = "patient_class",
         values_to = "present"
       ) |>
@@ -562,7 +581,11 @@ link_encounters <- function(ed_data,
           default = "Other"
         )
       ) |>
-      dplyr::select(-present)
+      dplyr::select(-present) |>
+      dplyr::rename_with(
+        ~ sub("_orig$", "", .x),
+        dplyr::all_of(has_been_orig_cols)
+      )
 
   }
 

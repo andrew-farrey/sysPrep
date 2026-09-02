@@ -300,18 +300,16 @@ survives filtering to one row per episode. In collapsed format, always
 }
 }
 \examples{
-# Split the synthetic pull into the two separately-queried ESSENCE pulls
-# link_encounters() expects (see `PullSource` in `?essence_raw`)
-ed_pull        <- dplyr::filter(essence_raw, PullSource == "ED")
-admission_pull <- dplyr::filter(essence_raw, PullSource == "Admission")
-
-ed_clean <- ed_pull |>
+# essence_ed_raw and essence_inp_raw are two small synthetic datasets
+# representing the two separately queried ESSENCE pulls link_encounters()
+# expects -- see `?essence_ed_raw`/`?essence_inp_raw`
+ed_clean <- essence_ed_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
 inpatient_clean <- dedupe(
-  admission_pull, order_by = Arrived_Date_Time, keep = "last"
+  essence_inp_raw, order_by = Arrived_Date_Time, keep = "last"
 )
 
 # One row per true encounter, merged

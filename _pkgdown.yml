@@ -103,6 +103,8 @@ reference:
     contents:
       - essence_raw
       - essence_clean
+      - essence_ed_raw
+      - essence_inp_raw
 
 articles:
   - title: "Getting Started"

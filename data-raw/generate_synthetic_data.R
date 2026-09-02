@@ -89,13 +89,7 @@ base_visits <- tibble::tibble(
       HasBeenE        == 1L ~ "E",
       HasBeenAdmitted == 1L ~ "I",
       TRUE                  ~ NA_character_
-    ),
-    # Marks which of two separately-run ESSENCE queries (HasBeenE = 1 vs.
-    # HasBeenAdmitted = 1) this row would have come back in -- not a real
-    # ESSENCE field, added purely so vignette("encounter-linkage") can split
-    # essence_raw back into the two pulls link_encounters() is designed to
-    # recombine. All base ED visits belong to the ED pull ----
-    PullSource    = "ED"
+    )
   )
 
 # Assign patient regions (mix of in-state, out-of-state, OTHER_REGION) ----
@@ -168,8 +162,7 @@ non_ed_visits <- tibble::tibble(
       HasBeenE        == 1L ~ "E",
       HasBeenAdmitted == 1L ~ "I",
       TRUE                  ~ NA_character_
-    ),
-    PullSource    = "ED"
+    )
   )
 
 # ── Add duplicate records of each type ───────────────────────────────────────
@@ -214,10 +207,9 @@ compound_dups <- compound_base |>
 # detects this from any distinct C_Patient_Class values across duplicate
 # rows, not a specific from/to pair; an ED-to-inpatient transition (E -> I)
 # is used here only as a common, realistic illustration. This is also the
-# continuity-break case link_encounters() addresses: PullSource is
-# flipped to "Admission" since this row is what a separately-run
-# HasBeenAdmitted = 1 query would have returned, sharing HospitalName x
-# Visit_ID with the original "ED"-pull row still sitting in base_visits ----
+# continuity-break case link_encounters() addresses, though essence_raw
+# itself is never used to demonstrate link_encounters() directly -- see
+# essence_ed_raw/essence_inp_raw below, which are purpose-built for that ----
 class_change_base <- base_visits |> dplyr::slice_sample(n = 2L)
 class_change_dups <- class_change_base |>
   dplyr::mutate(
@@ -225,21 +217,149 @@ class_change_dups <- class_change_base |>
     HasBeenE          = 0L,
     HasBeenAdmitted   = 1L,
     C_Patient_Class   = "I",
-    # Advance both timestamps (not just Arrived_Date_Time) so
-    # link_encounters()'s chronological ordering shows the ED visit
-    # genuinely preceding its direct-admit continuation
-    # ("ED->Direct Admit") instead of tying on an identical
-    # C_Visit_Date_Time and falling back to alphabetical order ----
+    # Advance both timestamps (not just Arrived_Date_Time) so a reader
+    # inspecting the two rows directly sees the ED visit genuinely
+    # preceding its direct-admit continuation, rather than an identical
+    # C_Visit_Date_Time that looks like a data error ----
     C_Visit_Date_Time = C_Visit_Date_Time + sample(1800:5400, 2L, replace = TRUE),
-    Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE),
-    PullSource      = "Admission"
+    Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE)
   )
 
-# genuine direct admissions: HasBeenE = 0, HasBeenAdmitted = 1, with a brand
-# new Visit_ID that appears nowhere else in essence_raw -- the
-# "invisibility gap" case link_encounters() exists to capture, distinct
-# from class_change_dups above (which share a Visit_ID with a real ED row).
-# Also tagged PullSource = "Admission" ----
+# ── Combine all records into essence_raw ─────────────────────────────────────
+essence_raw <- dplyr::bind_rows(
+  base_visits,
+  non_ed_visits,
+  standard_dups,
+  date_change_dups,
+  pid_change_dups,
+  compound_dups,
+  class_change_dups
+) |>
+  # Shuffle row order to simulate a real pull
+  dplyr::slice_sample(prop = 1) |>
+  dplyr::select(
+    HospitalName, Hospital, FacilityType, HospitalRegion, HospitalZip,
+    Visit_ID, C_BioSense_ID, C_Unique_Patient_ID,
+    Date, C_Visit_Date_Time, Arrived_Date_Time,
+    HasBeenE, HasBeenAdmitted, C_Patient_Class,
+    Region, ZipCode, Sex, C_Patient_Age
+  )
+
+# ── Build essence_clean by running the pipeline ───────────────────────────────
+# Chains both geography functions on their new (additive) defaults: region/
+# zip_code stay exactly as received, region_hybrid/zip_code_hybrid and
+# region_facility/zip_code_facility are added alongside them. This mirrors
+# the recommended pipeline shown in getting-started.Rmd, README.md, and
+# vignette("geography-assignment") -- essence_clean should demonstrate the
+# same call readers are told to run themselves ----
+essence_clean <- essence_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last") |>
+  filter_care_setting(
+    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+  ) |>
+  assign_treating_geography() |>
+  assign_facility_geography()
+
+# ── Build essence_ed_raw and essence_inp_raw ──────────────────────────────────
+# Two small, purpose-built synthetic pulls demonstrating link_encounters()
+# two-pull linkage. Unlike essence_raw (a single realistic ED pull with
+# every dedup/care-setting/geography issue baked in for the other
+# vignettes), these exist solely for vignette("encounter-linkage") and
+# link_encounters()'s own @examples, and are deliberately small.
+# essence_ed_raw represents a HasBeenE = 1 query; essence_inp_raw
+# represents a separately queried HasBeenAdmitted = 1 query. Four visit
+# types are represented, split across the two:
+#   1. Plain ED-only visits (essence_ed_raw): HasBeenE = 1,
+#      HasBeenAdmitted = 0.
+#   2. Correctly carried-through ED -> inpatient escalation
+#      (essence_ed_raw only): HasBeenE = 1 and HasBeenAdmitted = 1 on one
+#      already-deduplicated record -- needs no cross-pull linking.
+#   3. Continuity-break artifact: an essence_ed_raw row (HasBeenE = 1,
+#      HasBeenAdmitted = 0) and its mis-submitted essence_inp_raw
+#      continuation (HasBeenE = 0, HasBeenAdmitted = 1) sharing
+#      HospitalName x Visit_ID -- link_encounters() should merge these
+#      back into one episode.
+#   4. Genuine direct admission (essence_inp_raw only): HasBeenE = 0,
+#      HasBeenAdmitted = 1, a Visit_ID that appears nowhere else --
+#      structurally invisible to a HasBeenE = 1 query.
+# One standard retransmission duplicate is included in essence_ed_raw so
+# vignette("encounter-linkage")'s "dedupe each pull separately before
+# linking" guidance has something real to demonstrate ----
+
+n_ed_demo <- 14L
+
+ed_demo_base <- tibble::tibble(
+  HospitalName        = sample(ed_facilities$HospitalName, n_ed_demo, replace = TRUE),
+  Visit_ID            = new_visit_id(n_ed_demo),
+  C_Unique_Patient_ID = new_pid(n_ed_demo),
+  Date                = sample(seq(as.Date("2023-01-01"), as.Date("2023-12-31"), by = "day"),
+                               n_ed_demo, replace = TRUE),
+  HasBeenE            = 1L,
+  # positions 11-12: correctly carried-through escalation (both flags on
+  # one record). Positions 13-14: continuity-break ED halves -- look like
+  # plain ED visits here; their admission continuation lives in
+  # essence_inp_raw ----
+  HasBeenAdmitted     = c(rep(0L, 10L), 1L, 1L, 0L, 0L),
+  # HasBeenI mirrors HasBeenAdmitted here -- in real ESSENCE data the two
+  # normally move together for a genuine admission; link_encounters()
+  # prefers HasBeenAdmitted when both are present (see
+  # vignette("encounter-linkage")'s "Fallback: HasBeen_ flag pivot") ----
+  HasBeenI            = c(rep(0L, 10L), 1L, 1L, 0L, 0L),
+  Sex                 = sample(c("M", "F", "U"), n_ed_demo, replace = TRUE, prob = c(0.48, 0.48, 0.04)),
+  C_Patient_Age       = sample(18:85, n_ed_demo, replace = TRUE)
+) |>
+  dplyr::left_join(
+    dplyr::select(ed_facilities, HospitalName, Hospital, FacilityType,
+                  HospitalRegion, HospitalZip),
+    by = "HospitalName"
+  ) |>
+  dplyr::mutate(
+    C_BioSense_ID     = make_biosense_id(Date, Hospital, C_Unique_Patient_ID),
+    C_Patient_Class   = dplyr::if_else(HasBeenAdmitted == 1L, "I", "E"),
+    Region            = sample(ky_regions, n_ed_demo, replace = TRUE),
+    ZipCode           = sample(ky_zips,    n_ed_demo, replace = TRUE),
+    C_Visit_Date_Time = as.POSIXct(
+      paste0(Date, " ", sprintf("%02d:%02d:%02d",
+                                sample(0:23, n_ed_demo, replace = TRUE),
+                                sample(0:59, n_ed_demo, replace = TRUE),
+                                sample(0:59, n_ed_demo, replace = TRUE))),
+      tz = "America/New_York"
+    ),
+    Arrived_Date_Time = C_Visit_Date_Time + sample(0:7200, n_ed_demo, replace = TRUE)
+  )
+
+# One standard retransmission duplicate of the first plain ED row ----
+ed_demo_dup <- ed_demo_base |>
+  dplyr::slice(1L) |>
+  dplyr::mutate(Arrived_Date_Time = Arrived_Date_Time + 1800L)
+
+essence_ed_raw <- dplyr::bind_rows(ed_demo_base, ed_demo_dup) |>
+  dplyr::slice_sample(prop = 1) |>
+  dplyr::select(
+    HospitalName, Hospital, FacilityType, HospitalRegion, HospitalZip,
+    Visit_ID, C_BioSense_ID, C_Unique_Patient_ID,
+    Date, C_Visit_Date_Time, Arrived_Date_Time,
+    HasBeenE, HasBeenAdmitted, HasBeenI, C_Patient_Class,
+    Region, ZipCode, Sex, C_Patient_Age
+  )
+
+# Build the continuity-break admission-pull continuations from
+# ed_demo_base's last 2 rows (positions 13-14, chosen above), sharing
+# HospitalName x Visit_ID but a later timestamp and a different
+# C_BioSense_ID -- mirrors the class_change_dups mechanism above ----
+continuity_break_ed_rows <- dplyr::slice(ed_demo_base, (n_ed_demo - 1L):n_ed_demo)
+
+continuity_break_admits <- continuity_break_ed_rows |>
+  dplyr::mutate(
+    C_BioSense_ID     = paste0(make_biosense_id(Date, Hospital, C_Unique_Patient_ID), "R"),
+    HasBeenE          = 0L,
+    HasBeenAdmitted   = 1L,
+    C_Patient_Class   = "I",
+    C_Visit_Date_Time = C_Visit_Date_Time + sample(1800:5400, 2L, replace = TRUE),
+    Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE)
+  )
+
+# Genuine direct admissions: brand new Visit_IDs, no ED counterpart at all ----
 n_direct_admit <- 4L
 
 direct_admits <- tibble::tibble(
@@ -269,54 +389,31 @@ direct_admits <- tibble::tibble(
                                 sample(0:59, n_direct_admit, replace = TRUE),
                                 sample(0:59, n_direct_admit, replace = TRUE))),
       tz = "America/New_York"
-    ),
-    PullSource      = "Admission"
+    )
   ) |>
   dplyr::mutate(Arrived_Date_Time = C_Visit_Date_Time + sample(0:7200, n_direct_admit, replace = TRUE))
 
-# ── Combine all records into essence_raw ─────────────────────────────────────
-essence_raw <- dplyr::bind_rows(
-  base_visits,
-  non_ed_visits,
-  standard_dups,
-  date_change_dups,
-  pid_change_dups,
-  compound_dups,
-  class_change_dups,
-  direct_admits
-) |>
-  # Shuffle row order to simulate a real pull
+essence_inp_raw <- dplyr::bind_rows(continuity_break_admits, direct_admits) |>
   dplyr::slice_sample(prop = 1) |>
   dplyr::select(
     HospitalName, Hospital, FacilityType, HospitalRegion, HospitalZip,
     Visit_ID, C_BioSense_ID, C_Unique_Patient_ID,
     Date, C_Visit_Date_Time, Arrived_Date_Time,
     HasBeenE, HasBeenAdmitted, C_Patient_Class,
-    Region, ZipCode, Sex, C_Patient_Age, PullSource
+    Region, ZipCode, Sex, C_Patient_Age
   )
-
-# ── Build essence_clean by running the pipeline ───────────────────────────────
-# Chains both geography functions on their new (additive) defaults: region/
-# zip_code stay exactly as received, region_hybrid/zip_code_hybrid and
-# region_facility/zip_code_facility are added alongside them. This mirrors
-# the recommended pipeline shown in getting-started.Rmd, README.md, and
-# vignette("geography-assignment") -- essence_clean should demonstrate the
-# same call readers are told to run themselves ----
-essence_clean <- essence_raw |>
-  dedupe(order_by = Arrived_Date_Time, keep = "last") |>
-  filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
-  ) |>
-  assign_treating_geography() |>
-  assign_facility_geography()
 
 # ── Save as package data ──────────────────────────────────────────────────────
 # version = 2 is required -- usethis::use_data() defaults to version = 3 which
 # Windows libdeflate cannot decompress. base::save() with version = 2 is safe
 # across all platforms and all R versions >= 2.x.
-save(essence_raw,   file = "data/essence_raw.rda",   compress = "gzip", version = 2)
-save(essence_clean, file = "data/essence_clean.rda", compress = "gzip", version = 2)
+save(essence_raw,      file = "data/essence_raw.rda",      compress = "gzip", version = 2)
+save(essence_clean,    file = "data/essence_clean.rda",    compress = "gzip", version = 2)
+save(essence_ed_raw,   file = "data/essence_ed_raw.rda",   compress = "gzip", version = 2)
+save(essence_inp_raw,  file = "data/essence_inp_raw.rda",  compress = "gzip", version = 2)
 
 cat("Synthetic data saved to data/\n")
-cat("essence_raw: ", nrow(essence_raw),   "rows x", ncol(essence_raw),   "cols\n")
-cat("essence_clean:", nrow(essence_clean), "rows x", ncol(essence_clean), "cols\n")
+cat("essence_raw:     ", nrow(essence_raw),      "rows x", ncol(essence_raw),      "cols\n")
+cat("essence_clean:   ", nrow(essence_clean),    "rows x", ncol(essence_clean),    "cols\n")
+cat("essence_ed_raw:  ", nrow(essence_ed_raw),   "rows x", ncol(essence_ed_raw),   "cols\n")
+cat("essence_inp_raw: ", nrow(essence_inp_raw),  "rows x", ncol(essence_inp_raw),  "cols\n")

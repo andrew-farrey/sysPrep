@@ -65,6 +65,27 @@ test_that("link_encounters() produces one ED row per visit when HasBeenAdmitted 
   expect_equal(nrow(result), 5L)
 })
 
+test_that("link_encounters() preserves true has_been_e/has_been_admitted on an Admitted->ED escalation entirely within ed_data", {
+  data <- make_essence_data(n = 3L) |>
+    dplyr::mutate(HasBeenAdmitted = 1L)
+  result <- link_encounters(data, data[0L, ])
+  escalated <- dplyr::filter(result, .episode_n_rows == 2L)
+  expect_true(nrow(escalated) > 0L)
+  expect_false(any(is.na(escalated$has_been_e)))
+  expect_false(any(is.na(escalated$has_been_admitted)))
+  expect_true(all(escalated$has_been_e == 1L))
+  expect_true(all(escalated$has_been_admitted == 1L))
+})
+
+test_that("link_encounters() correctly reconciles has_been_e = 1 (not 0) on a merged continuity-break episode", {
+  fixture <- make_readmit_merge_data()
+  result  <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$has_been_e, 1L)
+  expect_equal(result$has_been_admitted, 1L)
+})
+
 test_that("link_encounters() .index_encounter = TRUE on ED row of multi-class episodes in long format", {
   data <- make_essence_data(n = 3L) |>
     dplyr::mutate(HasBeenAdmitted = 1L)
@@ -708,8 +729,9 @@ test_that("link_encounters() custom merge_fields strategy is respected", {
   expect_equal(result$c_death, "No; Yes")
 })
 
-test_that("link_encounters() preserves NA (not -Inf) for has_been_ columns in ED-only episodes with no direct-admit match (two-pull)", {
-  ed_data <- make_essence_data(n = 5L)
+test_that("link_encounters() preserves true has_been_ values (not NA or -Inf) for ED-only episodes with no direct-admit match (two-pull)", {
+  ed_data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(HasBeenAdmitted = 0L)
   direct_data <- make_essence_data(n = 2L) |>
     dplyr::mutate(
       Visit_ID = sprintf("V%08d", 101L:102L),
@@ -719,7 +741,9 @@ test_that("link_encounters() preserves NA (not -Inf) for has_been_ columns in ED
   ed_only <- dplyr::filter(result, patient_class == "ED", .episode_n_rows == 1L)
   expect_true(nrow(ed_only) > 0L)
   expect_false(any(is.infinite(ed_only$has_been_admitted)))
-  expect_true(all(is.na(ed_only$has_been_admitted)))
+  expect_false(any(is.na(ed_only$has_been_admitted)))
+  expect_true(all(ed_only$has_been_e == 1L))
+  expect_true(all(ed_only$has_been_admitted == 0L))
 })
 
 test_that("link_encounters() .index_encounter is TRUE in collapsed output for a multi-row episode with no ED row", {

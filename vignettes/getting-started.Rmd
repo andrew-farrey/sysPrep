@@ -101,7 +101,7 @@ all four categories of ESSENCE data quality problems.
 dplyr::glimpse(essence_raw)
 ```
 
-The dataset contains approximately 197 rows and 19 columns. Key features
+The dataset contains approximately 193 rows and 18 columns. Key features
 embedded in `essence_raw`:
 
 - **13 duplicate rows** across four mechanisms: standard retransmissions,
@@ -113,12 +113,11 @@ embedded in `essence_raw`:
   misclassified as `"Urgent Care"` -- they are valid ED providers but require
   facility type correction.
 - **Out-of-state and `OTHER_REGION` records** in the `Region` column.
-- **A `PullSource` column** marking which of two separately-run ESSENCE
-  queries (`HasBeenE = 1` vs. `HasBeenAdmitted = 1`) each row would have
-  come back in -- used in `vignette("encounter-linkage")` to demonstrate
-  `link_encounters()` without a second real ESSENCE pull.
 
-For full column documentation, see `?essence_raw`.
+For full column documentation, see `?essence_raw`. `vignette("encounter-linkage")`
+uses two smaller, dedicated datasets (`essence_ed_raw`/`essence_inp_raw`)
+to demonstrate `link_encounters()`, since it needs two separately queried
+ESSENCE pulls rather than the single pull `essence_raw` represents.
 
 ## The Recommended Pipeline
 

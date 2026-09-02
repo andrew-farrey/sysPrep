@@ -9,7 +9,7 @@
 #' All facility names, visit identifiers, patient identifiers, and geographic
 #' values are entirely synthetic. No real patient or facility data are included.
 #'
-#' @format A data frame with approximately 197 rows and 19 columns:
+#' @format A data frame with approximately 193 rows and 18 columns:
 #' \describe{
 #'   \item{HospitalName}{Character. Synthetic facility name.}
 #'   \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -36,12 +36,11 @@
 #'   \item{Arrived_Date_Time}{POSIXct. Timestamp when NSSP received the
 #'     record. Use as `order_by` in [dedupe()] to retain the most recently
 #'     transmitted version of each record.}
-#'   \item{HasBeenE}{Integer. `1` for `PullSource = "ED"` rows, consistent
-#'     with a `HasBeenE = 1` filtered ESSENCE pull. `0` on all
-#'     `PullSource = "Admission"` rows (see Details): the two
-#'     `patient_class_change` duplicate rows, which represent a
-#'     mis-submitted direct-admit continuation of an ED visit, and four
-#'     genuine direct admissions with no preceding ED visit at all.}
+#'   \item{HasBeenE}{Integer. `1` if the visit has been classified as an
+#'     emergency visit. `0` on the two `patient_class_change` duplicate rows
+#'     (see Details), which represent a direct-admit continuation of an ED
+#'     visit; all other records have `HasBeenE = 1`, consistent with a
+#'     `HasBeenE = 1` filtered ESSENCE pull.}
 #'   \item{HasBeenAdmitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission (discharge-disposition aware).}
 #'   \item{C_Patient_Class}{Character. ESSENCE-derived single-letter patient
@@ -59,13 +58,6 @@
 #'     `OTHER_REGION` records.}
 #'   \item{Sex}{Character. `"M"`, `"F"`, or `"U"` (unknown).}
 #'   \item{C_Patient_Age}{Integer. Patient age in years.}
-#'   \item{PullSource}{Character, `"ED"` or `"Admission"`. Not a real
-#'     ESSENCE field -- marks which of two separately-run ESSENCE queries
-#'     (`HasBeenE = 1` vs. `HasBeenAdmitted = 1`) this row would have come
-#'     back in, so `vignette("encounter-linkage")` can split `essence_raw`
-#'     back into the two pulls [link_encounters()] is designed to
-#'     recombine. Drop this column (or filter and discard it) before
-#'     treating a subset of `essence_raw` as a real single ESSENCE pull.}
 #' }
 #'
 #' @details
@@ -88,21 +80,13 @@
 #'     recent row by `Arrived_Date_Time`, these two visits survive into
 #'     [essence_clean] as `c_patient_class = "I"` -- the ED encounter is
 #'     silently dropped by deduplication alone, illustrating the gap
-#'     `link_encounters()` is designed to catch instead. These are also the
-#'     `PullSource = "Admission"` rows that share a `HospitalName x
-#'     Visit_ID` key with a real `PullSource = "ED"` row -- see
-#'     `PullSource` above.}
+#'     `link_encounters()` is designed to catch instead. `essence_raw` is
+#'     not itself used to demonstrate `link_encounters()` -- see
+#'     [essence_ed_raw]/[essence_inp_raw], which are purpose-built for
+#'     that.}
 #'   \item{`visit_date_change+pid_change`}{1 visit exhibiting both
 #'     mechanisms simultaneously.}
 #' }
-#'
-#' ## Genuine direct admissions
-#' 4 additional visits with `HasBeenE = 0`, `HasBeenAdmitted = 1`, and a
-#' `Visit_ID` that appears nowhere else in `essence_raw` -- true direct
-#' admissions with no preceding ED visit at all (`PullSource =
-#' "Admission"`), structurally invisible to a `HasBeenE = 1` query and
-#' distinct from the `patient_class_change` rows above, which share a key
-#' with a real ED row. See `vignette("encounter-linkage")`.
 #'
 #' ## Non-ED providers
 #' 20 records from a `"Primary Care"` and a `"Medical Specialty"` facility
@@ -120,9 +104,9 @@
 #'   supplemental inpatient pull structured as `va_hosp` (Facility Location,
 #'   Full Details).
 #' @seealso [essence_clean] for the processed version of this dataset;
-#'   [dedupe()], [filter_care_setting()], [assign_treating_geography()],
-#'   [link_encounters()] for how `PullSource` is used to demonstrate
-#'   two-pull encounter linkage.
+#'   [dedupe()], [filter_care_setting()], [assign_treating_geography()];
+#'   [essence_ed_raw] and [essence_inp_raw] for the datasets used to
+#'   demonstrate [link_encounters()].
 "essence_raw"
 
 #' Synthetic cleaned ESSENCE-like ED visit data
@@ -136,7 +120,7 @@
 #' demonstrate the expected output of the package workflow and to serve as
 #' a reference for function output structure.
 #'
-#' @format A data frame with approximately 164 rows and 25 columns. All
+#' @format A data frame with approximately 160 rows and 24 columns. All
 #'   column names are in snake_case (post [janitor::clean_names()]).
 #' \describe{
 #'   \item{hospital_name}{Character. Synthetic facility name.}
@@ -157,15 +141,15 @@
 #'   \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 #'   \item{has_been_e}{Integer. `1` for an ED pull; `0` on the two visits
 #'     where a `patient_class_change` direct-admit row outranked the ED row
-#'     under `dedupe(keep = "last")`, plus the four genuine direct
-#'     admissions with no ED row at all -- see `c_patient_class` and
+#'     under `dedupe(keep = "last")` -- see `c_patient_class` and
 #'     `?essence_raw`.}
 #'   \item{has_been_admitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission.}
 #'   \item{c_patient_class}{Character. ESSENCE-derived single-letter patient
-#'     class. `"I"` on the visits where deduplication kept a direct-admit
-#'     row over (or with no) original ED row (see `?essence_raw`); `"E"`
-#'     otherwise. Unchanged by the preprocessing pipeline.}
+#'     class. `"I"` on the two visits where deduplication kept the
+#'     direct-admit continuation row over the original ED row (see
+#'     `?essence_raw`); `"E"` otherwise. Unchanged by the preprocessing
+#'     pipeline.}
 #'   \item{region}{Character. Patient ESSENCE Region of residence in
 #'     `{SITE}_{REGION}` format, exactly as received -- never modified by
 #'     either geography function.}
@@ -189,10 +173,6 @@
 #'   \item{.facility_geography}{Logical. Always `TRUE` -- signals that
 #'     facility geography has been computed for every row. Added by
 #'     [assign_facility_geography()].}
-#'   \item{pull_source}{Character, `"ED"` or `"Admission"`. Carried through
-#'     from `essence_raw`'s `PullSource`, converted to snake_case by
-#'     [janitor::clean_names()] like any other column; not a real ESSENCE
-#'     field -- see `?essence_raw`.}
 #' }
 #'
 #' @source Derived from [essence_raw] via
@@ -200,3 +180,79 @@
 #' @seealso [essence_raw] for the raw version; the Getting Started vignette
 #'   for the full pipeline demonstration.
 "essence_clean"
+
+#' Synthetic raw ESSENCE-like ED pull for encounter linkage
+#'
+#' A small, fabricated dataset representing a `HasBeenE = 1` ESSENCE query,
+#' purpose-built to demonstrate [link_encounters()] two-pull linkage in
+#' `vignette("encounter-linkage")` alongside [essence_inp_raw]. Unlike
+#' [essence_raw] (a single, larger, realistic pull covering every
+#' deduplication/care-setting/geography issue `sysPrep` addresses),
+#' `essence_ed_raw` exists solely to demonstrate encounter linkage and is
+#' deliberately small. All facility names, visit identifiers, patient
+#' identifiers, and geographic values are entirely synthetic. No real
+#' patient or facility data are included.
+#'
+#' @format A data frame with approximately 15 rows and 19 columns. Same
+#'   column structure as [essence_raw], plus `HasBeenI` (see Details); see
+#'   [essence_raw]'s documentation for the other column definitions.
+#'
+#' @details
+#' ## Visit types included
+#' \describe{
+#'   \item{Plain ED-only visits}{`HasBeenE = 1`, `HasBeenAdmitted = 0` --
+#'     the majority of rows.}
+#'   \item{Correctly carried-through escalation}{`HasBeenE = 1` and
+#'     `HasBeenAdmitted = 1` on one already-deduplicated record -- needs no
+#'     cross-pull linking, since there is only ever one record. These 2
+#'     visits also have `HasBeenI = 1`, so that
+#'     `link_encounters()`'s preference for `HasBeenAdmitted` over
+#'     `HasBeenI` when both are present is demonstrable with real data.}
+#'   \item{Continuity-break ED half}{2 rows that look like plain ED visits
+#'     within `essence_ed_raw` alone (`HasBeenE = 1`, `HasBeenAdmitted = 0`);
+#'     their mis-submitted direct-admit continuation lives in
+#'     [essence_inp_raw], sharing the same `HospitalName x Visit_ID` key.
+#'     `link_encounters()` should merge each pair back into one episode.}
+#' }
+#'
+#' One standard retransmission duplicate (same `HospitalName x Visit_ID`,
+#' differing `Arrived_Date_Time`) is included so
+#' `vignette("encounter-linkage")`'s "dedupe each pull separately before
+#' linking" guidance has something real to demonstrate.
+#'
+#' @source Entirely synthetic. Generated by `data-raw/generate_synthetic_data.R`.
+#' @seealso [essence_inp_raw], the paired inpatient-admission pull;
+#'   [essence_raw] for the general-purpose synthetic pull used elsewhere;
+#'   [link_encounters()] and `vignette("encounter-linkage")`.
+"essence_ed_raw"
+
+#' Synthetic raw ESSENCE-like inpatient admission pull for encounter linkage
+#'
+#' A small, fabricated dataset representing a separately queried
+#' `HasBeenAdmitted = 1` ESSENCE query, purpose-built to demonstrate
+#' [link_encounters()] two-pull linkage in `vignette("encounter-linkage")`
+#' alongside [essence_ed_raw]. All facility names, visit identifiers,
+#' patient identifiers, and geographic values are entirely synthetic. No
+#' real patient or facility data are included.
+#'
+#' @format A data frame with approximately 6 rows and 18 columns. Same
+#'   column structure as [essence_raw]; see its documentation for column
+#'   definitions.
+#'
+#' @details
+#' ## Visit types included
+#' \describe{
+#'   \item{Continuity-break admission half}{2 rows (`HasBeenE = 0`,
+#'     `HasBeenAdmitted = 1`) sharing `HospitalName x Visit_ID` with a real
+#'     row in [essence_ed_raw] -- the mis-submitted direct-admit
+#'     continuation of an ED visit reported as two unrelated records.}
+#'   \item{Genuine direct admission}{4 rows (`HasBeenE = 0`,
+#'     `HasBeenAdmitted = 1`) with a `Visit_ID` that appears nowhere in
+#'     [essence_ed_raw] -- true direct admissions with no preceding ED
+#'     visit at all, structurally invisible to a `HasBeenE = 1` query.}
+#' }
+#'
+#' @source Entirely synthetic. Generated by `data-raw/generate_synthetic_data.R`.
+#' @seealso [essence_ed_raw], the paired ED pull; [link_encounters()] and
+#'   `vignette("encounter-linkage")`.
+"essence_inp_raw"

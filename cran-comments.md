@@ -11,7 +11,9 @@
   (release), windows-latest (release) -- all passing as of the latest push
   (2026-09-01); see the Actions tab for current status
 * win-builder (R-devel, R Under development (unstable) (2026-08-31 r90457
-  ucrt), x86_64-w64-mingw32) -- checked 2026-09-02: 1 NOTE (see below).
+  ucrt), x86_64-w64-mingw32) -- checked 2026-09-01, re-checked same day
+  after fixes below: 1 NOTE, only the two expected/false-positive
+  sub-items remain (see below).
   win-builder (R-release) -- TODO: run via `devtools::check_win_release()`
   and replace this line with actual results
 * R-hub -- TODO: run `rhub::rhub_setup()` (writes
@@ -44,5 +46,5 @@ NOTE, expected for a first submission:
   standard epidemiological term, not a typo.
 * The URL/file-URI items flagged in that same check (a redirecting
   pkgdown URL and a `CITATION.cff` link in README.md not present in the
-  built tarball) were fixed 2026-09-02 and should not reappear on the
+  built tarball) were fixed 2026-09-01 and should not reappear on the
   next win-builder run.

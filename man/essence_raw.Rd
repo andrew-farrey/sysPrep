@@ -5,7 +5,7 @@
 \alias{essence_raw}
 \title{Synthetic raw ESSENCE-like ED visit data}
 \format{
-A data frame with approximately 197 rows and 19 columns:
+A data frame with approximately 193 rows and 18 columns:
 \describe{
 \item{HospitalName}{Character. Synthetic facility name.}
 \item{Hospital}{Integer. Synthetic numeric facility identifier
@@ -32,12 +32,11 @@ encounter. Used by \code{\link[=link_encounters]{link_encounters()}} to chronolo
 \item{Arrived_Date_Time}{POSIXct. Timestamp when NSSP received the
 record. Use as \code{order_by} in \code{\link[=dedupe]{dedupe()}} to retain the most recently
 transmitted version of each record.}
-\item{HasBeenE}{Integer. \code{1} for \code{PullSource = "ED"} rows, consistent
-with a \code{HasBeenE = 1} filtered ESSENCE pull. \code{0} on all
-\code{PullSource = "Admission"} rows (see Details): the two
-\code{patient_class_change} duplicate rows, which represent a
-mis-submitted direct-admit continuation of an ED visit, and four
-genuine direct admissions with no preceding ED visit at all.}
+\item{HasBeenE}{Integer. \code{1} if the visit has been classified as an
+emergency visit. \code{0} on the two \code{patient_class_change} duplicate rows
+(see Details), which represent a direct-admit continuation of an ED
+visit; all other records have \code{HasBeenE = 1}, consistent with a
+\code{HasBeenE = 1} filtered ESSENCE pull.}
 \item{HasBeenAdmitted}{Integer. \code{1} if the visit resulted in
 inpatient admission (discharge-disposition aware).}
 \item{C_Patient_Class}{Character. ESSENCE-derived single-letter patient
@@ -55,13 +54,6 @@ Details.}
 \code{OTHER_REGION} records.}
 \item{Sex}{Character. \code{"M"}, \code{"F"}, or \code{"U"} (unknown).}
 \item{C_Patient_Age}{Integer. Patient age in years.}
-\item{PullSource}{Character, \code{"ED"} or \code{"Admission"}. Not a real
-ESSENCE field -- marks which of two separately-run ESSENCE queries
-(\code{HasBeenE = 1} vs. \code{HasBeenAdmitted = 1}) this row would have come
-back in, so \code{vignette("encounter-linkage")} can split \code{essence_raw}
-back into the two pulls \code{\link[=link_encounters]{link_encounters()}} is designed to
-recombine. Drop this column (or filter and discard it) before
-treating a subset of \code{essence_raw} as a real single ESSENCE pull.}
 }
 }
 \source{
@@ -103,21 +95,13 @@ direct-admit continuation transmitted as two records sharing one
 recent row by \code{Arrived_Date_Time}, these two visits survive into
 \link{essence_clean} as \code{c_patient_class = "I"} -- the ED encounter is
 silently dropped by deduplication alone, illustrating the gap
-\code{link_encounters()} is designed to catch instead. These are also the
-\code{PullSource = "Admission"} rows that share a \verb{HospitalName x Visit_ID} key with a real \code{PullSource = "ED"} row -- see
-\code{PullSource} above.}
+\code{link_encounters()} is designed to catch instead. \code{essence_raw} is
+not itself used to demonstrate \code{link_encounters()} -- see
+\link{essence_ed_raw}/\link{essence_inp_raw}, which are purpose-built for
+that.}
 \item{\code{visit_date_change+pid_change}}{1 visit exhibiting both
 mechanisms simultaneously.}
 }
-}
-
-\subsection{Genuine direct admissions}{
-
-4 additional visits with \code{HasBeenE = 0}, \code{HasBeenAdmitted = 1}, and a
-\code{Visit_ID} that appears nowhere else in \code{essence_raw} -- true direct
-admissions with no preceding ED visit at all (\code{PullSource = "Admission"}), structurally invisible to a \code{HasBeenE = 1} query and
-distinct from the \code{patient_class_change} rows above, which share a key
-with a real ED row. See \code{vignette("encounter-linkage")}.
 }
 
 \subsection{Non-ED providers}{
@@ -135,8 +119,8 @@ are included. These should be excluded by \code{\link[=filter_care_setting]{filt
 }
 \seealso{
 \link{essence_clean} for the processed version of this dataset;
-\code{\link[=dedupe]{dedupe()}}, \code{\link[=filter_care_setting]{filter_care_setting()}}, \code{\link[=assign_treating_geography]{assign_treating_geography()}},
-\code{\link[=link_encounters]{link_encounters()}} for how \code{PullSource} is used to demonstrate
-two-pull encounter linkage.
+\code{\link[=dedupe]{dedupe()}}, \code{\link[=filter_care_setting]{filter_care_setting()}}, \code{\link[=assign_treating_geography]{assign_treating_geography()}};
+\link{essence_ed_raw} and \link{essence_inp_raw} for the datasets used to
+demonstrate \code{\link[=link_encounters]{link_encounters()}}.
 }
 \keyword{datasets}

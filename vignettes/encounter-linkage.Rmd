@@ -162,7 +162,9 @@ installations. When both `HasBeenAdmitted` and `HasBeenI` are present,
 `link_encounters()` uses `HasBeenAdmitted` preferentially because it is
 discharge-disposition aware: it captures ED visits that resulted in inpatient
 admission via discharge disposition codes, which `HasBeenI` may not flag in
-all ESSENCE configurations.
+all ESSENCE configurations. `essence_ed_raw` (introduced below) includes
+both columns for its escalation visits, so this preference is visible as an
+informational message the first time `link_encounters()` runs on it.
 
 ## Linking ED and Inpatient Pulls
 
@@ -179,29 +181,28 @@ against. `link_encounters()` aborts if `inpatient_admission_data` is
 omitted, rather than silently returning `ed_data` unchanged with cosmetic
 metadata columns appended.
 
-`essence_raw` includes a `PullSource` column (`"ED"` or `"Admission"`) --
-not a real ESSENCE field, added purely so this vignette can split one
-synthetic dataset back into the two pulls a real analysis would have queried
-separately:
+`sysPrep` ships two small synthetic datasets purpose-built for this
+demonstration: `essence_ed_raw` (a `HasBeenE = 1` pull) and
+`essence_inp_raw` (a separately queried `HasBeenAdmitted = 1` pull) --
+distinct from the larger, general-purpose `essence_raw` used elsewhere in
+this documentation, since `essence_raw` represents a single realistic ED
+pull and was never meant to be split into two:
 
-```{r split-pulls}
-ed_pull        <- essence_raw |> dplyr::filter(PullSource == "ED")
-admission_pull <- essence_raw |> dplyr::filter(PullSource == "Admission")
-
-nrow(ed_pull)
-nrow(admission_pull)
+```{r glimpse-pulls}
+nrow(essence_ed_raw)
+nrow(essence_inp_raw)
 ```
 
 Deduplicate each pull separately before linking:
 
 ```{r prepare}
-ed_clean <- ed_pull |>
+ed_clean <- essence_ed_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
 
-inpatient_clean <- admission_pull |>
+inpatient_clean <- essence_inp_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last")
 ```
 
@@ -237,6 +238,14 @@ episodes <- link_encounters(ed_clean, inpatient_clean)
 
 dplyr::glimpse(episodes)
 ```
+
+Every row above shows real `0`/`1` values for `has_been_e`/`has_been_admitted`
+-- never `NA` -- regardless of whether it came from a single pre-merge row or
+a merged pair: deriving `patient_class` from `HasBeen_` flags (the fallback
+used here, since this synthetic data has no `C_Patient_Class_List`) pivots
+those flag columns to build `patient_class`, but `link_encounters()` retains
+the true original values underneath so they survive into the output
+unchanged.
 
 `nrow(episodes)` is already the true unduplicated encounter count -- smaller
 than the naive combined denominator, since some admission-pull rows merged
