@@ -1,5 +1,17 @@
 # Linking ED and Inpatient Records for Accurate Burden Estimation
 
+`sysPrep`’s other core functions –
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
+[`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md),
+[`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+– remove duplicate ESSENCE rows for one visit within a single pull.
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+solves the same overcounting problem in a harder form: a visit split
+across two separately queried pulls, where the duplicate doesn’t look
+like one. Neither ESSENCE nor the BioSense Platform surfaces, flags, or
+resolves this on their own – finding it takes looking at the underlying
+records directly.
+
 ## The Care Pathway Artifact Problem
 
 ESSENCE has no mechanism to detect when a record with `HasBeenE = 0` and
@@ -28,16 +40,23 @@ the same `facility_col x visit_col` key – which is exactly what
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 does.
 
-This has a direct, structural consequence for burden estimation. ESSENCE
-has no built-in capacity to deduplicate a mis-submitted direct-admit
-record against its originating ED visit. Running a `HasBeenE = 1` query
-and combining it with an otherwise-identical `HasBeenE = 0` /
-`HasBeenAdmitted = 1` query – expecting the sum to be an accurate
-“severe healthcare visit” census – does not produce one: some proportion
-of the records in the second query already exist as a separate ED visit
-in the first, and combining them without deduplication double-counts
-that encounter. At the same time, genuinely new direct admissions in the
-second query are exactly what you’re trying to capture.
+This has a direct, structural consequence for burden estimation.
+Querying the inpatient pull with `HasBeenE = 0` added on purpose –
+specifically to exclude anything already captured by the `HasBeenE = 1`
+pull – looks like a safe way to avoid double-counting, and by the API’s
+own field semantics it should be: `HasBeenE = 0` is supposed to mean no
+ED encounter appears anywhere in that record’s history. It isn’t safe.
+Some records that correctly show `HasBeenE = 0` were, clinically,
+discharged from the ED and immediately readmitted – the ED encounter
+lives entirely on the separate record already captured in the first
+pull, so the exclusion filter never catches it. If you don’t know this
+and want to include inpatient admissions in your burden counts, running
+a `HasBeenE = 1` query and combining it with an otherwise-identical
+`HasBeenE = 0` / `HasBeenAdmitted = 1` query – expecting the sum to be
+an accurate “severe healthcare visit” census – does not produce one:
+that proportion of ED visits gets counted a second time, once under each
+query. At the same time, genuinely new direct admissions in the second
+query are exactly what you’re trying to capture.
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 resolves both problems at once: records sharing a
 `facility_col x visit_col` key are merged into one true encounter, while

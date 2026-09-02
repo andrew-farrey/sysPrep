@@ -1,14 +1,19 @@
 # Link ED and inpatient admission records into unified care episodes
 
-Links ED and direct-admit inpatient records sharing the same
-`facility_col` x `visit_col` key into a single composite row per true
-care episode, and reconciles their field values so information present
-on only one of the source rows is not silently discarded. Corrects two
-related but distinct duplication mechanisms: the encounter-continuity
-data quality issue where a patient's ED discharge and immediate
-direct-admit readmission are reported as separate records sharing the
-same `Visit_ID` at the same facility, and true direct admissions that
-are structurally invisible to a `HasBeenE = 1` query.
+Prevents overcounting distinct patients and visits when one real-world
+episode of care is split across two separately queried ESSENCE pulls –
+the same problem
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+solves for duplicate rows within a single pull, applied to a harder case
+ESSENCE itself never flags. Links ED and direct-admit inpatient records
+sharing the same `facility_col` x `visit_col` key into a single
+composite row per true care episode, and reconciles their field values
+so information present on only one of the source rows is not silently
+discarded. Corrects two related but distinct duplication mechanisms: the
+encounter-continuity data quality issue where a patient's ED discharge
+and immediate direct-admit readmission are reported as separate records
+sharing the same `Visit_ID` at the same facility, and true direct
+admissions that are structurally invisible to a `HasBeenE = 1` query.
 
 ## Usage
 
@@ -107,6 +112,27 @@ visit per patient class, unmerged. Both include episode metadata columns
 `.index_encounter`.
 
 ## Details
+
+### Why this matters for case counts
+
+Querying the inpatient pull with `HasBeenE = 0` added on purpose –
+specifically to exclude anything already captured by the `HasBeenE = 1`
+pull – looks like a safe way to avoid double-counting. By the API's own
+field semantics it should be: `HasBeenE = 0` means no ED encounter
+appears anywhere in that record's history. It isn't. Some records that
+correctly show `HasBeenE = 0` were, clinically, discharged from the ED
+and immediately readmitted – the ED encounter lives entirely on a
+separate record already captured in the first pull, so the exclusion
+filter never catches it. If you don't know this and want to include
+inpatient admissions in your burden counts, summing the two pulls
+double-counts that proportion of ED visits a second time. This is the
+same problem
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+solves for retransmitted or split ESSENCE rows – the duplicate here
+doesn't share a flag value that would mark it as related.
+`link_encounters()` finds the relationship directly, by checking for a
+matching ED record under the same `facility_col` x `visit_col` key,
+instead of trusting `HasBeenE` alone.
 
 ### The care pathway artifact problem
 

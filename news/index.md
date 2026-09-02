@@ -1,6 +1,6 @@
 # Changelog
 
-## sysPrep 0.0.0.9000
+## sysPrep 0.1.0
 
 - **Bug fix** in
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md):

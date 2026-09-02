@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9000" id="sysprep-0009000">sysPrep 0.0.0.9000<a class="anchor" aria-label="anchor" href="#sysprep-0009000"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.0" id="sysprep-010">sysPrep 0.1.0<a class="anchor" aria-label="anchor" href="#sysprep-010"></a></h2>
 <ul><li>
 <strong>Bug fix</strong> in <code><a href="../reference/link_encounters.html">link_encounters()</a></code>: when deriving <code>patient_class</code> from <code>HasBeen_</code> flags (the fallback path used when <code>C_Patient_Class_List</code> is absent), the <code>has_been_e</code>/<code>has_been_admitted</code>/etc. columns were silently lost from the output for any row that never came from <code>inpatient_admission_data</code> directly – showing as <code>NA</code> on single-row episodes, and, worse, as an incorrectly reconciled value (e.g. <code>has_been_e = 0</code> on a merged episode that genuinely included an ED visit) on multi-row merged episodes. <code><a href="../reference/link_encounters.html">link_encounters()</a></code> now preserves each row’s true original <code>HasBeen_</code> values across the pivot, so every episode shows correct <code>0</code>/<code>1</code> values – never <code>NA</code>, and never an incorrect reconciled value.</li>
 <li>Added <code>CITATION.cff</code> (Citation File Format) at the package root for GitHub’s “Cite this repository” feature and Zenodo DOI metadata, alongside the existing <code>inst/CITATION</code> used by <code>citation("sysPrep")</code>.</li>
