@@ -1,4 +1,4 @@
-# sysPrep 0.0.0.9000
+# sysPrep 0.1.0
 
 * **Bug fix** in `link_encounters()`: when deriving `patient_class` from
   `HasBeen_` flags (the fallback path used when `C_Patient_Class_List` is

@@ -38,8 +38,6 @@ records from the ESSENCE `va_er` (Patient Location, Full Details) and
 This is a new submission. The win-builder (R-devel) check reported one
 NOTE, expected for a first submission:
 
-* "Version contains large components (0.0.0.9000)" -- will be resolved
-  when the version is bumped for actual CRAN submission.
 * "Possibly misspelled words in DESCRIPTION: NSSP, Syndromic, syndromic"
   -- these are correct: NSSP is the National Syndromic Surveillance
   Program (a real, proper-noun program name), and "syndromic" is a
