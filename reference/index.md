@@ -78,3 +78,8 @@ geographic identifiers.
   : Synthetic raw ESSENCE-like ED visit data
 - [`essence_clean`](https://andrew-farrey.github.io/sysPrep/reference/essence_clean.md)
   : Synthetic cleaned ESSENCE-like ED visit data
+- [`essence_ed_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_ed_raw.md)
+  : Synthetic raw ESSENCE-like ED pull for encounter linkage
+- [`essence_inp_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_inp_raw.md)
+  : Synthetic raw ESSENCE-like inpatient admission pull for encounter
+  linkage

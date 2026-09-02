@@ -85,9 +85,9 @@ essence_raw |> summarize_duplicates()
 #> 
 #> ── Overall ──
 #> 
-#> • Total rows in pull: 197
-#> • Unique visits (facility x ID): 184
-#> • Duplicated Visit IDs: 13 (7.1%)
+#> • Total rows in pull: 193
+#> • Unique visits (facility x ID): 180
+#> • Duplicated Visit IDs: 13 (7.2%)
 #> • Excess rows to remove: 13
 #> 
 #> ── By Facility (most duplicated first) ──
@@ -97,7 +97,7 @@ essence_raw |> summarize_duplicates()
 #>   <chr>                <int>                  <int>         <int>          <dbl>
 #> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       20                      2             2           10  
+#> 3 North County Hos…       19                      2             2           10.5
 #> 4 Lakeside Communi…       21                      1             1            4.8
 #> 5 River Valley Med…       15                      1             1            6.7
 #> ── Duplicated Visit IDs ──
@@ -110,7 +110,7 @@ dups$overall
 #> # A tibble: 1 × 5
 #>   n_total_rows n_unique_visits n_duplicated_visit_ids n_excess_rows
 #>          <int>           <int>                  <int>         <int>
-#> 1          197             184                     13            13
+#> 1          193             180                     13            13
 #> # ℹ 1 more variable: pct_duplicated <dbl>
 dups$by_facility
 #> # A tibble: 5 × 5
@@ -118,7 +118,7 @@ dups$by_facility
 #>   <chr>                <int>                  <int>         <int>          <dbl>
 #> 1 Central Medical …       38                      6             6           15.8
 #> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       20                      2             2           10  
+#> 3 North County Hos…       19                      2             2           10.5
 #> 4 Lakeside Communi…       21                      1             1            4.8
 #> 5 River Valley Med…       15                      1             1            6.7
 dups$duplicate_ids
@@ -147,23 +147,22 @@ essence_raw |>
     summarize_duplicates(essence_raw)$duplicate_ids,
     by = c("hospital_name", "visit_id")
   )
-#> # A tibble: 26 × 19
+#> # A tibble: 26 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
-#>  2 Lakeside Commun…     1004 Emergency Ca… KY_Boone        41042        V715156…
-#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
-#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
-#>  5 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
-#>  6 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
-#>  7 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V382780…
-#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V600474…
-#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V600474…
-#> 10 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V382780…
+#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V892704…
+#>  2 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
+#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
+#>  4 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
+#>  5 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V285888…
+#>  6 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
+#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V892704…
+#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
+#>  9 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V382780…
+#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V482877…
 #> # ℹ 16 more rows
-#> # ℹ 13 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
-#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   pull_source <chr>
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 ```

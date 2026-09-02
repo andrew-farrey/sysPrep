@@ -200,8 +200,8 @@ geo_all <- essence_raw |>
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Medical Specialty
 #>   - Primary Care
-#> 27 of 164 visits (16.5%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
-#> Facility geography applied to all 164 visits in `region_facility`/`zip_code_facility`.
+#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> Facility geography applied to all 160 visits in `region_facility`/`zip_code_facility`.
 
 geo_all |>
   dplyr::select(hospital_name, region, region_hybrid, region_facility) |>
@@ -264,7 +264,7 @@ ed_clean <- essence_raw |>
 # reassigned value in region_hybrid; region itself is never touched
 treating_geo <- ed_clean |>
   assign_treating_geography(site = "KY")
-#> 27 of 164 visits (16.5%) identified as out-of-state or OTHER_REGION and
+#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and
 #> assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
 ```
 
@@ -275,7 +275,7 @@ dplyr::count(treating_geo, .out_of_state)
 #> # A tibble: 2 × 2
 #>   .out_of_state     n
 #>   <lgl>         <int>
-#> 1 FALSE           137
+#> 1 FALSE           133
 #> 2 TRUE             27
 ```
 
@@ -324,7 +324,7 @@ treating_overwrite <- ed_clean |>
     overwrite                      = TRUE,
     preserve_original_geographies  = TRUE
   )
-#> 27 of 164 visits (16.5%) identified as out-of-state or OTHER_REGION and
+#> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and
 #> assigned treating facility geography in `region`/`zip_code`.
 
 treating_overwrite |>
@@ -380,7 +380,7 @@ reflects where they received care.
 
 # Universal reassignment: ALL rows get a facility geography value
 facility_geo <- ed_clean |> assign_facility_geography()
-#> Facility geography applied to all 164 visits in
+#> Facility geography applied to all 160 visits in
 #> `region_facility`/`zip_code_facility`.
 ```
 

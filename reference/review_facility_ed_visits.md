@@ -173,7 +173,7 @@ essence_clean |> review_facility_ed_visits()
 #> # A tibble: 2 × 8
 #>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
 #>   <chr>          <chr>            <int> <lgl>        <lgl>         <lgl>        
-#> 1 Rural Health … Emergency Ca…        9 TRUE         FALSE         TRUE         
+#> 1 Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         
 #> 2 Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         
 #> # ℹ 2 more variables: .outlier_direction <chr>, .outlier_method <chr>
 
@@ -185,12 +185,12 @@ essence_clean |> review_facility_ed_visits(return_format = "all")
 #> # A tibble: 8 × 8
 #>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
 #>   <chr>          <chr>            <int> <lgl>        <lgl>         <lgl>        
-#> 1 Rural Health … Emergency Ca…        9 TRUE         FALSE         TRUE         
+#> 1 Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         
 #> 2 Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         
 #> 3 Downtown Emer… Emergency Ca…       13 FALSE        FALSE         FALSE        
 #> 4 River Valley … Emergency Ca…       15 FALSE        FALSE         FALSE        
-#> 5 Hillside FSED  Emergency Ca…       20 FALSE        FALSE         FALSE        
-#> 6 North County … Emergency Ca…       20 FALSE        FALSE         FALSE        
+#> 5 Hillside FSED  Emergency Ca…       18 FALSE        FALSE         FALSE        
+#> 6 North County … Emergency Ca…       19 FALSE        FALSE         FALSE        
 #> 7 Lakeside Comm… Emergency Ca…       21 FALSE        FALSE         FALSE        
 #> 8 Metro Health … Emergency Ca…       28 FALSE        FALSE         FALSE        
 #> # ℹ 2 more variables: .outlier_direction <chr>, .outlier_method <chr>
@@ -222,12 +222,12 @@ essence_clean |>
 #> # A tibble: 8 × 8
 #>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
 #>   <chr>          <chr>            <int> <lgl>        <lgl>         <lgl>        
-#> 1 Rural Health … Emergency Ca…        9 TRUE         FALSE         TRUE         
+#> 1 Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         
 #> 2 Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         
 #> 3 Downtown Emer… Emergency Ca…       13 FALSE        FALSE         FALSE        
 #> 4 River Valley … Emergency Ca…       15 FALSE        FALSE         FALSE        
-#> 5 Hillside FSED  Emergency Ca…       20 FALSE        FALSE         FALSE        
-#> 6 North County … Emergency Ca…       20 FALSE        FALSE         FALSE        
+#> 5 Hillside FSED  Emergency Ca…       18 FALSE        FALSE         FALSE        
+#> 6 North County … Emergency Ca…       19 FALSE        FALSE         FALSE        
 #> 7 Lakeside Comm… Emergency Ca…       21 FALSE        FALSE         FALSE        
 #> 8 Metro Health … Emergency Ca…       28 FALSE        FALSE         FALSE        
 #> # ℹ 2 more variables: .outlier_direction <chr>, .outlier_method <chr>

@@ -2,6 +2,20 @@
 
 ## sysPrep 0.0.0.9000
 
+- **Bug fix** in
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md):
+  when deriving `patient_class` from `HasBeen_` flags (the fallback path
+  used when `C_Patient_Class_List` is absent), the
+  `has_been_e`/`has_been_admitted`/etc. columns were silently lost from
+  the output for any row that never came from `inpatient_admission_data`
+  directly – showing as `NA` on single-row episodes, and, worse, as an
+  incorrectly reconciled value (e.g. `has_been_e = 0` on a merged
+  episode that genuinely included an ED visit) on multi-row merged
+  episodes.
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  now preserves each row’s true original `HasBeen_` values across the
+  pivot, so every episode shows correct `0`/`1` values – never `NA`, and
+  never an incorrect reconciled value.
 - Added `CITATION.cff` (Citation File Format) at the package root for
   GitHub’s “Cite this repository” feature and Zenodo DOI metadata,
   alongside the existing `inst/CITATION` used by `citation("sysPrep")`.
@@ -39,13 +53,15 @@
   `ed_data` unchanged. Query a second ESSENCE pull filtered to
   `HasBeenAdmitted = 1` (or `HasBeenI = 1`), deduplicate it separately,
   and pass it as `inpatient_admission_data`.
-- `essence_raw`: Gained a `PullSource` column (`"ED"`/`"Admission"`, not
-  a real ESSENCE field) and 4 genuine direct-admission rows, so
+- Added `essence_ed_raw` and `essence_inp_raw`: two small synthetic
+  datasets representing separately queried `HasBeenE = 1` and
+  `HasBeenAdmitted = 1` ESSENCE pulls, used by
   [`vignette("encounter-linkage")`](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.md)
   and
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)’s
-  own examples can demonstrate two-pull linkage from one synthetic
-  dataset.
+  own examples to demonstrate two-pull linkage.
+  `essence_raw`/`essence_clean` are unchanged by this and continue to
+  represent a single realistic ED pull.
 - [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md):
   Flag facility visit count outliers for QA. Supports `verbose` to
   suppress informational messages.

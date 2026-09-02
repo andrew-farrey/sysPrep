@@ -388,28 +388,24 @@ survives filtering to one row per episode. In collapsed format, always
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Split the synthetic pull into the two separately-queried ESSENCE pulls</span></span></span>
-<span class="r-in"><span><span class="co"># link_encounters() expects (see `PullSource` in `?essence_raw`)</span></span></span>
-<span class="r-in"><span><span class="va">ed_pull</span>        <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">essence_raw</span>, <span class="va">PullSource</span> <span class="op">==</span> <span class="st">"ED"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">admission_pull</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">essence_raw</span>, <span class="va">PullSource</span> <span class="op">==</span> <span class="st">"Admission"</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">ed_pull</span> <span class="op">|&gt;</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># essence_ed_raw and essence_inp_raw are two small synthetic datasets</span></span></span>
+<span class="r-in"><span><span class="co"># representing the two separately queried ESSENCE pulls link_encounters()</span></span></span>
+<span class="r-in"><span><span class="co"># expects -- see `?essence_ed_raw`/`?essence_inp_raw`</span></span></span>
+<span class="r-in"><span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">essence_ed_raw</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="filter_care_setting.html">filter_care_setting</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    fix_facility_type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hillside FSED"</span>, <span class="st">"Downtown Emergency Services"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> The following `FacilityType` values are not in `keep_types` and will be excluded:</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   - Medical Specialty</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   - Primary Care</span>
 <span class="r-in"><span><span class="va">inpatient_clean</span> <span class="op">&lt;-</span> <span class="fu"><a href="dedupe.html">dedupe</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="va">admission_pull</span>, order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span></span></span>
+<span class="r-in"><span>  <span class="va">essence_inp_raw</span>, order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># One row per true encounter, merged</span></span></span>
 <span class="r-in"><span><span class="va">episodes</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span><span class="va">ed_clean</span>, <span class="va">inpatient_clean</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">episodes</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 164</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 18</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Inspect the distribution of care pathways</span></span></span>
 <span class="r-in"><span><span class="va">episodes</span> <span class="op">|&gt;</span></span></span>
@@ -417,15 +413,16 @@ survives filtering to one row per episode. In collapsed format, always
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 2</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   .patient_class_sequence     n</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> ED                        122</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Admitted-&gt;ED               36</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Direct Admit                4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> ED                         10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Direct Admit                4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Admitted-&gt;ED                2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> ED-&gt;Direct Admit            2</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Long format: inspect the raw linkage mechanism directly</span></span></span>
 <span class="r-in"><span><span class="va">episodes_long</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">ed_clean</span>, <span class="va">inpatient_clean</span>, return_format <span class="op">=</span> <span class="st">"long"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>

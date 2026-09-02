@@ -280,8 +280,8 @@ ed_clean <- essence_raw |>
 # Default: new region_hybrid/zip_code_hybrid columns for out-of-state
 # visits; region/zip_code themselves are never touched
 ed_clean |> assign_treating_geography()
-#> 24 of 131 visits (18.3%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
-#> # A tibble: 131 × 22
+#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> # A tibble: 129 × 21
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -294,41 +294,17 @@ ed_clean |> assign_treating_geography()
 #>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
-#> # ℹ 121 more rows
-#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
-#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
-#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   pull_source <chr>, .out_of_state <lgl>, region_hybrid <chr>,
-#> #   zip_code_hybrid <chr>
-
-# Region only -- ZipCode not in pull
-ed_clean |> assign_treating_geography(new_zip_col = NULL)
-#> 24 of 131 visits (18.3%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`.
-#> # A tibble: 131 × 21
-#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
-#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
-#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V121981…
-#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
-#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
-#>  5 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V154413…
-#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V164608…
-#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V176732…
-#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
-#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
-#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
-#> # ℹ 121 more rows
+#> # ℹ 119 more rows
 #> # ℹ 15 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   pull_source <chr>, .out_of_state <lgl>, region_hybrid <chr>
+#> #   .out_of_state <lgl>, region_hybrid <chr>, zip_code_hybrid <chr>
 
-# Non-Kentucky site
-ed_clean |> assign_treating_geography(site = "OH")
-#> 125 of 131 visits (95.4%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
-#> # A tibble: 131 × 22
+# Region only -- ZipCode not in pull
+ed_clean |> assign_treating_geography(new_zip_col = NULL)
+#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`.
+#> # A tibble: 129 × 20
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -341,13 +317,35 @@ ed_clean |> assign_treating_geography(site = "OH")
 #>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
-#> # ℹ 121 more rows
-#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> # ℹ 119 more rows
+#> # ℹ 14 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   pull_source <chr>, .out_of_state <lgl>, region_hybrid <chr>,
-#> #   zip_code_hybrid <chr>
+#> #   .out_of_state <lgl>, region_hybrid <chr>
+
+# Non-Kentucky site
+ed_clean |> assign_treating_geography(site = "OH")
+#> 123 of 129 visits (95.3%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> # A tibble: 129 × 21
+#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
+#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
+#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
+#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V121981…
+#>  3 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
+#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V147096…
+#>  5 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V154413…
+#>  6 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V164608…
+#>  7 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V176732…
+#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
+#>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
+#> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
+#> # ℹ 119 more rows
+#> # ℹ 15 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
+#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
+#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
+#> #   .out_of_state <lgl>, region_hybrid <chr>, zip_code_hybrid <chr>
 
 # Overwrite region/zip_code in place (the original behavior) -- requires
 # naming the source columns explicitly and opting in with overwrite
@@ -359,8 +357,8 @@ ed_clean |>
     preserve_original_geographies = TRUE
   ) |>
   dplyr::filter(region != original_region)
-#> 24 of 131 visits (18.3%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region`/`zip_code`.
-#> # A tibble: 18 × 22
+#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region`/`zip_code`.
+#> # A tibble: 18 × 21
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -381,20 +379,19 @@ ed_clean |>
 #> 16 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
 #> 17 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V934759…
 #> 18 River Valley Me…     1003 Emergency Ca… KY_Warren       42101        V269975…
-#> # ℹ 16 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> # ℹ 15 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   pull_source <chr>, .out_of_state <lgl>, original_region <chr>,
-#> #   original_zip_code <chr>
+#> #   .out_of_state <lgl>, original_region <chr>, original_zip_code <chr>
 
 # Hybrid + facility geography side by side
 ed_clean |>
   assign_treating_geography() |>
   assign_facility_geography()
-#> 24 of 131 visits (18.3%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
-#> Facility geography applied to all 131 visits in `region_facility`/`zip_code_facility`.
-#> # A tibble: 131 × 25
+#> 24 of 129 visits (18.6%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
+#> Facility geography applied to all 129 visits in `region_facility`/`zip_code_facility`.
+#> # A tibble: 129 × 24
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
 #>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V100855…
@@ -407,11 +404,11 @@ ed_clean |>
 #>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V179024…
 #>  9 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V188198…
 #> 10 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V198982…
-#> # ℹ 121 more rows
-#> # ℹ 19 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
+#> # ℹ 119 more rows
+#> # ℹ 18 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
-#> #   pull_source <chr>, .out_of_state <lgl>, region_hybrid <chr>,
-#> #   zip_code_hybrid <chr>, region_facility <chr>, zip_code_facility <chr>, …
+#> #   .out_of_state <lgl>, region_hybrid <chr>, zip_code_hybrid <chr>,
+#> #   region_facility <chr>, zip_code_facility <chr>, .facility_geography <lgl>
 ```

@@ -65,7 +65,7 @@ a reference for function output structure.</p>
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A data frame with approximately 164 rows and 25 columns. All
+    <p>A data frame with approximately 160 rows and 24 columns. All
 column names are in snake_case (post <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code>).</p><dl><dt>hospital_name</dt>
 <dd><p>Character. Synthetic facility name.</p></dd>
 
@@ -107,8 +107,7 @@ encounter.</p></dd>
 <dt>has_been_e</dt>
 <dd><p>Integer. <code>1</code> for an ED pull; <code>0</code> on the two visits
 where a <code>patient_class_change</code> direct-admit row outranked the ED row
-under <code>dedupe(keep = "last")</code>, plus the four genuine direct
-admissions with no ED row at all – see <code>c_patient_class</code> and
+under <code>dedupe(keep = "last")</code> – see <code>c_patient_class</code> and
 <code><a href="essence_raw.html">?essence_raw</a></code>.</p></dd>
 
 <dt>has_been_admitted</dt>
@@ -117,9 +116,10 @@ inpatient admission.</p></dd>
 
 <dt>c_patient_class</dt>
 <dd><p>Character. ESSENCE-derived single-letter patient
-class. <code>"I"</code> on the visits where deduplication kept a direct-admit
-row over (or with no) original ED row (see <code><a href="essence_raw.html">?essence_raw</a></code>); <code>"E"</code>
-otherwise. Unchanged by the preprocessing pipeline.</p></dd>
+class. <code>"I"</code> on the two visits where deduplication kept the
+direct-admit continuation row over the original ED row (see
+<code><a href="essence_raw.html">?essence_raw</a></code>); <code>"E"</code> otherwise. Unchanged by the preprocessing
+pipeline.</p></dd>
 
 <dt>region</dt>
 <dd><p>Character. Patient ESSENCE Region of residence in
@@ -163,12 +163,6 @@ regardless of patient residence. Added by
 <dd><p>Logical. Always <code>TRUE</code> – signals that
 facility geography has been computed for every row. Added by
 <code><a href="assign_facility_geography.html">assign_facility_geography()</a></code>.</p></dd>
-
-<dt>pull_source</dt>
-<dd><p>Character, <code>"ED"</code> or <code>"Admission"</code>. Carried through
-from <code>essence_raw</code>'s <code>PullSource</code>, converted to snake_case by
-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> like any other column; not a real ESSENCE
-field – see <code><a href="essence_raw.html">?essence_raw</a></code>.</p></dd>
 
 
 </dl></div>

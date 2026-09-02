@@ -354,28 +354,24 @@ for geography attribution.
 ## Examples
 
 ``` r
-# Split the synthetic pull into the two separately-queried ESSENCE pulls
-# link_encounters() expects (see `PullSource` in `?essence_raw`)
-ed_pull        <- dplyr::filter(essence_raw, PullSource == "ED")
-admission_pull <- dplyr::filter(essence_raw, PullSource == "Admission")
-
-ed_clean <- ed_pull |>
+# essence_ed_raw and essence_inp_raw are two small synthetic datasets
+# representing the two separately queried ESSENCE pulls link_encounters()
+# expects -- see `?essence_ed_raw`/`?essence_inp_raw`
+ed_clean <- essence_ed_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
-#>   - Medical Specialty
-#>   - Primary Care
 inpatient_clean <- dedupe(
-  admission_pull, order_by = Arrived_Date_Time, keep = "last"
+  essence_inp_raw, order_by = Arrived_Date_Time, keep = "last"
 )
 
 # One row per true encounter, merged
 episodes <- link_encounters(ed_clean, inpatient_clean)
+#> Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.
 #> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 nrow(episodes)
-#> [1] 164
+#> [1] 18
 
 # Inspect the distribution of care pathways
 episodes |>
@@ -383,15 +379,16 @@ episodes |>
 #> # A tibble: 4 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        122
-#> 2 Admitted->ED               36
-#> 3 Direct Admit                4
+#> 1 ED                         10
+#> 2 Direct Admit                4
+#> 3 Admitted->ED                2
 #> 4 ED->Direct Admit            2
 
 # Long format: inspect the raw linkage mechanism directly
 episodes_long <- link_encounters(
   ed_clean, inpatient_clean, return_format = "long"
 )
+#> Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.
 #> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 
 if (FALSE) { # \dontrun{

@@ -162,7 +162,11 @@ installations. When both `HasBeenAdmitted` and `HasBeenI` are present,
 uses `HasBeenAdmitted` preferentially because it is
 discharge-disposition aware: it captures ED visits that resulted in
 inpatient admission via discharge disposition codes, which `HasBeenI`
-may not flag in all ESSENCE configurations.
+may not flag in all ESSENCE configurations. `essence_ed_raw` (introduced
+below) includes both columns for its escalation visits, so this
+preference is visible as an informational message the first time
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+runs on it.
 
 ## Linking ED and Inpatient Pulls
 
@@ -181,19 +185,18 @@ second record to link against.
 aborts if `inpatient_admission_data` is omitted, rather than silently
 returning `ed_data` unchanged with cosmetic metadata columns appended.
 
-`essence_raw` includes a `PullSource` column (`"ED"` or `"Admission"`) –
-not a real ESSENCE field, added purely so this vignette can split one
-synthetic dataset back into the two pulls a real analysis would have
-queried separately:
+`sysPrep` ships two small synthetic datasets purpose-built for this
+demonstration: `essence_ed_raw` (a `HasBeenE = 1` pull) and
+`essence_inp_raw` (a separately queried `HasBeenAdmitted = 1` pull) –
+distinct from the larger, general-purpose `essence_raw` used elsewhere
+in this documentation, since `essence_raw` represents a single realistic
+ED pull and was never meant to be split into two:
 
 ``` r
 
-ed_pull        <- essence_raw |> dplyr::filter(PullSource == "ED")
-admission_pull <- essence_raw |> dplyr::filter(PullSource == "Admission")
-
-nrow(ed_pull)
-#> [1] 191
-nrow(admission_pull)
+nrow(essence_ed_raw)
+#> [1] 15
+nrow(essence_inp_raw)
 #> [1] 6
 ```
 
@@ -201,16 +204,13 @@ Deduplicate each pull separately before linking:
 
 ``` r
 
-ed_clean <- ed_pull |>
+ed_clean <- essence_ed_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
-#>   - Medical Specialty
-#>   - Primary Care
 
-inpatient_clean <- admission_pull |>
+inpatient_clean <- essence_inp_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last")
 ```
 
@@ -254,37 +254,46 @@ primary row.
 ``` r
 
 episodes <- link_encounters(ed_clean, inpatient_clean)
-#> Using `HasBeen_` flags to derive complete encounters of care since
-#> `C_Patient_Class_List` is not present in `ed_data`.
+#> Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.
+#> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 
 dplyr::glimpse(episodes)
-#> Rows: 164
-#> Columns: 24
+#> Rows: 18
+#> Columns: 23
 #> $ hospital_name           <chr> "Central Medical Center", "Central Medical Cen…
-#> $ hospital                <int> 1001, 1001, 1001, 1001, 1001, 1001, 1001, 1001…
+#> $ hospital                <int> 1001, 1001, 1001, 1001, 1001, 1001, 1008, 1008…
 #> $ facility_type           <chr> "Emergency Care", "Emergency Care", "Emergency…
 #> $ hospital_region         <chr> "KY_Jefferson", "KY_Jefferson", "KY_Jefferson"…
 #> $ hospital_zip            <chr> "40201", "40201", "40201", "40201", "40201", "…
-#> $ visit_id                <chr> "V10085501", "V12198106", "V13846187", "V14709…
-#> $ c_bio_sense_id          <chr> "202301121001P74942483", "202309291001P7771715…
-#> $ c_unique_patient_id     <chr> "P74942483", "P77717150", "P16845892", "P98662…
-#> $ date                    <date> 2023-01-12, 2023-09-29, 2023-07-15, 2023-06-1…
-#> $ c_visit_date_time       <dttm> 2023-01-12 17:47:39, 2023-09-29 20:06:22, 202…
-#> $ arrived_date_time       <dttm> 2023-01-12 17:57:47, 2023-09-29 20:29:47, 202…
-#> $ c_patient_class         <chr> "E", "E", "E", "E", "E", "E", "E", "E", "E", "…
-#> $ region                  <chr> "TN_Davidson", "KY_Kenton", "KY_Campbell", "OH…
-#> $ zip_code                <chr> "37040", "41011", "41011", "45001", "43215", "…
-#> $ sex                     <chr> "F", "F", "F", "F", "M", "F", "M", "M", "U", "…
-#> $ c_patient_age           <int> 40, 83, 41, 33, 26, 82, 51, 27, 66, 50, 69, 18…
-#> $ pull_source             <chr> "ED", "ED", "ED", "ED", "ED", "ED", "ED", "ED"…
-#> $ patient_class           <chr> "ED", "ED", "ED", "ED", "ED", "ED", "ED", "ED"…
-#> $ has_been_e              <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
-#> $ has_been_admitted       <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
-#> $ .episode_id             <chr> "Central Medical Center_V10085501", "Central M…
-#> $ .patient_class_sequence <chr> "ED", "ED", "Admitted->ED", "ED", "ED", "ED", …
-#> $ .episode_n_rows         <int> 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1…
+#> $ visit_id                <chr> "V42101634", "V42590427", "V54313817", "V65288…
+#> $ c_bio_sense_id          <chr> "202310181001P26506928", "202312061001P5104253…
+#> $ c_unique_patient_id     <chr> "P26506928", "P51042534", "P71287071", "P17371…
+#> $ date                    <date> 2023-10-18, 2023-12-06, 2023-09-07, 2023-09-1…
+#> $ c_visit_date_time       <dttm> 2023-10-18 04:35:33, 2023-12-06 19:49:26, 202…
+#> $ arrived_date_time       <dttm> 2023-10-18 05:03:18, 2023-12-06 19:57:46, 202…
+#> $ c_patient_class         <chr> "I", "I", "E", "E", "E", "I", "I", "E", "E", "…
+#> $ region                  <chr> "KY_Hardin", "KY_Madison", "KY_Madison", "KY_J…
+#> $ zip_code                <chr> "41011", "42001", "42001", "41042", "42701", "…
+#> $ sex                     <chr> "M", "M", "M", "F", "F", "M", "F", "M", "F", "…
+#> $ c_patient_age           <int> 34, 24, 70, 43, 66, 60, 56, 37, 69, 50, 82, 81…
+#> $ has_been_e              <int> 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0…
+#> $ has_been_admitted       <int> 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1…
+#> $ patient_class           <chr> "Direct Admit", "Direct Admit", "ED", "ED", "E…
+#> $ .episode_id             <chr> "Central Medical Center_V42101634", "Central M…
+#> $ .patient_class_sequence <chr> "Direct Admit", "Direct Admit", "ED", "ED", "E…
+#> $ .episode_n_rows         <int> 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1…
 #> $ .index_encounter        <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE…
 ```
+
+Every row above shows real `0`/`1` values for
+`has_been_e`/`has_been_admitted` – never `NA` – regardless of whether it
+came from a single pre-merge row or a merged pair: deriving
+`patient_class` from `HasBeen_` flags (the fallback used here, since
+this synthetic data has no `C_Patient_Class_List`) pivots those flag
+columns to build `patient_class`, but
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+retains the true original values underneath so they survive into the
+output unchanged.
 
 `nrow(episodes)` is already the true unduplicated encounter count –
 smaller than the naive combined denominator, since some admission-pull
@@ -293,9 +302,9 @@ rows merged into an existing ED episode instead of adding a new one:
 ``` r
 
 nrow(ed_clean) + nrow(inpatient_clean) # naive combined denominator
-#> [1] 166
+#> [1] 20
 nrow(episodes)                         # true unduplicated encounter count
-#> [1] 164
+#> [1] 18
 ```
 
 Four episode metadata columns are added to every row, regardless of
@@ -343,9 +352,9 @@ episodes |>
 #> # A tibble: 4 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        122
-#> 2 Admitted->ED               36
-#> 3 Direct Admit                4
+#> 1 ED                         10
+#> 2 Direct Admit                4
+#> 3 Admitted->ED                2
 #> 4 ED->Direct Admit            2
 ```
 
@@ -367,12 +376,12 @@ instead of being counted twice.
 dplyr::filter(episodes, patient_class == "Direct Admit") |>
   dplyr::select(hospital_name, visit_id, .patient_class_sequence)
 #> # A tibble: 4 × 3
-#>   hospital_name         visit_id  .patient_class_sequence
-#>   <chr>                 <chr>     <chr>                  
-#> 1 Hillside FSED         V10125233 Direct Admit           
-#> 2 Hillside FSED         V31788463 Direct Admit           
-#> 3 North County Hospital V10212524 Direct Admit           
-#> 4 Rural Health Center   V48355335 Direct Admit
+#>   hospital_name               visit_id  .patient_class_sequence
+#>   <chr>                       <chr>     <chr>                  
+#> 1 Central Medical Center      V42101634 Direct Admit           
+#> 2 Central Medical Center      V42590427 Direct Admit           
+#> 3 Lakeside Community Hospital V86489009 Direct Admit           
+#> 4 North County Hospital       V64550501 Direct Admit
 ```
 
 ### Inspecting the Raw Linkage Mechanism: `return_format = "long"`
@@ -387,16 +396,16 @@ mechanism itself. No merge is applied in this mode.
 episodes_long <- link_encounters(
   ed_clean, inpatient_clean, return_format = "long"
 )
-#> Using `HasBeen_` flags to derive complete encounters of care since
-#> `C_Patient_Class_List` is not present in `ed_data`.
+#> Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.
+#> Using `HasBeen_` flags to derive complete encounters of care since `C_Patient_Class_List` is not present in `ed_data`.
 
 dplyr::count(episodes_long, patient_class)
 #> # A tibble: 3 × 2
 #>   patient_class     n
 #>   <chr>         <int>
-#> 1 Admitted         36
+#> 1 Admitted          2
 #> 2 Direct Admit      6
-#> 3 ED              160
+#> 3 ED               14
 ```
 
 In long format, `.index_encounter` marks the row that survives a “one
@@ -412,9 +421,9 @@ episodes_long |>
 #> # A tibble: 4 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        122
-#> 2 Admitted->ED               36
-#> 3 Direct Admit                4
+#> 1 ED                         10
+#> 2 Direct Admit                4
+#> 3 Admitted->ED                2
 #> 4 ED->Direct Admit            2
 ```
 
@@ -437,9 +446,9 @@ burden
 #> # A tibble: 4 × 2
 #>   .patient_class_sequence     n
 #>   <chr>                   <int>
-#> 1 ED                        122
-#> 2 Admitted->ED               36
-#> 3 Direct Admit                4
+#> 1 ED                         10
+#> 2 Direct Admit                4
+#> 3 Admitted->ED                2
 #> 4 ED->Direct Admit            2
 ```
 
