@@ -139,7 +139,8 @@ geo_all |>
 ## Documentation
 
 Full documentation including function reference pages and methodological
-vignettes is available at: **<https://andrew-farrey.github.io/sysPrep>**
+vignettes is available at:
+**<https://andrew-farrey.github.io/sysPrep/>**
 
 Vignettes: - [Getting
 Started](https://andrew-farrey.github.io/sysPrep/articles/getting-started.html) -
@@ -201,7 +202,7 @@ citation("sysPrep")
 ```
 
 Citation metadata is also available in
-[`CITATION.cff`](https://andrew-farrey.github.io/sysPrep/CITATION.cff)
+[`CITATION.cff`](https://github.com/andrew-farrey/sysPrep/blob/master/CITATION.cff)
 (used by GitHub’s “Cite this repository” feature and by Zenodo).
 
 ## License

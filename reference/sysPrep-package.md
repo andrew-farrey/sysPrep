@@ -28,7 +28,7 @@ Useful links:
 
 - <https://github.com/andrew-farrey/sysPrep>
 
-- <https://andrew-farrey.github.io/sysPrep>
+- <https://andrew-farrey.github.io/sysPrep/>
 
 - Report bugs at <https://github.com/andrew-farrey/sysPrep/issues>
 
