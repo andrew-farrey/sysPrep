@@ -463,7 +463,25 @@ requires latitude/longitude coordinates from the NSSP Master Facility
 Table, an additional lookup outside the standard ESSENCE data pull.
 Region-level attribution achieves a close approximation of
 hospital-level cluster detection using `HospitalRegion` – a field
-already present in every ESSENCE pull.
+returned without any coordinate lookup, **provided it’s included in the
+pull**: `HospitalRegion` isn’t guaranteed on every ESSENCE pull by
+default, only when it’s part of your site’s default returned columns or
+explicitly requested via the API’s `&field=` parameter. The same
+logistical advantage also supports a distinct, simpler use case: total
+treated volume by urban vs. rural county, with no interest in which
+specific hospital saw each visit at all – not an approximation of
+hospital-level detection, just county-level counting using a field you
+already requested rather than a coordinate lookup you’d have to add.
+
+> **What does a county with no ESSENCE-participating hospital show?**
+> `0`, always – not a small or uncertain number, a hard zero, regardless
+> of how much true burden that county’s residents actually generate.
+> This is a direct consequence of ESSENCE being facility-based:
+> `region_facility` can only ever reflect counties containing a facility
+> that submits to ESSENCE. A county with real burden but no local ED
+> will never contribute a count under this method, no matter how the
+> underlying incidence changes. This is worth stating plainly rather
+> than discovering it from a suspiciously flat map.
 
 The two approaches are complementary: hospital-based clustering offers
 facility-level resolution; region-based clustering offers geographic
@@ -483,6 +501,10 @@ whether the surveillance question is “which facility?” or “which area?”.
   patient origin).
 - Cross-state facility comparisons where residential geography is an
   inappropriate common denominator.
+- Comparing total treated volume across urban and rural counties without
+  differentiating which hospital saw each visit – useful when a
+  facility-to-county lookup table isn’t available but `HospitalRegion`/
+  `HospitalZip` already are.
 
 ## The Core Distinction: What Do the Output Columns Mean?
 

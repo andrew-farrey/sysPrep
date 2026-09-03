@@ -154,8 +154,11 @@ two advantages over true hospital-level cluster detection:
   clustering requires latitude/longitude coordinates sourced from the
   NSSP Master Facility Table, an additional logistical step outside the
   standard ESSENCE data pull. Region-level binning achieves a close
-  approximation of hospital-level cluster detection using fields already
-  present in the pull.
+  approximation of hospital-level cluster detection using
+  `HospitalRegion`/`HospitalZip` instead – provided they're included in
+  the pull. Neither is guaranteed by default; both require being part of
+  your site's default returned columns or explicitly requested via the
+  API's `&field=` parameter.
 
 One consequence of region-level attribution is that detectable cluster
 polygons are limited to regions that contain at least one participating
@@ -180,6 +183,13 @@ Kentucky, complementing the hybrid approach implemented in
 
 - Approximating hospital-level cluster detection without Master Facility
   Table lookups or coordinate-based spatial methods.
+
+- Comparing total treated volume across urban and rural counties without
+  differentiating which specific hospital saw each visit – useful when a
+  facility-to-county lookup table isn't available but `HospitalRegion`/
+  `HospitalZip` already are. The tradeoff is the one described above: a
+  county with no participating ESSENCE facility always shows `0`,
+  regardless of actual resident burden.
 
 ### ESSENCE Region field and facility location pulls
 
