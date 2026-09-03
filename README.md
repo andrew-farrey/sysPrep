@@ -14,8 +14,8 @@ Electronic Surveillance System for the Early Notification of
 Community-based Epidemics ([ESSENCE](https://www.cdc.gov/nssp/)) API.
 
 `sysPrep`'s functions operate on line-level ESSENCE records returned by
-the dataDetails API endpoint (Full Details pulls). It does not work on ESSENCE
-data returned by the tableBuilder or timeSeries API endpoints. That
+the dataDetails API endpoint (Full Details pulls). Its functions will not work 
+on ESSENCE data returned by the tableBuilder or timeSeries API endpoints. That
 distinction traces back to how these preprocessing steps were identified
 in Kentucky: line-level review of individual ESSENCE records exposed
 issues that aggregate-level QA had missed entirely, while investigating
