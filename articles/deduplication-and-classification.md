@@ -12,39 +12,39 @@ additional rows inflate case counts, distort trend analyses, and produce
 inaccurate rates.
 
 **Why duplication happens.** BioSense, the NSSP platform underlying
-ESSENCE, computes a record identifier – `C_BioSense_ID` (called
-EssenceID in the ESSENCE backend) – by concatenating three calculated
-fields: `C_Visit_Date`, `C_BioSense_Facility_ID` (`Hospital` in this
-package and in `dataDetails` API pulls), and `C_Unique_Patient_ID`.
-`C_Visit_Date` itself takes its date value from `C_Visit_Date_Time`. As
-long as those calculated fields are transmitted consistently for a given
-encounter, updates to other fields – a discharge disposition, a lab
-result, a diagnosis code – are correctly appended to the existing
-record, with no additional row created. This is why the vast majority of
-ESSENCE updates do not produce duplicates. NSSP is not the source of the
-problem: a new `C_BioSense_ID` is computed, and an apparent second
-record created, only when one of the three calculated fields disagrees
-between transmissions of what should be the same encounter – in
-practice, almost always `C_Visit_Date_Time` (via `C_Visit_Date`) or
-`C_Unique_Patient_ID`. `C_BioSense_Facility_ID` is formally part of the
-same calculation, but a genuine change in it – as from an inter-facility
-transfer – would typically also mean a different `Visit_ID`, since
-facilities generally do not share `Visit_ID` values with each other.
-Reliably detecting a facility-driven `C_BioSense_ID` change is not
-something this package currently attempts, and it is not something the
-mechanisms documented here have been verified against directly. BioSense
-has no way to tell whether a calculated-field change is a genuine
-correction or an unwarranted, feed-level error; either way, the visit is
-duplicated. When a site transmits fully accurate calculated fields for
-every visit, duplication from this mechanism is essentially zero. The
-two most common, detectable ways it occurs in ESSENCE data are:
+ESSENCE, computes a record identifier, `C_BioSense_ID` (called EssenceID
+in the ESSENCE backend), by concatenating three calculated fields:
+`C_Visit_Date`, `C_BioSense_Facility_ID` (`Hospital` in this package and
+in `dataDetails` API pulls), and `C_Unique_Patient_ID`. `C_Visit_Date`
+itself takes its date value from `C_Visit_Date_Time`. As long as those
+calculated fields are transmitted consistently for a given encounter,
+updates to other fields, a discharge disposition, a lab result, a
+diagnosis code, are correctly appended to the existing record, with no
+additional row created. This is why the vast majority of ESSENCE updates
+do not produce duplicates. NSSP is not the source of the problem: a new
+`C_BioSense_ID` is computed, and an apparent second record created, only
+when one of the three calculated fields disagrees between transmissions
+of what should be the same encounter, in practice, almost always
+`C_Visit_Date_Time` (via `C_Visit_Date`) or `C_Unique_Patient_ID`.
+`C_BioSense_Facility_ID` is formally part of the same calculation, but a
+genuine change in it, as from an inter-facility transfer, would
+typically also mean a different `Visit_ID`, since facilities generally
+do not share `Visit_ID` values with each other. Reliably detecting a
+facility-driven `C_BioSense_ID` change is not something this package
+currently attempts, and it is not something the mechanisms documented
+here have been verified against directly. BioSense has no way to tell
+whether a calculated-field change is a genuine correction or an
+unwarranted, feed-level error; either way, the visit is duplicated. When
+a site transmits fully accurate calculated fields for every visit,
+duplication from this mechanism is essentially zero. The two most
+common, detectable ways it occurs in ESSENCE data are:
 
 **`visit_date_change`.** As described above, `C_Visit_Date` takes its
 date value from `C_Visit_Date_Time`. Some hospitals’ systems update
 `C_Visit_Date_Time` as providers interact with the patient over the
 course of the visit, rather than fixing it at initial registration. When
-one of those updates crosses midnight – changing what was a pre-midnight
-value to a post-midnight value – `C_Visit_Date` changes to the next
+one of those updates crosses midnight, changing what was a pre-midnight
+value to a post-midnight value, `C_Visit_Date` changes to the next
 calendar day, which recomputes `C_BioSense_ID` for the same `Visit_ID`,
 producing two rows that appear to represent different BioSense records
 but refer to the same encounter. This is the most widespread duplication
@@ -56,11 +56,11 @@ registration; the duplicate arises only at facilities whose systems
 continue to update it afterward.
 
 The impact of this duplication is disproportionate in small-count
-contexts. A syndrome definition for a relatively rare condition – such
-as a specific overdose agent or an emerging chief complaint pattern –
-may produce only a handful of true encounters at a given facility on a
-given day. If those encounters generate multiple `C_BioSense_ID` values,
-the apparent count presented to an analyst or flagged by an anomaly
+contexts. A syndrome definition for a relatively rare condition, such as
+a specific overdose agent or an emerging chief complaint pattern, may
+produce only a handful of true encounters at a given facility on a given
+day. If those encounters generate multiple `C_BioSense_ID` values, the
+apparent count presented to an analyst or flagged by an anomaly
 detection algorithm can be substantially higher than the true count,
 potentially triggering alerts that do not reflect genuine changes in
 incidence. This is the clinical and surveillance consequence that
@@ -70,27 +70,27 @@ visits is low.
 **`pid_change`.** `C_Unique_Patient_ID` (which maps to medical record
 number in Kentucky) is the third field concatenated into
 `C_BioSense_ID`. A patient may be registered under one identifier and
-have it corrected mid-visit – for example, when an initial local
+have it corrected mid-visit, for example, when an initial local
 (facility- or department-specific) MRN is replaced with a community-wide
-or health-system-level MRN, or with a different local MRN – and the
+or health-system-level MRN, or with a different local MRN, and the
 facility submits an update message with the corrected
 `C_Unique_Patient_ID` while `Visit_ID` itself stays the same. Because
 BioSense recomputes `C_BioSense_ID` from the new `C_Unique_Patient_ID`,
 the update produces an additional row rather than correcting the
-existing one – the original row, tied to the earlier
+existing one: the original row, tied to the earlier
 `C_Unique_Patient_ID`, is left in place and still reflects the earlier
 state of the visit, while the new row carries the corrected identifier
 and current information. Each identifier change produces one additional
 row for the same `Visit_ID`.
 
 **`patient_class_change`.** Under normal HL7 processing, patient class
-transitions during a visit – for example, from emergency department to
-inpatient admission – are handled without generating duplicate rows: the
+transitions during a visit, for example, from emergency department to
+inpatient admission, are handled without generating duplicate rows: the
 transition is appended to `C_Patient_Class_List`, and the `HasBeenE`,
 `HasBeenI`, `HasBeenAdmitted` flags (ED-visit and inpatient-admission
 indicator columns) are revised in place. A `patient_class_change`
 duplicate appears only when something additional causes a new row to be
-submitted for the same `Visit_ID` coincident with a class transition –
+submitted for the same `Visit_ID` coincident with a class transition,
 such as a feed configuration issue or a concurrent `visit_date_change`.
 This mechanism requires `c_patient_class` to be present in the data
 pull. See also
@@ -116,8 +116,8 @@ mis-submitted cases.
 [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
 is not the right tool for this: even though the ED and mis-submitted
 admission records share a `facility_col x visit_col` key, they carry
-complementary, not redundant, information – the admission record’s
-discharge disposition and outcome are not present on the ED record – so
+complementary, not redundant, information: the admission record’s
+discharge disposition and outcome are not present on the ED record, so
 discarding one (as
 [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
 does) silently loses information that merging (as
@@ -193,7 +193,7 @@ dups$by_facility
 pairs and the proportion of unique visits affected. `$by_facility` gives
 per-facility counts of duplicated visit identifiers, sorted by total
 duplicated visits descending. A facility with a disproportionately high
-duplicate rate may indicate a feed configuration issue – for example, a
+duplicate rate may indicate a feed configuration issue, for example, a
 registration system that routinely updates `C_Visit_Date_Time` as
 providers interact with the patient (producing `visit_date_change`
 duplicates whenever an update crosses midnight), or a workflow that
@@ -277,7 +277,7 @@ classified$by_facility
 
 The `$overall` component shows how many duplicate groups belong to each
 mechanism type. The `$by_facility` component shows the distribution of
-mechanisms per facility in wide format – useful for identifying
+mechanisms per facility in wide format, useful for identifying
 facilities whose duplicates are concentrated in a particular mechanism.
 
 When `c_patient_class` is not included in your ESSENCE pull, the
@@ -290,7 +290,7 @@ functional.
 > `keep = "last"` is appropriate) or by `visit_date_change` events
 > (which may warrant examining whether the date change affects your
 > analysis window). It also identifies whether a specific facility is
-> generating an unusual volume of a particular duplication type – which
+> generating an unusual volume of a particular duplication type, which
 > can point to a feed-level configuration problem worth reporting to the
 > facility or NSSP.
 
@@ -351,8 +351,8 @@ summarize_duplicates(deduped)$overall
 ```
 
 The `order_by` argument specifies which column to use for ranking rows
-within each duplicate group. `Arrived_Date_Time` – the timestamp when
-NSSP received the record – is the recommended ordering column for
+within each duplicate group. `Arrived_Date_Time`, the timestamp when
+NSSP received the record, is the recommended ordering column for
 production surveillance because the most recently received row is most
 likely to reflect updated clinical information.
 
@@ -365,23 +365,23 @@ The appropriate strategy depends on your surveillance context:
 | Rolling surveillance (production monitoring) | `order_by = Arrived_Date_Time, keep = "last"` |
 | Fixed-window retrospective analysis | `order_by = Arrived_Date_Time, keep = "first"` |
 | Field completeness matters (e.g., maximizing diagnosis code coverage) | `keep = "most_complete"` |
-| Unsure – inspect before deciding | Call [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md) first |
+| Unsure, inspect before deciding | Call [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md) first |
 
-**`keep = "last"`** retains the row with the highest value of `order_by`
-– the most recently transmitted record. Appropriate when the latest
-transmission is most current and complete, which is true for most
+**`keep = "last"`** retains the row with the highest value of
+`order_by`: the most recently transmitted record. Appropriate when the
+latest transmission is most current and complete, which is true for most
 retransmission scenarios.
 
-**`keep = "first"`** retains the row with the lowest value of `order_by`
-– the original transmission. Appropriate for fixed-window analyses where
-you want to capture the visit as it was first reported, without post-hoc
-field updates.
+**`keep = "first"`** retains the row with the lowest value of
+`order_by`: the original transmission. Appropriate for fixed-window
+analyses where you want to capture the visit as it was first reported,
+without post-hoc field updates.
 
 **`keep = "most_complete"`** retains the row with the fewest `NA` values
 across all columns. Appropriate when no single transmission is reliably
-more current than another and field completeness is the primary concern
-– for example, when discharge diagnosis codes are populated
-inconsistently across retransmissions.
+more current than another and field completeness is the primary concern,
+for example, when discharge diagnosis codes are populated inconsistently
+across retransmissions.
 
 When the `order_by` column itself contains ties (multiple rows with the
 same `Arrived_Date_Time`),

@@ -89,7 +89,7 @@ deduplicating.
 ### Deduplication key
 
 The deduplication key is always `facility_col x visit_col`. Visit_ID is
-unique within a facility in ESSENCE – the same Visit_ID at two different
+unique within a facility in ESSENCE; the same Visit_ID at two different
 facilities represents two distinct encounters and is not collapsed.
 
 ### keep strategies
@@ -103,9 +103,9 @@ facilities represents two distinct encounters and is not collapsed.
 - `"last"`:
 
   Retains the final row. When `order_by` is supplied, retains the most
-  recently received record – appropriate when ESSENCE records are
-  updated chronologically and later rows reflect corrected information.
-  Use `Arrived_Date_Time` as `order_by` to retain the most recently
+  recently received record; appropriate when ESSENCE records are updated
+  chronologically and later rows reflect corrected information. Use
+  `Arrived_Date_Time` as `order_by` to retain the most recently
   transmitted version of each record.
 
 - `"most_complete"`:

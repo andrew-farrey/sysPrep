@@ -7,7 +7,7 @@ residence. By default this writes new columns
 (`region_facility`/`zip_code_facility`), leaving `Region`/`ZipCode`
 untouched; set `overwrite = TRUE` to overwrite them in place instead.
 This scopes geography to true incidence-at-location (to the extent NSSP
-ESSENCE supports it) – by attributing every visit to where care was
+ESSENCE supports it) by attributing every visit to where care was
 received rather than where the patient resides.
 
 ## Usage
@@ -64,7 +64,7 @@ assign_facility_geography(
 - new_region_col:
 
   Character string or `NULL`. Name of the column to write facility
-  region values to. Defaults to `"region_facility"` – a new column,
+  region values to. Defaults to `"region_facility"`: a new column,
   leaving `region_col` untouched. Pass `NULL` to skip region entirely.
   Pass `region_col`'s own name (with `overwrite = TRUE`) to overwrite it
   in place instead. See Details.
@@ -79,7 +79,7 @@ assign_facility_geography(
 
   Logical. If `FALSE` (default), `new_region_col`/ `new_zip_col` naming
   a column that already exists in `data` aborts rather than silently
-  overwriting it. Set `TRUE` to allow it – this is required to reproduce
+  overwriting it. Set `TRUE` to allow it; this is required to reproduce
   the original in-place-overwrite behavior. See Details.
 
 - preserve_original_geographies:
@@ -116,8 +116,8 @@ geography has been applied. When `overwrite = TRUE` and
 
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
 selectively reassigns geography only for out-of-state and `OTHER_REGION`
-visits, preserving residential geography for in-state patients – a
-hybrid approach. `assign_facility_geography()` applies reassignment
+visits, preserving residential geography for in-state patients: a hybrid
+approach. `assign_facility_geography()` applies reassignment
 universally: all visits, including in-state patients, receive the
 treating facility's geography. This produces a dataset scoped entirely
 to incidence-at-location rather than patient residence.
@@ -155,7 +155,7 @@ two advantages over true hospital-level cluster detection:
   NSSP Master Facility Table, an additional logistical step outside the
   standard ESSENCE data pull. Region-level binning achieves a close
   approximation of hospital-level cluster detection using
-  `HospitalRegion`/`HospitalZip` instead – provided they're included in
+  `HospitalRegion`/`HospitalZip` instead, provided they're included in
   the pull. Neither is guaranteed by default; both require being part of
   your site's default returned columns or explicitly requested via the
   API's `&field=` parameter.
@@ -164,9 +164,9 @@ One consequence of region-level attribution is that detectable cluster
 polygons are limited to regions that contain at least one participating
 ESSENCE facility. Regions with no participating hospitals cannot
 contribute counts and will not appear as cluster candidates, regardless
-of actual burden in those areas. This is not unique to this approach –
-it is a general property of facility-based surveillance – but it is
-worth noting explicitly when interpreting spatial cluster output.
+of actual burden in those areas. This is not unique to this approach; it
+is a general property of facility-based surveillance, but it is worth
+noting explicitly when interpreting spatial cluster output.
 
 This method is currently being evaluated for adoption as an additional
 scan statistic pipeline for daily prospective overdose surveillance in
@@ -185,7 +185,7 @@ Kentucky, complementing the hybrid approach implemented in
   Table lookups or coordinate-based spatial methods.
 
 - Comparing total treated volume across urban and rural counties without
-  differentiating which specific hospital saw each visit – useful when a
+  differentiating which specific hospital saw each visit, useful when a
   facility-to-county lookup table isn't available but `HospitalRegion`/
   `HospitalZip` already are. The tradeoff is the one described above: a
   county with no participating ESSENCE facility always shows `0`,
@@ -194,7 +194,7 @@ Kentucky, complementing the hybrid approach implemented in
 ### ESSENCE Region field and facility location pulls
 
 `HospitalRegion`, like `Region`, is drawn from a maintained
-zip-to-county mapping rather than a live geocode – by default assigned
+zip-to-county mapping rather than a live geocode: by default assigned
 from the facility's zip code centroid, though site administrators can
 override this via BioSense Access Management to instead reflect the
 facility's listed county. `Region`-based output should not be construed
@@ -208,7 +208,7 @@ jurisdiction residents and visitors who presented at in-jurisdiction
 facilities. This differs from a **patient location** pull (`va_er`),
 which
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
-is closer to preserving – see that function's documentation for the same
+is closer to preserving; see that function's documentation for the same
 caveat on `Region` field interpretation.
 
 ### Geography types and output columns
@@ -224,14 +224,14 @@ overwrite `region_col`/`zip_col` in place instead (the only behavior
 this function had before this parameter existed), pass their own name to
 `new_region_col`/`new_zip_col` and set `overwrite = TRUE`. `overwrite`
 guards **any** collision with an existing column, not just the source
-column – see
+column; see
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)'s
 documentation for the full behavior, which is identical here.
 
 ### Preserved geographies
 
 `preserve_original_geographies` only has an effect in `overwrite = TRUE`
-mode – see
+mode; see
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
 When it does apply here, since all rows are reassigned,
 `original_region`/`original_zip_code` retain the original patient
@@ -246,7 +246,7 @@ for selective reassignment of out-of-state visits only.
 ## Examples
 
 ``` r
-# Build a deduplicated, filtered base to demonstrate on -- essence_clean
+# Build a deduplicated, filtered base to demonstrate on: essence_clean
 # itself already has region_hybrid/region_facility applied, so it isn't a
 # fresh starting point for these examples
 ed_clean <- essence_raw |>
@@ -281,7 +281,7 @@ ed_clean |> assign_facility_geography()
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
 #> #   region_facility <chr>, zip_code_facility <chr>, .facility_geography <lgl>
 
-# Overwrite region/zip_code in place (the original behavior) -- requires
+# Overwrite region/zip_code in place (the original behavior); requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_facility_geography(

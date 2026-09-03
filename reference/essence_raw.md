@@ -95,7 +95,7 @@ A data frame with approximately 193 rows and 18 columns:
   [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
   detects `patient_class_change` duplicates generically, from any two
   rows sharing a `facility x Visit_ID` key with distinct
-  `C_Patient_Class` values – not a specific from/to pair. `"E"` to `"I"`
+  `C_Patient_Class` values, not a specific from/to pair. `"E"` to `"I"`
   is used here only as a common, realistic illustration; see Details.
 
 - Region:
@@ -133,38 +133,38 @@ Location, Full Details).
 
 - `standard`:
 
-  5 visits with an extra row differing only in `Arrived_Date_Time` –
+  5 visits with an extra row differing only in `Arrived_Date_Time`,
   representing a record retransmission.
 
 - `visit_date_change`:
 
   3 visits with a second row carrying a new `C_BioSense_ID` and a `Date`
-  advanced by 1 day – representing a midnight-crossing visit where
+  advanced by 1 day, representing a midnight-crossing visit where
   `Admit_Date_Time` was updated.
 
 - `pid_change`:
 
-  2 visits with a second row carrying a different `C_Unique_Patient_ID`
-  – representing a corrected patient identifier.
+  2 visits with a second row carrying a different `C_Unique_Patient_ID`,
+  representing a corrected patient identifier.
 
 - `patient_class_change`:
 
   2 visits with a second row carrying `C_Patient_Class = "I"`
   (`HasBeenE`/`HasBeenAdmitted` flipped to match) against the original
-  row's `"E"`, and later `C_Visit_Date_Time`/ `Arrived_Date_Time` values
-  – representing an ED visit and its direct-admit continuation
+  row's `"E"`, and later `C_Visit_Date_Time`/ `Arrived_Date_Time`
+  values, representing an ED visit and its direct-admit continuation
   transmitted as two records sharing one `Visit_ID` rather than one
   record with an updated `C_Patient_Class_List`. Since
   `dedupe(keep = "last")` keeps the more recent row by
   `Arrived_Date_Time`, these two visits survive into
   [essence_clean](https://andrew-farrey.github.io/sysPrep/reference/essence_clean.md)
-  as `c_patient_class = "I"` – the ED encounter is silently dropped by
+  as `c_patient_class = "I"`: the ED encounter is silently dropped by
   deduplication alone, illustrating the gap
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   is designed to catch instead. `essence_raw` is not itself used to
   demonstrate
-  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-  – see
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md);
+  see
   [essence_ed_raw](https://andrew-farrey.github.io/sysPrep/reference/essence_ed_raw.md)/[essence_inp_raw](https://andrew-farrey.github.io/sysPrep/reference/essence_inp_raw.md),
   which are purpose-built for that.
 

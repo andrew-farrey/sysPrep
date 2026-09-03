@@ -132,7 +132,7 @@ duplication in a specific pull before deduplicating.</p>
 
 
 <p>The deduplication key is always <code>facility_col x visit_col</code>. Visit_ID is
-unique within a facility in ESSENCE – the same Visit_ID at two different
+unique within a facility in ESSENCE; the same Visit_ID at two different
 facilities represents two distinct encounters and is not collapsed.</p>
 </div>
 
@@ -147,7 +147,7 @@ Fastest and most transparent.</p></dd>
 
 <dt><code>"last"</code></dt>
 <dd><p>Retains the final row. When <code>order_by</code> is supplied,
-retains the most recently received record – appropriate when ESSENCE
+retains the most recently received record; appropriate when ESSENCE
 records are updated chronologically and later rows reflect corrected
 information. Use <code>Arrived_Date_Time</code> as <code>order_by</code> to retain the most
 recently transmitted version of each record.</p></dd>

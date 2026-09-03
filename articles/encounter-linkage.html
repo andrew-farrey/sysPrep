@@ -64,13 +64,13 @@
 
     
     
-<p><code>sysPrep</code>’s other core functions – <code><a href="../reference/dedupe.html">dedupe()</a></code>,
-<code><a href="../reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="../reference/classify_duplicates.html">classify_duplicates()</a></code>
-– remove duplicate ESSENCE rows for one visit within a single pull.
+<p><code>sysPrep</code>’s other core functions (<code><a href="../reference/dedupe.html">dedupe()</a></code>,
+<code><a href="../reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="../reference/classify_duplicates.html">classify_duplicates()</a></code>)
+remove duplicate ESSENCE rows for one visit within a single pull.
 <code><a href="../reference/link_encounters.html">link_encounters()</a></code> solves the same overcounting problem in a
 harder form: a visit split across two separately queried pulls, where
 the duplicate doesn’t look like one. Neither ESSENCE nor the BioSense
-Platform surfaces, flags, or resolves this on their own – finding it
+Platform surfaces, flags, or resolves this on their own; finding it
 takes looking at the underlying records directly.</p>
 <div class="section level2">
 <h2 id="the-care-pathway-artifact-problem">The Care Pathway Artifact Problem<a class="anchor" aria-label="anchor" href="#the-care-pathway-artifact-problem"></a>
@@ -86,8 +86,8 @@ different things:</p>
 <ul>
 <li>
 <strong>A true direct admission.</strong> The patient was referred
-from primary care, outpatient care, or urgent care – or admitted based
-on a pre-arranged plan – and genuinely never went through the ED at this
+from primary care, outpatient care, or urgent care, or admitted based on
+a pre-arranged plan, and genuinely never went through the ED at this
 facility. This is a real clinical pathway, not a data quality
 problem.</li>
 <li>
@@ -95,32 +95,32 @@ problem.</li>
 <em>was</em> triaged and treated in the ED first, but the facility’s
 system closed that encounter as a discharge instead of tracking the
 ED-to-inpatient transition as one continuous record. The result is two
-records – one correctly showing <code>HasBeenE = 1</code>, one showing
-<code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code> – that
+records: one correctly showing <code>HasBeenE = 1</code>, one showing
+<code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code>, that
 share the same <code>facility_col x visit_col</code> key but otherwise
 look, to ESSENCE, like two unrelated encounters. This is a data quality
 artifact, not a distinct clinical pathway.</li>
 </ul>
 <p>Nothing in a single row distinguishes these two cases. The only way
 to tell them apart is to check whether a matching ED record exists under
-the same <code>facility_col x visit_col</code> key – which is exactly
+the same <code>facility_col x visit_col</code> key, which is exactly
 what <code><a href="../reference/link_encounters.html">link_encounters()</a></code> does.</p>
 <p>This has a direct, structural consequence for burden estimation.
 Querying the inpatient pull with <code>HasBeenE = 0</code> added on
-purpose – specifically to exclude anything already captured by the
-<code>HasBeenE = 1</code> pull – looks like a safe way to avoid
+purpose, specifically to exclude anything already captured by the
+<code>HasBeenE = 1</code> pull, looks like a safe way to avoid
 double-counting, and by the API’s own field semantics it should be:
 <code>HasBeenE = 0</code> is supposed to mean no ED encounter appears
 anywhere in that record’s history. It isn’t safe. Some records that
 correctly show <code>HasBeenE = 0</code> were, clinically, discharged
-from the ED and immediately readmitted – the ED encounter lives entirely
+from the ED and immediately readmitted; the ED encounter lives entirely
 on the separate record already captured in the first pull, so the
 exclusion filter never catches it. If you don’t know this and want to
 include inpatient admissions in your burden counts, running a
 <code>HasBeenE = 1</code> query and combining it with an
 otherwise-identical <code>HasBeenE = 0</code> /
-<code>HasBeenAdmitted = 1</code> query – expecting the sum to be an
-accurate “severe healthcare visit” census – does not produce one: that
+<code>HasBeenAdmitted = 1</code> query, expecting the sum to be an
+accurate “severe healthcare visit” census, does not produce one: that
 proportion of ED visits gets counted a second time, once under each
 query. At the same time, genuinely new direct admissions in the second
 query are exactly what you’re trying to capture.
@@ -131,7 +131,7 @@ are retained as their own distinct encounters.</p>
 <p>In Kentucky’s overdose surveillance data, some of the decline in the
 <code>HasBeenE = 1</code> trend over time is genuinely explained by
 growth in the <code>HasBeenE = 0</code> /
-<code>HasBeenAdmitted = 1</code> trend – but not as much as naively
+<code>HasBeenAdmitted = 1</code> trend, but not as much as naively
 binning the two would suggest, since some proportion of that apparent
 direct-admit growth is the same double-counting artifact described
 above, not a new encounter. Reimbursement or clinical-protocol changes,
@@ -148,9 +148,9 @@ of that decline reflects a genuine pathway shift.</p>
 my data?</strong> This isn’t a widely documented ESSENCE data quality
 issue. Using <code>HasBeenE = 1</code> and direct-admit data together
 for burden estimation isn’t itself a widely formalized practice in
-ESSENCE – in print or elsewhere – so the risk rarely surfaces. It came
-out of record-level review of Kentucky’s data, not published guidance.
-Most users working from pre-aggregated <code>HasBeenE = 1</code> and
+ESSENCE, in print or elsewhere, so the risk rarely surfaces. It came out
+of record-level review of Kentucky’s data, not published guidance. Most
+users working from pre-aggregated <code>HasBeenE = 1</code> and
 <code>HasBeenAdmitted = 1</code> counts through timeSeries or
 tableBuilder have no way to detect it, since the double-counted
 encounters are indistinguishable from genuine direct admits at the
@@ -163,7 +163,7 @@ pathway they followed.</p>
 <blockquote>
 <p><strong>Could you address this by filtering to
 <code>HasBeenAdmitted = 1</code> instead?</strong> A query filtered to
-<code>HasBeenAdmitted = 1</code> returns all admitted visits – including
+<code>HasBeenAdmitted = 1</code> returns all admitted visits, including
 those with <code>HasBeenE = 1</code>, which are already present in the
 ED pull. Using only the inpatient pull would miss all ED visits that did
 not result in admission, which represent the majority of emergency
@@ -279,7 +279,7 @@ encounter linkage are:</p>
 <tr class="odd">
 <td><code>0</code></td>
 <td><code>1</code></td>
-<td>Direct admission – no ED visit in this encounter</td>
+<td>Direct admission: no ED visit in this encounter</td>
 </tr>
 <tr class="even">
 <td><code>0</code></td>
@@ -289,7 +289,7 @@ encounter linkage are:</p>
 </tbody>
 </table>
 <p>A <code>HasBeenE = 1</code> filtered query returns rows in the first
-two patterns only. The third pattern – direct admissions – requires a
+two patterns only. The third pattern, direct admissions, requires a
 separate <code>HasBeenAdmitted = 1</code> query to capture.</p>
 <p><code>HasBeenI</code> is an alternative inpatient flag available in
 some ESSENCE installations. When both <code>HasBeenAdmitted</code> and
@@ -324,10 +324,10 @@ appended.</p>
 <p><code>sysPrep</code> ships two small synthetic datasets purpose-built
 for this demonstration: <code>essence_ed_raw</code> (a
 <code>HasBeenE = 1</code> pull) and <code>essence_inp_raw</code> (a
-separately queried <code>HasBeenAdmitted = 1</code> pull) – distinct
-from the larger, general-purpose <code>essence_raw</code> used elsewhere
-in this documentation, since <code>essence_raw</code> represents a
-single realistic ED pull and was never meant to be split into two:</p>
+separately queried <code>HasBeenAdmitted = 1</code> pull), distinct from
+the larger, general-purpose <code>essence_raw</code> used elsewhere in
+this documentation, since <code>essence_raw</code> represents a single
+realistic ED pull and was never meant to be split into two:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">essence_ed_raw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 15</span></span>
@@ -346,13 +346,13 @@ single realistic ED pull and was never meant to be split into two:</p>
 <blockquote>
 <p><strong>Can I just row-bind the ED and admission pulls and run
 <code><a href="../reference/dedupe.html">dedupe()</a></code> on the result, instead of passing them
-separately?</strong> No – this risks silently losing visits.
+separately?</strong> No: this risks silently losing visits.
 <code><a href="../reference/dedupe.html">dedupe()</a></code>’s <code>facility_col x visit_col</code> grouping
 does not distinguish an ED record from its corresponding direct-admit
 record; from <code><a href="../reference/dedupe.html">dedupe()</a></code>’s perspective they are simply two
 rows sharing a key. <code>keep = "last"</code> or
 <code>keep = "first"</code> will pick whichever row has the later or
-earlier <code>Arrived_Date_Time</code> and discard the other –
+earlier <code>Arrived_Date_Time</code> and discard the other,
 unpredictably decreasing either the ED visit count or the direct-admit
 count, depending on that ordering, rather than merging the two into one
 complete encounter. Always deduplicate each pull separately (as shown
@@ -408,8 +408,8 @@ when the ED row is kept as the surviving primary row.</p>
 <span><span class="co">#&gt; $ .episode_n_rows         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> 1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>1…</span></span>
 <span><span class="co">#&gt; $ .index_encounter        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span> TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE<span style="color: #949494;">, </span>TRUE…</span></span></code></pre></div>
 <p>Every row above shows real <code>0</code>/<code>1</code> values for
-<code>has_been_e</code>/<code>has_been_admitted</code> – never
-<code>NA</code> – regardless of whether it came from a single pre-merge
+<code>has_been_e</code>/<code>has_been_admitted</code>, never
+<code>NA</code>, regardless of whether it came from a single pre-merge
 row or a merged pair: deriving <code>patient_class</code> from
 <code>HasBeen_</code> flags (the fallback used here, since this
 synthetic data has no <code>C_Patient_Class_List</code>) pivots those
@@ -417,9 +417,9 @@ flag columns to build <code>patient_class</code>, but
 <code><a href="../reference/link_encounters.html">link_encounters()</a></code> retains the true original values
 underneath so they survive into the output unchanged.</p>
 <p><code>nrow(episodes)</code> is already the true unduplicated
-encounter count – smaller than the naive combined denominator, since
-some admission-pull rows merged into an existing ED episode instead of
-adding a new one:</p>
+encounter count, smaller than the naive combined denominator, since some
+admission-pull rows merged into an existing ED episode instead of adding
+a new one:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">ed_clean</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">inpatient_clean</span><span class="op">)</span> <span class="co"># naive combined denominator</span></span>
 <span><span class="co">#&gt; [1] 20</span></span>
@@ -427,18 +427,18 @@ adding a new one:</p>
 <span><span class="co">#&gt; [1] 18</span></span></code></pre></div>
 <p>Four episode metadata columns are added to every row, regardless of
 <code>return_format</code>:</p>
-<p><strong><code>.episode_id</code></strong> – A character key combining
+<p><strong><code>.episode_id</code></strong>: A character key combining
 facility and visit identifier, shared across all rows belonging to the
 same encounter. Used internally to group rows into episodes and
 available for joining or filtering downstream.</p>
-<p><strong><code>.patient_class_sequence</code></strong> – A collapsed
+<p><strong><code>.patient_class_sequence</code></strong>: A collapsed
 string of the patient classes present in the episode, in the order they
 actually occurred (using <code>C_Visit_Date_Time</code>,
 <code>Date</code>+<code>Time</code>, or
-<code>C_Patient_Class_MDT_Updates</code> when available – see
+<code>C_Patient_Class_MDT_Updates</code> when available; see
 <code><a href="../reference/link_encounters.html">?link_encounters</a></code>). The ED and admission records are
 genuinely separate rows with their own timestamps, so this can reflect a
-true reversal – e.g. <code>"Direct Admit-&gt;ED"</code> if an admission
+true reversal, e.g. <code>"Direct Admit-&gt;ED"</code> if an admission
 record’s timestamp somehow precedes the ED record’s, versus the expected
 <code>"ED-&gt;Direct Admit"</code> for a normal continuity-break
 artifact (ED visit, then mis-submitted admission continuation). An
@@ -450,18 +450,17 @@ counterpart). This column enables filtering to specific episode types
 <code>filter(.patient_class_sequence == "ED-&gt;Direct Admit")</code> to
 isolate the continuity-break cases) even though the underlying rows have
 already been merged.</p>
-<p><strong><code>.episode_n_rows</code></strong> – The number of
-original rows the episode was built from before merging. Episodes with
-no linkage have <code>.episode_n_rows = 1</code>; episodes merged from
-an ED row and an admission row have
-<code>.episode_n_rows = 2</code>.</p>
-<p><strong><code>.index_encounter</code></strong> – In collapsed output
+<p><strong><code>.episode_n_rows</code></strong>: The number of original
+rows the episode was built from before merging. Episodes with no linkage
+have <code>.episode_n_rows = 1</code>; episodes merged from an ED row
+and an admission row have <code>.episode_n_rows = 2</code>.</p>
+<p><strong><code>.index_encounter</code></strong>: In collapsed output
 (the default), always <code>TRUE</code>, since every row already
 represents exactly one merged encounter; the column is retained for
 schema consistency with the diagnostic long-format output described
 below, not because a filtering step is required.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Distribution of care pathways -- already one row per encounter</span></span>
+<code class="sourceCode R"><span><span class="co"># Distribution of care pathways: already one row per encounter</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 2</span></span></span>
@@ -474,7 +473,7 @@ below, not because a filtering step is required.</p>
 <p><code>"ED"</code> visits never touched the admission pull at all.
 <code>"Admitted-&gt;ED"</code> visits escalated to inpatient care within
 the ED pull itself (<code>HasBeenE = 1</code> and
-<code>HasBeenAdmitted = 1</code> on one already-deduplicated record) –
+<code>HasBeenAdmitted = 1</code> on one already-deduplicated record);
 these need no cross-pull linking, since there was only ever one record.
 <code>"Direct Admit"</code> visits are genuine admissions with no
 preceding ED encounter at all, structurally invisible to a
@@ -500,8 +499,8 @@ encounter instead of being counted twice.</p>
 <code>return_format = "long"</code><a class="anchor" aria-label="anchor" href="#inspecting-the-raw-linkage-mechanism-return_format-long"></a>
 </h3>
 <p>Set <code>return_format = "long"</code> to see the pre-merge rows
-directly – for example, to audit which fields differed between the ED
-and admission records before they were reconciled, or to understand the
+directly, for example, to audit which fields differed between the ED and
+admission records before they were reconciled, or to understand the
 linkage mechanism itself. No merge is applied in this mode.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">episodes_long</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/link_encounters.html">link_encounters</a></span><span class="op">(</span></span>
@@ -518,9 +517,9 @@ linkage mechanism itself. No merge is applied in this mode.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Direct Admit      6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> ED               14</span></span></code></pre></div>
 <p>In long format, <code>.index_encounter</code> marks the row that
-survives a “one row per episode” filter – <code>TRUE</code> on the ED
-row when both ED and admission rows are present, or on the single row
-for ED-only or Direct Admit-only episodes:</p>
+survives a “one row per episode” filter: <code>TRUE</code> on the ED row
+when both ED and admission rows are present, or on the single row for
+ED-only or Direct Admit-only episodes:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">episodes_long</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -541,7 +540,7 @@ encounter of record.</p>
 <h2 id="burden-estimation-from-linked-data">Burden Estimation from Linked Data<a class="anchor" aria-label="anchor" href="#burden-estimation-from-linked-data"></a>
 </h2>
 <p>With the default collapsed output, unduplicated burden estimation is
-just a count – no <code>.index_encounter</code> filter is needed, since
+just a count; no <code>.index_encounter</code> filter is needed, since
 every row already represents one merged encounter:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">burden</span> <span class="op">&lt;-</span> <span class="va">episodes</span> <span class="op">|&gt;</span></span>
@@ -564,18 +563,18 @@ counts without inflating the ED rows.</p>
 understanding the severity composition of the case count:</p>
 <ul>
 <li>
-<code>"ED"</code> – Emergency department visit without inpatient
+<code>"ED"</code>: Emergency department visit without inpatient
 admission</li>
 <li>
-<code>"Admitted-&gt;ED"</code> – Emergency department visit that
+<code>"Admitted-&gt;ED"</code>: Emergency department visit that
 escalated to inpatient admission within the ED pull alone (merged into a
 single row, primary values from the ED row)</li>
 <li>
-<code>"Direct Admit"</code> – Genuine inpatient admission with no
+<code>"Direct Admit"</code>: Genuine inpatient admission with no
 preceding ED encounter at all, only visible because a second pull was
 queried</li>
 <li>
-<code>"ED-&gt;Direct Admit"</code> – The continuity-break artifact:
+<code>"ED-&gt;Direct Admit"</code>: The continuity-break artifact:
 an ED visit and its mis-submitted direct-admit continuation, reported as
 two records and correctly merged into one encounter</li>
 </ul>
@@ -599,7 +598,7 @@ needed before aggregating counts to geographic units:</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">region_hybrid</span><span class="op">)</span></span></code></pre></div>
 <p>If you instead requested <code>return_format = "long"</code> for
 diagnostic purposes, filter to <code>.index_encounter == TRUE</code>
-first – otherwise multi-class episodes would be counted twice, once per
+first; otherwise multi-class episodes would be counted twice, once per
 pre-merge row, inflating cluster statistics.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

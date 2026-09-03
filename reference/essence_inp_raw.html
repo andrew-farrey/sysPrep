@@ -77,13 +77,13 @@ definitions.</p>
 <dl><dt>Continuity-break admission half</dt>
 <dd><p>2 rows (<code>HasBeenE = 0</code>,
 <code>HasBeenAdmitted = 1</code>) sharing <code>HospitalName x Visit_ID</code> with a real
-row in <a href="essence_ed_raw.html">essence_ed_raw</a> – the mis-submitted direct-admit
+row in <a href="essence_ed_raw.html">essence_ed_raw</a>: the mis-submitted direct-admit
 continuation of an ED visit reported as two unrelated records.</p></dd>
 
 <dt>Genuine direct admission</dt>
 <dd><p>4 rows (<code>HasBeenE = 0</code>,
 <code>HasBeenAdmitted = 1</code>) with a <code>Visit_ID</code> that appears nowhere in
-<a href="essence_ed_raw.html">essence_ed_raw</a> – true direct admissions with no preceding ED
+<a href="essence_ed_raw.html">essence_ed_raw</a>: true direct admissions with no preceding ED
 visit at all, structurally invisible to a <code>HasBeenE = 1</code> query.</p></dd>
 
 

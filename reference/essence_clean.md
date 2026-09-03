@@ -3,7 +3,7 @@
 The result of running `essence_raw` through the full `sysPrep`
 preprocessing pipeline: deduplication, care setting filtering with FSED
 correction, and both geography attribution functions chained on their
-default (additive) behavior – `region`/`zip_code` are the untouched
+default (additive) behavior: `region`/`zip_code` are the untouched
 originals throughout;
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
 and
@@ -74,7 +74,7 @@ names are in snake_case (post
 
   Integer. `1` for an ED pull; `0` on the two visits where a
   `patient_class_change` direct-admit row outranked the ED row under
-  `dedupe(keep = "last")` – see `c_patient_class` and
+  `dedupe(keep = "last")`; see `c_patient_class` and
   [`?essence_raw`](https://andrew-farrey.github.io/sysPrep/reference/essence_raw.md).
 
 - has_been_admitted:
@@ -92,7 +92,7 @@ names are in snake_case (post
 - region:
 
   Character. Patient ESSENCE Region of residence in `{SITE}_{REGION}`
-  format, exactly as received – never modified by either geography
+  format, exactly as received; never modified by either geography
   function.
 
 - zip_code:
@@ -110,7 +110,7 @@ names are in snake_case (post
 - .out_of_state:
 
   Logical. `TRUE` for visits where `region` is out-of-state,
-  `"OTHER_REGION"`, or unknown residence – these are the visits where
+  `"OTHER_REGION"`, or unknown residence; these are the visits where
   `region_hybrid` differs from `region`. Added by
   [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
 
@@ -136,7 +136,7 @@ names are in snake_case (post
 
 - .facility_geography:
 
-  Logical. Always `TRUE` – signals that facility geography has been
+  Logical. Always `TRUE`; signals that facility geography has been
   computed for every row. Added by
   [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md).
 

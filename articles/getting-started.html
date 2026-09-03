@@ -75,7 +75,7 @@ participating facilities across the United States. Epidemiologists use
 ESSENCE to monitor disease trends, detect spatial clusters, and evaluate
 the impact of public health interventions.</p>
 <p><code>sysPrep</code>’s preprocessing steps are <strong>not
-required</strong> to run these analyses – many surveillance questions
+required</strong> to run these analyses: many surveillance questions
 tolerate the raw data quality issues below without materially changing
 conclusions. Applying them is most worthwhile for <strong>small-count,
 high-impact case definitions</strong>, where minimizing false-positive
@@ -92,7 +92,7 @@ appear as multiple rows in the same pull. Ordinary clinical updates (a
 lab result, a discharge disposition) are correctly appended to the
 existing record with no additional row. Duplication happens instead when
 a specific calculated field disagrees between transmissions of what
-should be the same encounter – most often <code>C_Visit_Date_Time</code>
+should be the same encounter, most often <code>C_Visit_Date_Time</code>
 (e.g., when a hospital updates it as care progresses and an update
 crosses midnight) or <code>C_Unique_Patient_ID</code> (e.g., when a
 temporary identifier is corrected to a permanent one). Without
@@ -110,7 +110,7 @@ showing <code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code>
 can mean two different things, and nothing in that row alone tells you
 which: a genuine direct admission with no preceding ED visit, or an ED
 visit whose transition to inpatient care wasn’t recorded as one
-continuous encounter – producing what looks, to ESSENCE, like two
+continuous encounter, producing what looks, to ESSENCE, like two
 unrelated visits for a single event. The former is structurally
 invisible to standard <code>HasBeenE = 1</code> queries; the latter
 double-counts a real encounter if the two records are combined without
@@ -184,7 +184,7 @@ facility that should be excluded.</li>
 <li>
 <strong>Two FSEDs</strong> (<code>"Hillside FSED"</code> and
 <code>"Downtown Emergency Services"</code>) misclassified as
-<code>"Urgent Care"</code> – they are valid ED providers but require
+<code>"Urgent Care"</code>; they are valid ED providers but require
 facility type correction.</li>
 <li>
 <strong>Out-of-state and <code>OTHER_REGION</code> records</strong>
@@ -219,34 +219,34 @@ geography assignment last (applied only to the valid ED population).</p>
 <span><span class="co">#&gt;   - Medical Specialty</span></span>
 <span><span class="co">#&gt;   - Primary Care</span></span>
 <span><span class="co">#&gt; 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.</span></span></code></pre></div>
-<p><strong>Step 1 – Deduplication</strong> (<code><a href="../reference/dedupe.html">dedupe()</a></code>):
+<p><strong>Step 1: Deduplication</strong> (<code><a href="../reference/dedupe.html">dedupe()</a></code>):
 Groups records by facility × visit identifier. Within each group,
-retains the single row with the latest <code>Arrived_Date_Time</code> –
+retains the single row with the latest <code>Arrived_Date_Time</code>,
 the most recently transmitted version of the record, which is most
 likely to contain updated clinical information. The
 <code>order_by</code> and <code>keep</code> arguments control this
 behavior and can be adjusted for different surveillance contexts (see
 <code><a href="../reference/dedupe.html">?dedupe</a></code> and the deduplication vignette).</p>
-<p><strong>Step 2 – Care setting filtering</strong>
+<p><strong>Step 2: Care setting filtering</strong>
 (<code><a href="../reference/filter_care_setting.html">filter_care_setting()</a></code>): Retains only facilities with
 <code>FacilityType</code> values consistent with emergency care. The
 <code>fix_facility_type_vector</code> argument names facilities that
 should be treated as emergency providers despite incorrect facility type
-codes – in this case, two FSEDs. Without this correction, those
+codes; in this case, two FSEDs. Without this correction, those
 facilities’ visits would be excluded along with genuine non-ED
 providers.</p>
-<p><strong>Step 3 – Geographic attribution</strong>
+<p><strong>Step 3: Geographic attribution</strong>
 (<code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code>): For visits where
 <code>Region</code> is out-of-state or <code>OTHER_REGION</code>, writes
 the treating facility’s corresponding geographic fields to new
 <code>region_hybrid</code>/ <code>zip_code_hybrid</code> columns.
-<code>Region</code>/<code>ZipCode</code> themselves are never modified –
+<code>Region</code>/<code>ZipCode</code> themselves are never modified;
 for in-state visits,
 <code>region_hybrid</code>/<code>zip_code_hybrid</code> simply carry
 through the original value unchanged.</p>
 <p>Each of these functions reports what it did via informational console
-messages – useful during interactive exploration, but often unwanted
-when the pipeline runs inside a rendered R Markdown report or other
+messages, useful during interactive exploration, but often unwanted when
+the pipeline runs inside a rendered R Markdown report or other
 non-interactive context. Pass <code>verbose = FALSE</code> to suppress
 these messages; warnings and errors are always shown regardless, so real
 data quality issues are never silently hidden:</p>
@@ -300,13 +300,13 @@ data quality issues are never silently hidden:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> FALSE           133</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> TRUE             27</span></span></code></pre></div>
 <p>The <code>.out_of_state</code> column marks visits where
-<code>region_hybrid</code> differs from <code>Region</code> – i.e.,
-where the treating facility’s county was substituted for an out-of-state
-or <code>OTHER_REGION</code> value. For in-state visits,
+<code>region_hybrid</code> differs from <code>Region</code>, i.e., where
+the treating facility’s county was substituted for an out-of-state or
+<code>OTHER_REGION</code> value. For in-state visits,
 <code>region_hybrid</code> equals <code>Region</code> unchanged.
 Chaining <code><a href="../reference/assign_facility_geography.html">assign_facility_geography()</a></code> onto the same pipeline
 adds a third column, <code>region_facility</code>, with treating
-geography substituted for <em>every</em> visit – useful for comparing
+geography substituted for <em>every</em> visit, useful for comparing
 residential, hybrid, and facility-based geography side by side without
 touching <code>Region</code> at all. See
 <code><a href="../articles/geography-assignment.html">vignette("geography-assignment")</a></code> for the full mechanics,
@@ -328,7 +328,7 @@ place instead if that’s what your pipeline needs.</p>
 <tbody>
 <tr class="odd">
 <td><code><a href="../reference/summarize_duplicates.html">summarize_duplicates()</a></code></td>
-<td>Count duplicate records per facility and dataset-wide – call before
+<td>Count duplicate records per facility and dataset-wide; call before
 deduplication to understand data quality</td>
 </tr>
 <tr class="even">

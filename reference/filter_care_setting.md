@@ -2,8 +2,8 @@
 
 Retains visits from facilities with emergency department or inpatient
 admission capacity. Optionally corrects known `FacilityType`
-misclassifications – such as free-standing EDs (FSEDs) onboarded with
-non-emergency facility types – before the keep filter is applied,
+misclassifications, such as free-standing EDs (FSEDs) onboarded with
+non-emergency facility types, before the keep filter is applied,
 ensuring valid ED visits are not incorrectly excluded.
 
 ## Usage
@@ -55,8 +55,8 @@ filter_care_setting(
   Defaults to `Hospital` (`C_BioSense_Facility_ID` in the NSSP Master
   Facility Table). Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  equivalents, and any arbitrarily-named column. Optional – if absent
-  and `fix_facility_id_vector` is not supplied, ID-based correction is
+  equivalents, and any arbitrarily-named column. Optional: if absent and
+  `fix_facility_id_vector` is not supplied, ID-based correction is
   skipped with an informative message.
 
 - keep_types:
@@ -76,7 +76,7 @@ filter_care_setting(
   so numeric and character forms of the same IDs behave identically.
   More durable than `fix_facility_type_vector` for a correction list
   reused across many pulls, since facility IDs do not change when a
-  facility is renamed. Unmatched IDs never produce a warning – see
+  facility is renamed. Unmatched IDs never produce a warning; see
   Details.
 
 - fix_facility_type_vector:
@@ -85,7 +85,7 @@ filter_care_setting(
   `facility_col`. Matching facilities have their `FacilityType` set to
   `fix_to` before filtering. Use for known FSEDs or other facilities
   with confirmed misclassifications. Unmatched names only produce a
-  warning when `dry_run = TRUE` – see Details.
+  warning when `dry_run = TRUE`; see Details.
 
 - fix_facility_type_regex:
 
@@ -105,8 +105,8 @@ filter_care_setting(
 
   Logical. If `TRUE`, returns a preview tibble showing each facility's
   original facility type, corrected facility type, visit count, and
-  whether it would be retained – without modifying or filtering the
-  data. Defaults to `FALSE`.
+  whether it would be retained, without modifying or filtering the data.
+  Defaults to `FALSE`.
 
 - clean_names:
 
@@ -123,7 +123,7 @@ filter_care_setting(
 ## Value
 
 When `dry_run = FALSE` (default), a filtered data frame retaining only
-visits from facilities whose `FacilityType` – after any corrections –
+visits from facilities whose `FacilityType`, after any corrections,
 appears in `keep_types`. When `dry_run = TRUE`, a tibble with columns
 `facility`, `facility_id` (when `facility_id_col` resolves),
 `original_facility_type`, `corrected_facility_type`, `n_visits`, and
@@ -139,7 +139,7 @@ during case counting. Where a site's facilities are consistently
 onboarded to ESSENCE, restricting the query itself to
 `FacilityType = "Emergency Care"` (a front-end filter, applied before
 the pull) avoids returning non-ED provider data at all. This approach
-worked reliably for years in Kentucky – until several free-standing
+worked reliably for years in Kentucky, until several free-standing
 emergency departments (FSEDs) were onboarded to ESSENCE with a
 `FacilityType` other than `"Emergency Care"`. A front-end query filtered
 to `FacilityType = "Emergency Care"` now silently excludes these FSEDs'
@@ -148,7 +148,7 @@ department.
 
 Once front-end filtering by `FacilityType` can no longer be trusted for
 a site, a raw pull returns every facility type that submitted matching
-records – including primary care clinics, specialty practices, and other
+records, including primary care clinics, specialty practices, and other
 genuinely non-ED providers whose visits should not contribute to an
 ED-based numerator or denominator. `filter_care_setting()` addresses
 this by first correcting the small, known set of misclassified
@@ -157,7 +157,7 @@ facilities (by name, ID, or pattern) to a valid ED-consistent
 to filter reproducibly and defensibly on `FacilityType` again, without
 excluding true ED visits or manually rebuilding the correction list for
 every pull. Whether this pre-cleaning step is worthwhile depends on a
-site's own onboarding consistency – sites where `FacilityType` reliably
+site's own onboarding consistency: sites where `FacilityType` reliably
 identifies emergency providers may not need it at all.
 
 ### FSED facility type assignment
@@ -165,7 +165,7 @@ identifies emergency providers may not need it at all.
 The specific pattern observed in Kentucky's ESSENCE data is that some
 FSEDs are onboarded with a `FacilityType` of `"Urgent Care"` rather than
 `"Emergency Care"`. This reflects what has been observed and processed
-in Kentucky's data specifically – it is not a documented or guaranteed
+in Kentucky's data specifically; it is not a documented or guaranteed
 convention across all NSSP sites, and other sites may see FSEDs (or
 other facility types) onboarded under different `FacilityType` values
 entirely. Regardless of which value a given site observes, the
@@ -196,7 +196,7 @@ Corrections are applied before filtering, in this sequence:
 4.  Filter to `keep_types`
 
 ID and name corrections are both exact-match methods and take precedence
-over regex – a facility corrected by either `fix_facility_id_vector` or
+over regex: a facility corrected by either `fix_facility_id_vector` or
 `fix_facility_type_vector` will not be re-evaluated by
 `fix_facility_type_regex`, even if its name also happens to match the
 pattern.
@@ -216,13 +216,13 @@ used together.
 
 When `dry_run = TRUE`, the function returns a preview tibble showing
 each facility's original and corrected `FacilityType`, visit count, and
-whether it would be retained – without modifying the data. Use this to
+whether it would be retained, without modifying the data. Use this to
 verify corrections and `keep_types` before committing to a filter.
 
 ### Warnings and dry_run
 
 Facilities matched and corrected via `fix_facility_type_regex` are
-always surfaced in a warning, since regex matching is open-ended – a
+always surfaced in a warning, since regex matching is open-ended: a
 newly onboarded facility could start matching the pattern at any time,
 which is worth knowing about on every run, not just during setup. These
 are candidates for promotion to `fix_facility_type_vector` or
@@ -231,8 +231,8 @@ are candidates for promotion to `fix_facility_type_vector` or
 Unmatched entries in `fix_facility_type_vector` (a name with zero
 matching rows in this pull) only produce a warning when
 `dry_run = TRUE`. A persistent correction list reused across many pulls
-will routinely include facilities with zero visits in a given pull –
-this is expected, not an error, so it isn't surfaced on ordinary
+will routinely include facilities with zero visits in a given pull; this
+is expected, not an error, so it isn't surfaced on ordinary
 (non-`dry_run`) runs. `dry_run` is the intended point to verify a
 correction list is behaving as expected. Unmatched entries in
 `fix_facility_id_vector` never produce a warning, at any setting, for
@@ -377,7 +377,7 @@ essence_raw |>
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
 
-# ID-based corrections -- durable across facility name changes/rebranding
+# ID-based corrections: durable across facility name changes/rebranding
 essence_raw |>
   filter_care_setting(fix_facility_id_vector = c(1007, 1008))
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:

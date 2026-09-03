@@ -119,7 +119,7 @@ inpatient admission (discharge-disposition aware).</p></dd>
 class (<code>"E"</code> for ED, <code>"I"</code> for inpatient). <code><a href="classify_duplicates.html">classify_duplicates()</a></code>
 detects <code>patient_class_change</code> duplicates generically, from any two
 rows sharing a <code>facility x Visit_ID</code> key with distinct
-<code>C_Patient_Class</code> values – not a specific from/to pair. <code>"E"</code> to
+<code>C_Patient_Class</code> values, not a specific from/to pair. <code>"E"</code> to
 <code>"I"</code> is used here only as a common, realistic illustration; see
 Details.</p></dd>
 
@@ -159,30 +159,30 @@ Full Details).</p>
 
 <dl><dt><code>standard</code></dt>
 <dd><p>5 visits with an extra row differing only in
-<code>Arrived_Date_Time</code> – representing a record retransmission.</p></dd>
+<code>Arrived_Date_Time</code>, representing a record retransmission.</p></dd>
 
 <dt><code>visit_date_change</code></dt>
 <dd><p>3 visits with a second row carrying a new
-<code>C_BioSense_ID</code> and a <code>Date</code> advanced by 1 day – representing a
+<code>C_BioSense_ID</code> and a <code>Date</code> advanced by 1 day, representing a
 midnight-crossing visit where <code>Admit_Date_Time</code> was updated.</p></dd>
 
 <dt><code>pid_change</code></dt>
 <dd><p>2 visits with a second row carrying a different
-<code>C_Unique_Patient_ID</code> – representing a corrected patient identifier.</p></dd>
+<code>C_Unique_Patient_ID</code>, representing a corrected patient identifier.</p></dd>
 
 <dt><code>patient_class_change</code></dt>
 <dd><p>2 visits with a second row carrying
 <code>C_Patient_Class = "I"</code> (<code>HasBeenE</code>/<code>HasBeenAdmitted</code> flipped to
 match) against the original row's <code>"E"</code>, and later <code>C_Visit_Date_Time</code>/
-<code>Arrived_Date_Time</code> values – representing an ED visit and its
+<code>Arrived_Date_Time</code> values, representing an ED visit and its
 direct-admit continuation transmitted as two records sharing one
 <code>Visit_ID</code> rather than one record with an updated
 <code>C_Patient_Class_List</code>. Since <code>dedupe(keep = "last")</code> keeps the more
 recent row by <code>Arrived_Date_Time</code>, these two visits survive into
-<a href="essence_clean.html">essence_clean</a> as <code>c_patient_class = "I"</code> – the ED encounter is
+<a href="essence_clean.html">essence_clean</a> as <code>c_patient_class = "I"</code>: the ED encounter is
 silently dropped by deduplication alone, illustrating the gap
 <code><a href="link_encounters.html">link_encounters()</a></code> is designed to catch instead. <code>essence_raw</code> is
-not itself used to demonstrate <code><a href="link_encounters.html">link_encounters()</a></code> – see
+not itself used to demonstrate <code><a href="link_encounters.html">link_encounters()</a></code>; see
 <a href="essence_ed_raw.html">essence_ed_raw</a>/<a href="essence_inp_raw.html">essence_inp_raw</a>, which are purpose-built for
 that.</p></dd>
 

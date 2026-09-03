@@ -100,8 +100,8 @@ mechanisms, each with different causes and implications:
   `C_BioSense_Facility_ID` (`Hospital`), and `C_Unique_Patient_ID`.
   `C_Visit_Date` itself takes its date value from `C_Visit_Date_Time`.
   When a hospital's system updates `C_Visit_Date_Time` as providers
-  interact with the patient – rather than fixing it at initial
-  registration – and one such update crosses midnight, `C_Visit_Date`
+  interact with the patient, rather than fixing it at initial
+  registration, and one such update crosses midnight, `C_Visit_Date`
   changes to the next calendar day, which recomputes `C_BioSense_ID` for
   the same `Visit_ID` and produces two rows that refer to the same
   encounter. This is the most widespread duplication type across NSSP
@@ -117,7 +117,7 @@ mechanisms, each with different causes and implications:
 
   `C_Unique_Patient_ID` (which maps to MRN in Kentucky) is also one of
   the three fields concatenated into `C_BioSense_ID`, so updating it
-  mid-visit recomputes `C_BioSense_ID` and produces a new row – for
+  mid-visit recomputes `C_BioSense_ID` and produces a new row, for
   example, when an initial local (facility- or department-specific) MRN
   is replaced with a community-wide or health-system-level MRN, or with
   a different local MRN. Detected by multiple distinct
@@ -127,13 +127,13 @@ mechanisms, each with different causes and implications:
 - `"patient_class_change"`:
 
   Under normal HL7 processing, patient class transitions are handled
-  without generating duplicate rows – the transition is appended to
+  without generating duplicate rows: the transition is appended to
   `C_Patient_Class_List` and the `HasBeenE`, `HasBeenI`,
   `HasBeenAdmitted` flags are updated in place. This type is detected
   when the same `Visit_ID` appears with multiple distinct
   `c_patient_class` values, which may indicate a feed configuration
   issue or a concurrent triggering event. Requires `c_patient_class` to
-  be present in the data – available via the standard ESSENCE API. See
+  be present in the data; available via the standard ESSENCE API. See
   also
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   for burden estimation from multi-class episodes.
@@ -170,19 +170,18 @@ remain functional.
 
 `classify_duplicates()` can be run on a raw (unlinked) ESSENCE pull, or
 on the long-format output of
-[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-– it only requires `facility_col`/`visit_col` and the identifying
-columns above, regardless of which record structure they come from.
-Either way, `patient_class_change` (and every other type here) is
-detected from rows that still exist side-by-side with a shared
-`facility_col` x `visit_col` key: it looks for more than one distinct
-value of a field (here, `c_patient_class`) across those rows, not from
-any single row. Once those rows have already been collapsed into one –
-e.g. by
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md):
+it only requires `facility_col`/`visit_col` and the identifying columns
+above, regardless of which record structure they come from. Either way,
+`patient_class_change` (and every other type here) is detected from rows
+that still exist side-by-side with a shared `facility_col` x `visit_col`
+key: it looks for more than one distinct value of a field (here,
+`c_patient_class`) across those rows, not from any single row. Once
+those rows have already been collapsed into one, e.g. by
 [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
 or by
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-with `return_format = "collapsed"` – there is only one row left per key,
+with `return_format = "collapsed"`, there is only one row left per key,
 so `n_rows == 1` and nothing is classified as a duplicate at all,
 regardless of what mechanism originally produced the now-merged rows.
 Classify before collapsing if you want to see which mechanism was
@@ -200,7 +199,7 @@ responsible.
 
 - `"tibble"`:
 
-  The visit-group level summary tibble only – one row per facility x
+  The visit-group level summary tibble only: one row per facility x
   visit_col with `dup_type` and supporting `n_*` metrics. Suitable for
   joining back to original data or piping into further analysis.
 

@@ -76,25 +76,25 @@ deduplication should be approached. Without deduplication, these
 additional rows inflate case counts, distort trend analyses, and produce
 inaccurate rates.</p>
 <p><strong>Why duplication happens.</strong> BioSense, the NSSP platform
-underlying ESSENCE, computes a record identifier –
-<code>C_BioSense_ID</code> (called EssenceID in the ESSENCE backend) –
-by concatenating three calculated fields: <code>C_Visit_Date</code>,
+underlying ESSENCE, computes a record identifier,
+<code>C_BioSense_ID</code> (called EssenceID in the ESSENCE backend), by
+concatenating three calculated fields: <code>C_Visit_Date</code>,
 <code>C_BioSense_Facility_ID</code> (<code>Hospital</code> in this
 package and in <code>dataDetails</code> API pulls), and
 <code>C_Unique_Patient_ID</code>. <code>C_Visit_Date</code> itself takes
 its date value from <code>C_Visit_Date_Time</code>. As long as those
 calculated fields are transmitted consistently for a given encounter,
-updates to other fields – a discharge disposition, a lab result, a
-diagnosis code – are correctly appended to the existing record, with no
+updates to other fields, a discharge disposition, a lab result, a
+diagnosis code, are correctly appended to the existing record, with no
 additional row created. This is why the vast majority of ESSENCE updates
 do not produce duplicates. NSSP is not the source of the problem: a new
 <code>C_BioSense_ID</code> is computed, and an apparent second record
 created, only when one of the three calculated fields disagrees between
-transmissions of what should be the same encounter – in practice, almost
+transmissions of what should be the same encounter, in practice, almost
 always <code>C_Visit_Date_Time</code> (via <code>C_Visit_Date</code>) or
 <code>C_Unique_Patient_ID</code>. <code>C_BioSense_Facility_ID</code> is
-formally part of the same calculation, but a genuine change in it – as
-from an inter-facility transfer – would typically also mean a different
+formally part of the same calculation, but a genuine change in it, as
+from an inter-facility transfer, would typically also mean a different
 <code>Visit_ID</code>, since facilities generally do not share
 <code>Visit_ID</code> values with each other. Reliably detecting a
 facility-driven <code>C_BioSense_ID</code> change is not something this
@@ -110,8 +110,8 @@ common, detectable ways it occurs in ESSENCE data are:</p>
 <code>C_Visit_Date_Time</code>. Some hospitals’ systems update
 <code>C_Visit_Date_Time</code> as providers interact with the patient
 over the course of the visit, rather than fixing it at initial
-registration. When one of those updates crosses midnight – changing what
-was a pre-midnight value to a post-midnight value –
+registration. When one of those updates crosses midnight, changing what
+was a pre-midnight value to a post-midnight value,
 <code>C_Visit_Date</code> changes to the next calendar day, which
 recomputes <code>C_BioSense_ID</code> for the same
 <code>Visit_ID</code>, producing two rows that appear to represent
@@ -124,47 +124,47 @@ correctly by not modifying <code>Admit_Date_Time</code> or
 the duplicate arises only at facilities whose systems continue to update
 it afterward.</p>
 <p>The impact of this duplication is disproportionate in small-count
-contexts. A syndrome definition for a relatively rare condition – such
-as a specific overdose agent or an emerging chief complaint pattern –
-may produce only a handful of true encounters at a given facility on a
-given day. If those encounters generate multiple
-<code>C_BioSense_ID</code> values, the apparent count presented to an
-analyst or flagged by an anomaly detection algorithm can be
-substantially higher than the true count, potentially triggering alerts
-that do not reflect genuine changes in incidence. This is the clinical
-and surveillance consequence that motivates deduplication even when the
-affected proportion of total visits is low.</p>
+contexts. A syndrome definition for a relatively rare condition, such as
+a specific overdose agent or an emerging chief complaint pattern, may
+produce only a handful of true encounters at a given facility on a given
+day. If those encounters generate multiple <code>C_BioSense_ID</code>
+values, the apparent count presented to an analyst or flagged by an
+anomaly detection algorithm can be substantially higher than the true
+count, potentially triggering alerts that do not reflect genuine changes
+in incidence. This is the clinical and surveillance consequence that
+motivates deduplication even when the affected proportion of total
+visits is low.</p>
 <p><strong><code>pid_change</code>.</strong>
 <code>C_Unique_Patient_ID</code> (which maps to medical record number in
 Kentucky) is the third field concatenated into
 <code>C_BioSense_ID</code>. A patient may be registered under one
-identifier and have it corrected mid-visit – for example, when an
-initial local (facility- or department-specific) MRN is replaced with a
-community-wide or health-system-level MRN, or with a different local MRN
-– and the facility submits an update message with the corrected
+identifier and have it corrected mid-visit, for example, when an initial
+local (facility- or department-specific) MRN is replaced with a
+community-wide or health-system-level MRN, or with a different local
+MRN, and the facility submits an update message with the corrected
 <code>C_Unique_Patient_ID</code> while <code>Visit_ID</code> itself
 stays the same. Because BioSense recomputes <code>C_BioSense_ID</code>
 from the new <code>C_Unique_Patient_ID</code>, the update produces an
-additional row rather than correcting the existing one – the original
+additional row rather than correcting the existing one: the original
 row, tied to the earlier <code>C_Unique_Patient_ID</code>, is left in
 place and still reflects the earlier state of the visit, while the new
 row carries the corrected identifier and current information. Each
 identifier change produces one additional row for the same
 <code>Visit_ID</code>.</p>
 <p><strong><code>patient_class_change</code>.</strong> Under normal HL7
-processing, patient class transitions during a visit – for example, from
-emergency department to inpatient admission – are handled without
+processing, patient class transitions during a visit, for example, from
+emergency department to inpatient admission, are handled without
 generating duplicate rows: the transition is appended to
 <code>C_Patient_Class_List</code>, and the <code>HasBeenE</code>,
 <code>HasBeenI</code>, <code>HasBeenAdmitted</code> flags (ED-visit and
 inpatient-admission indicator columns) are revised in place. A
 <code>patient_class_change</code> duplicate appears only when something
 additional causes a new row to be submitted for the same
-<code>Visit_ID</code> coincident with a class transition – such as a
-feed configuration issue or a concurrent <code>visit_date_change</code>.
-This mechanism requires <code>c_patient_class</code> to be present in
-the data pull. See also <code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code>,
-which addresses multi-class visits through encounter linkage rather than
+<code>Visit_ID</code> coincident with a class transition, such as a feed
+configuration issue or a concurrent <code>visit_date_change</code>. This
+mechanism requires <code>c_patient_class</code> to be present in the
+data pull. See also <code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code>, which
+addresses multi-class visits through encounter linkage rather than
 deduplication.</p>
 <p><strong>Cross-pull double-counting when combining ED and direct-admit
 data.</strong> The mechanisms above all produce duplicate rows
@@ -181,8 +181,8 @@ linking them double-counts the mis-submitted cases.
 <code><a href="../reference/dedupe.html">dedupe()</a></code> is not the right tool for this: even though the ED
 and mis-submitted admission records share a
 <code>facility_col x visit_col</code> key, they carry complementary, not
-redundant, information – the admission record’s discharge disposition
-and outcome are not present on the ED record – so discarding one (as
+redundant, information: the admission record’s discharge disposition and
+outcome are not present on the ED record, so discarding one (as
 <code><a href="../reference/dedupe.html">dedupe()</a></code> does) silently loses information that merging (as
 <code><a href="../reference/link_encounters.html">link_encounters()</a></code> does) preserves. See
 <code><a href="../articles/encounter-linkage.html">vignette("encounter-linkage")</a></code> and
@@ -246,7 +246,7 @@ the underlying data:</p>
 visits affected. <code>$by_facility</code> gives per-facility counts of
 duplicated visit identifiers, sorted by total duplicated visits
 descending. A facility with a disproportionately high duplicate rate may
-indicate a feed configuration issue – for example, a registration system
+indicate a feed configuration issue, for example, a registration system
 that routinely updates <code>C_Visit_Date_Time</code> as providers
 interact with the patient (producing <code>visit_date_change</code>
 duplicates whenever an update crosses midnight), or a workflow that
@@ -323,8 +323,8 @@ deduplication strategy and identify potential feed-level issues.</p>
 <span><span class="co">#&gt; <span style="color: #949494;">#   n_duplicated_total &lt;dbl&gt;</span></span></span></code></pre></div>
 <p>The <code>$overall</code> component shows how many duplicate groups
 belong to each mechanism type. The <code>$by_facility</code> component
-shows the distribution of mechanisms per facility in wide format –
-useful for identifying facilities whose duplicates are concentrated in a
+shows the distribution of mechanisms per facility in wide format, useful
+for identifying facilities whose duplicates are concentrated in a
 particular mechanism.</p>
 <p>When <code>c_patient_class</code> is not included in your ESSENCE
 pull, the function issues an informational message and skips
@@ -337,7 +337,7 @@ retransmissions (suggesting <code>keep = "last"</code> is appropriate)
 or by <code>visit_date_change</code> events (which may warrant examining
 whether the date change affects your analysis window). It also
 identifies whether a specific facility is generating an unusual volume
-of a particular duplication type – which can point to a feed-level
+of a particular duplication type, which can point to a feed-level
 configuration problem worth reporting to the facility or NSSP.</p>
 </blockquote>
 <p>For row-level analysis, use <code>return_format = "tibble"</code> to
@@ -388,10 +388,11 @@ join classifications back to the original data:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>          180             180                      0             0</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: pct_duplicated &lt;dbl&gt;</span></span></span></code></pre></div>
 <p>The <code>order_by</code> argument specifies which column to use for
-ranking rows within each duplicate group. <code>Arrived_Date_Time</code>
-– the timestamp when NSSP received the record – is the recommended
-ordering column for production surveillance because the most recently
-received row is most likely to reflect updated clinical information.</p>
+ranking rows within each duplicate group.
+<code>Arrived_Date_Time</code>, the timestamp when NSSP received the
+record, is the recommended ordering column for production surveillance
+because the most recently received row is most likely to reflect updated
+clinical information.</p>
 </div>
 <div class="section level2">
 <h2 id="choosing-a-deduplication-strategy">Choosing a Deduplication Strategy<a class="anchor" aria-label="anchor" href="#choosing-a-deduplication-strategy"></a>
@@ -421,23 +422,23 @@ coverage)</td>
 <td><code>keep = "most_complete"</code></td>
 </tr>
 <tr class="even">
-<td>Unsure – inspect before deciding</td>
+<td>Unsure, inspect before deciding</td>
 <td>Call <code><a href="../reference/classify_duplicates.html">classify_duplicates()</a></code> first</td>
 </tr>
 </tbody>
 </table>
 <p><strong><code>keep = "last"</code></strong> retains the row with the
-highest value of <code>order_by</code> – the most recently transmitted
+highest value of <code>order_by</code>: the most recently transmitted
 record. Appropriate when the latest transmission is most current and
 complete, which is true for most retransmission scenarios.</p>
 <p><strong><code>keep = "first"</code></strong> retains the row with the
-lowest value of <code>order_by</code> – the original transmission.
+lowest value of <code>order_by</code>: the original transmission.
 Appropriate for fixed-window analyses where you want to capture the
 visit as it was first reported, without post-hoc field updates.</p>
 <p><strong><code>keep = "most_complete"</code></strong> retains the row
 with the fewest <code>NA</code> values across all columns. Appropriate
 when no single transmission is reliably more current than another and
-field completeness is the primary concern – for example, when discharge
+field completeness is the primary concern, for example, when discharge
 diagnosis codes are populated inconsistently across retransmissions.</p>
 <p>When the <code>order_by</code> column itself contains ties (multiple
 rows with the same <code>Arrived_Date_Time</code>),

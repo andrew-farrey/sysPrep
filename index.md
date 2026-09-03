@@ -2,44 +2,38 @@
 
 ## Overview
 
-`sysPrep` provides formalized preprocessing methods for syndromic
-surveillance data from the National Syndromic Surveillance Program
-(NSSP) Electronic Surveillance System for the Early Notification of
-Community-based Epidemics ([ESSENCE](https://www.cdc.gov/nssp/)) API.
+`sysPrep` is an R package that provides formalized preprocessing methods
+for syndromic surveillance data from the National Syndromic Surveillance
+Program (NSSP) Electronic Surveillance System for the Early Notification
+of Community-based Epidemics ([ESSENCE](https://www.cdc.gov/nssp/)) API.
+Its methods focus on preparing ESSENCE data for real-world, applied
+public health surveillance.
 
-`sysPrep`’s functions operate on line-level ESSENCE records returned by
-the dataDetails API endpoint (Full Details pulls). Its functions will
-not work on ESSENCE data returned by the tableBuilder or timeSeries API
-endpoints. That distinction traces back to how these preprocessing steps
-were identified in Kentucky: line-level review of individual ESSENCE
-records exposed issues that aggregate-level QA had missed entirely,
-while investigating false-positive spatial clusters that turned out to
-be artifacts of duplicated visit records rather than true anomalies, at
-a real cost in analyst time spent chasing them down.
+`sysPrep`’s functions were developed by troubleshooting repeated
+false-positive overdose clusters back to duplicate ESSENCE visit
+records: a cause only visible in line-level data pulled via ESSENCE’s
+`dataDetails` API endpoint (Full Details). Its functions will not work
+on pre-aggregated ESSENCE data pulled using the `tableBuilder` or
+`timeSeries` API endpoints.
 
-Fixing them requires that same line-level wrangling: correcting,
-merging, or removing individual records, not adjusting aggregate counts
-after the fact. Applied continuously as ESSENCE data is ingested into a
-statewide overdose surveillance system, these steps make the resulting
-data more accurate and more representative of true patient burden at
-reporting hospitals, and close much of the gap that otherwise left
-ESSENCE-based overdose surveillance less competitive than EMS-based data
-sources (e.g., ODMAP, Biospatial) as an anomaly detection source for
-small-count, high-impact cluster detection.
+Applied continuously in a statewide overdose surveillance system, these
+steps make ESSENCE data more representative of true patient burden and
+close much of the gap that otherwise left ESSENCE-based surveillance
+less competitive than EMS-based sources (e.g., ODMAP, Biospatial) for
+applied overdose surveillance.
 
 Geographic reassignment closes a related gap: EMS-based systems report
 incidence at the location where care was rendered, not the patient’s
-jurisdiction of residence, and ESSENCE data defaults to the latter –
+jurisdiction of residence, and ESSENCE data defaults to the latter.
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)/[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
 bring ESSENCE into that same incidence-based frame.
 
-Note that these methods are **not required** to perform case counting,
-cluster detection, or anomaly detection with ESSENCE data. Many
-surveillance questions tolerate the data quality issues `sysPrep`
-addresses without materially affecting conclusions. They are most
-valuable for **small-count, high-impact case definitions**, where
-external validity and minimizing false-positive clusters/anomalies
-matter most.
+These methods are **not required** to perform case counting, cluster
+detection, or anomaly detection with ESSENCE data. Many surveillance
+questions tolerate the data quality issues `sysPrep` addresses without
+materially affecting conclusions. They are most valuable for
+**small-count, high-impact case definitions**, where external validity
+and minimizing false-positive clusters/anomalies matter most.
 
 Raw ESSENCE data pulls can present four categories of data quality
 issues that bias case counts or distort cluster/anomaly detection if
@@ -47,13 +41,13 @@ left unaddressed:
 
 | Problem | Functions |
 |----|----|
-| **Duplicate Records** – multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md), [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md), [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md) |
-| **Non-Emergency Providers** – facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency `FacilityType`, included in pulls | [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md), [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md) |
-| **Mis-Submitted and Invisible Direct Admissions** – some inpatient admissions are mistakenly submitted as unrelated to a preceding ED visit (a data quality artifact), and genuine direct admissions are excluded entirely from HasBeenE = 1 queries | [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md) |
-| **Out-of-State and OTHER_REGION (unknown residence) Visits** – these visits’ `Region` doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
+| **Duplicate Records**: multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md), [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md), [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md) |
+| **Non-Emergency Providers**: facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency `FacilityType`, included in pulls | [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md), [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md) |
+| **Mis-Submitted and Invisible Direct Admissions**: some inpatient admissions are mistakenly submitted as unrelated to a preceding ED visit (a data quality artifact), and genuine direct admissions are excluded entirely from HasBeenE = 1 queries | [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md) |
+| **Out-of-State and OTHER_REGION (unknown residence) Visits**: these visits’ `Region` doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
 
 `sysPrep` synthesizes these methods into a reproducible, documented
-pipeline – a foundation other ESSENCE practitioners can adopt, evaluate,
+pipeline: a foundation other ESSENCE practitioners can adopt, evaluate,
 or adapt to their own data.
 
 ### Validated Data Sources
@@ -123,7 +117,7 @@ episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
 ```
 
-For comparing residential vs. treating geography side by side – both
+For comparing residential vs. treating geography side by side, both
 geography functions write to new columns by default, so chaining them
 adds `region_hybrid` and `region_facility` without disturbing `region`
 itself (built fresh here rather than reusing `clean` above, since
@@ -168,7 +162,7 @@ Attribution](https://andrew-farrey.github.io/sysPrep/articles/geography-assignme
 
 - [`Rnssp`](https://github.com/CDCgov/Rnssp): NSSP ESSENCE API access,
   alerting algorithms, and syndromic surveillance utilities. `sysPrep`
-  is designed to operate on data returned by `Rnssp` API calls – it
+  is designed to operate on data returned by `Rnssp` API calls; it
   offers an optional preprocessing layer between raw API output and case
   counting or cluster detection, for surveillance programs where that
   layer adds value.
@@ -178,7 +172,7 @@ Attribution](https://andrew-farrey.github.io/sysPrep/articles/geography-assignme
 `sysPrep` relies heavily on several packages whose authors deserve
 explicit credit:
 
-- **[`janitor`](https://sfirke.github.io/janitor/)** (Sam Firke) –
+- **[`janitor`](https://sfirke.github.io/janitor/)** (Sam Firke):
   `clean_names()` is called on entry and exit of every function in the
   package. The column-name agnosticism that lets `sysPrep` accept both
   raw ESSENCE PascalCase and post-`clean_names()` snake_case is built
@@ -187,16 +181,16 @@ explicit credit:
 - **[`dplyr`](https://dplyr.tidyverse.org/),
   [`rlang`](https://rlang.r-lib.org/), and
   [`tidyr`](https://tidyr.tidyverse.org/)** (Hadley Wickham, Lionel
-  Henry, and the tidyverse team) – the data manipulation backbone and
-  the `inform()` / `warn()` / `abort()` messaging infrastructure used
+  Henry, and the tidyverse team): the data manipulation backbone and the
+  `inform()` / `warn()` / `abort()` messaging infrastructure used
   throughout.
 
-- **[`cli`](https://cli.r-lib.org/)** (Gábor Csárdi) – the rich
-  formatted output for the `print.essence_dup_summary()` and
+- **[`cli`](https://cli.r-lib.org/)** (Gábor Csárdi): the rich formatted
+  output for the `print.essence_dup_summary()` and
   `print.essence_dup_classified()` S3 methods.
 
 - **[`Rnssp`](https://github.com/CDCgov/Rnssp)** (Gbedegnon Roseric
-  Azondekon, Michael Sheppard, and the CDC BioSense team) – the upstream
+  Azondekon, Michael Sheppard, and the CDC BioSense team): the upstream
   package that handles NSSP ESSENCE API authentication and data
   retrieval. `sysPrep` would have no data to preprocess without it.
 

@@ -11,7 +11,7 @@ trends, detect spatial clusters, and evaluate the impact of public
 health interventions.
 
 `sysPrep`’s preprocessing steps are **not required** to run these
-analyses – many surveillance questions tolerate the raw data quality
+analyses: many surveillance questions tolerate the raw data quality
 issues below without materially changing conclusions. Applying them is
 most worthwhile for **small-count, high-impact case definitions**, where
 minimizing false-positive clusters/anomalies and preserving external
@@ -30,7 +30,7 @@ multiple rows in the same pull. Ordinary clinical updates (a lab result,
 a discharge disposition) are correctly appended to the existing record
 with no additional row. Duplication happens instead when a specific
 calculated field disagrees between transmissions of what should be the
-same encounter – most often `C_Visit_Date_Time` (e.g., when a hospital
+same encounter, most often `C_Visit_Date_Time` (e.g., when a hospital
 updates it as care progresses and an update crosses midnight) or
 `C_Unique_Patient_ID` (e.g., when a temporary identifier is corrected to
 a permanent one). Without deduplication, case counts are inflated and
@@ -48,7 +48,7 @@ require explicit handling before ED-based incidence can be estimated.
 `HasBeenAdmitted = 1` and `HasBeenE = 0` can mean two different things,
 and nothing in that row alone tells you which: a genuine direct
 admission with no preceding ED visit, or an ED visit whose transition to
-inpatient care wasn’t recorded as one continuous encounter – producing
+inpatient care wasn’t recorded as one continuous encounter, producing
 what looks, to ESSENCE, like two unrelated visits for a single event.
 The former is structurally invisible to standard `HasBeenE = 1` queries;
 the latter double-counts a real encounter if the two records are
@@ -121,7 +121,7 @@ embedded in `essence_raw`:
 - **20 non-ED provider records** from a `"Primary Care"` and a
   `"Medical Specialty"` facility that should be excluded.
 - **Two FSEDs** (`"Hillside FSED"` and `"Downtown Emergency Services"`)
-  misclassified as `"Urgent Care"` – they are valid ED providers but
+  misclassified as `"Urgent Care"`; they are valid ED providers but
   require facility type correction.
 - **Out-of-state and `OTHER_REGION` records** in the `Region` column.
 
@@ -159,10 +159,10 @@ clean <- essence_raw |>
 #> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
 ```
 
-**Step 1 – Deduplication**
+**Step 1: Deduplication**
 ([`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)):
 Groups records by facility × visit identifier. Within each group,
-retains the single row with the latest `Arrived_Date_Time` – the most
+retains the single row with the latest `Arrived_Date_Time`, the most
 recently transmitted version of the record, which is most likely to
 contain updated clinical information. The `order_by` and `keep`
 arguments control this behavior and can be adjusted for different
@@ -170,27 +170,27 @@ surveillance contexts (see
 [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
 and the deduplication vignette).
 
-**Step 2 – Care setting filtering**
+**Step 2: Care setting filtering**
 ([`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md)):
 Retains only facilities with `FacilityType` values consistent with
 emergency care. The `fix_facility_type_vector` argument names facilities
 that should be treated as emergency providers despite incorrect facility
-type codes – in this case, two FSEDs. Without this correction, those
+type codes; in this case, two FSEDs. Without this correction, those
 facilities’ visits would be excluded along with genuine non-ED
 providers.
 
-**Step 3 – Geographic attribution**
+**Step 3: Geographic attribution**
 ([`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)):
 For visits where `Region` is out-of-state or `OTHER_REGION`, writes the
 treating facility’s corresponding geographic fields to new
 `region_hybrid`/ `zip_code_hybrid` columns. `Region`/`ZipCode`
-themselves are never modified – for in-state visits,
+themselves are never modified; for in-state visits,
 `region_hybrid`/`zip_code_hybrid` simply carry through the original
 value unchanged.
 
 Each of these functions reports what it did via informational console
-messages – useful during interactive exploration, but often unwanted
-when the pipeline runs inside a rendered R Markdown report or other
+messages, useful during interactive exploration, but often unwanted when
+the pipeline runs inside a rendered R Markdown report or other
 non-interactive context. Pass `verbose = FALSE` to suppress these
 messages; warnings and errors are always shown regardless, so real data
 quality issues are never silently hidden:
@@ -252,12 +252,12 @@ dplyr::count(clean, .out_of_state)
 ```
 
 The `.out_of_state` column marks visits where `region_hybrid` differs
-from `Region` – i.e., where the treating facility’s county was
+from `Region`, i.e., where the treating facility’s county was
 substituted for an out-of-state or `OTHER_REGION` value. For in-state
 visits, `region_hybrid` equals `Region` unchanged. Chaining
 [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
 onto the same pipeline adds a third column, `region_facility`, with
-treating geography substituted for *every* visit – useful for comparing
+treating geography substituted for *every* visit, useful for comparing
 residential, hybrid, and facility-based geography side by side without
 touching `Region` at all. See
 [`vignette("geography-assignment")`](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.md)
@@ -268,7 +268,7 @@ place instead if that’s what your pipeline needs.
 
 | Function | Purpose |
 |----|----|
-| [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md) | Count duplicate records per facility and dataset-wide – call before deduplication to understand data quality |
+| [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md) | Count duplicate records per facility and dataset-wide; call before deduplication to understand data quality |
 | [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md) | Classify the mechanism of each duplicate group (`visit_date_change`, `pid_change`, `patient_class_change`, or compound) |
 | [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md) | Remove duplicate records, retaining one row per facility × visit identifier |
 | [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md) | Filter to valid ED/inpatient providers; correct misclassified FSEDs |

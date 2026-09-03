@@ -1,6 +1,6 @@
 # Review facility ED visit counts for data quality assessment
 
-Computes visit counts per facility and flags statistical outliers –
+Computes visit counts per facility and flags statistical outliers:
 facilities with disproportionately low or high visit volumes relative to
 the pull as a whole. Intended as an ongoing data quality monitoring tool
 for production surveillance pipelines, where unexpectedly low counts may
@@ -114,7 +114,7 @@ outlier flag columns `.outlier_low`, `.outlier_high`, `.outlier_flag`,
 
 Low-count outliers are expected and normal for narrow syndrome
 definitions, particularly at small rural hospitals. A rural ED with two
-opioid overdose visits in a given month is not a data quality problem –
+opioid overdose visits in a given month is not a data quality problem;
 it may reflect true low incidence. This function is best used on
 **denominator data** (all-cause ED visits) where facility volumes are
 stable and comparable. When applied to narrow case definitions, some ED
@@ -134,7 +134,7 @@ decisions. Always review flagged facilities in context.
 
   Flags facilities below `Q1 - iqr_multiplier * IQR` and above
   `Q3 + iqr_multiplier * IQR`. Tukey fences with the default multiplier
-  of 1.5 are sensitive to data dropouts – a facility that abruptly stops
+  of 1.5 are sensitive to data dropouts: a facility that abruptly stops
   sending visits during a pull window will fall well below the lower
   fence. Increase `iqr_multiplier` to reduce sensitivity.
 
@@ -168,7 +168,7 @@ for removing non-ED facilities before review.
 # Default: percentile method, outliers only
 essence_clean |> review_facility_ed_visits()
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> No `date_col` supplied -- using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
+#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
 #> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.
 #> # A tibble: 2 × 8
 #>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
@@ -180,7 +180,7 @@ essence_clean |> review_facility_ed_visits()
 # All facilities with flags
 essence_clean |> review_facility_ed_visits(return_format = "all")
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> No `date_col` supplied -- using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
+#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
 #> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.
 #> # A tibble: 8 × 8
 #>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
@@ -217,7 +217,7 @@ essence_clean |>
     return_format = "all"
   )
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> No `date_col` supplied -- using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
+#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
 #> 2 of 8 facilities flagged as outliers (25%) using method = 'both' within FacilityType groups.
 #> # A tibble: 8 × 8
 #>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag

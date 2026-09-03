@@ -7,7 +7,7 @@ participating facility is included in the data, regardless of where that
 patient lives. A facility near a state border or serving a metropolitan
 area that spans multiple states will routinely treat patients whose
 address of record is in a neighboring state. These patients generate
-valid, important clinical encounters – they may have overdosed at a
+valid, important clinical encounters: they may have overdosed at a
 Kentucky location even if their home is in Indiana or West Virginia.
 
 Two additional sources of non-Kentucky geography appear in ESSENCE data:
@@ -16,33 +16,33 @@ Two additional sources of non-Kentucky geography appear in ESSENCE data:
 address is unavailable to the treating facility. This includes unhoused
 patients, patients who cannot communicate their address, and patients
 who decline to provide one. The `OTHER_REGION` value is not a geographic
-unit – it is a placeholder indicating that no residential geography can
+unit; it is a placeholder indicating that no residential geography can
 be assigned.
 
 **`{SITE}_UNKNOWN`** (e.g. `"KY_UNKNOWN"`) records represent visits at a
 known-site facility that did not transmit patient address fields. Unlike
-`OTHER_REGION`, this value carries the site prefix – it is ESSENCE’s
+`OTHER_REGION`, this value carries the site prefix; it is ESSENCE’s
 placeholder for “the system knows this residence is missing,” as
 distinct from a residence that was received but does not map to any
-region. In practice, `{SITE}_UNKNOWN` is rare relative to `OTHER_REGION`
-– observed volumes in production Kentucky surveillance run in the single
-digits against tens of thousands of `OTHER_REGION` records over the same
-period – but because it carries the site prefix, it was silently
-misclassified as in-state and left unreassigned prior to this being
-caught. A bare `NA` in `Region` is treated as unknown residence too,
-though in practice ESSENCE typically fills in one of the placeholder
-values above rather than leaving the field empty.
+region. In practice, `{SITE}_UNKNOWN` is rare relative to
+`OTHER_REGION`: observed volumes in production Kentucky surveillance run
+in the single digits against tens of thousands of `OTHER_REGION` records
+over the same period, but because it carries the site prefix, it was
+silently misclassified as in-state and left unreassigned prior to this
+being caught. A bare `NA` in `Region` is treated as unknown residence
+too, though in practice ESSENCE typically fills in one of the
+placeholder values above rather than leaving the field empty.
 
 ## The Cost of Discarding These Visits
 
 The common response to out-of-state and unknown-residence records is to
-filter them out before analysis. This is understandable – residential
-geography is the expected denominator for incidence-based rates – but it
+filter them out before analysis. This is understandable: residential
+geography is the expected denominator for incidence-based rates, but it
 introduces systematic bias. And it rarely requires an explicit
 [`filter()`](https://rdrr.io/r/stats/filter.html) call to happen: any
-downstream step scoped to your jurisdiction’s regions – joining to a
+downstream step scoped to your jurisdiction’s regions, joining to a
 shapefile of in-state counties for a map, grouping by `Region` against a
-fixed list of in-state values for a summary table – silently drops rows
+fixed list of in-state values for a summary table, silently drops rows
 whose `Region` doesn’t match, with no filter statement in the code to
 flag the decision for review.
 
@@ -60,8 +60,8 @@ accounted for, spatial comparisons across facilities are measuring a mix
 of true incidence and differential data completeness.
 
 **Secular trend distortion.** If the composition of a facility’s patient
-population shifts over time – more transient patients, more border
-traffic, or a policy change affecting unhoused populations – the
+population shifts over time, more transient patients, more border
+traffic, or a policy change affecting unhoused populations, the
 exclusion of `OTHER_REGION` records can create apparent trends in what
 is actually a stable underlying burden.
 
@@ -82,22 +82,22 @@ of which function to use depends on the research question.
 
 > **Is `Region` an authoritative county boundary?** No. `Region` is
 > ESSENCE’s standardized construct for enabling consistent sub-state
-> reporting across data sources – a maintained, many-to-one
+> reporting across data sources: a maintained, many-to-one
 > zip-code-to-region lookup table, not a live geocode computed from each
 > record. By default, a zip code is assigned to a region using its
-> geographic centroid, but individual assignments can be – and routinely
-> are – overridden by site or state administrators to better reflect
+> geographic centroid, but individual assignments can be, and routinely
+> are, overridden by site or state administrators to better reflect
 > where the bulk of a zip code’s population actually lives. The same
 > logic applies to `HospitalRegion`: assigned from the facility’s zip
 > centroid by default, but overridable to the facility’s listed county.
 > Because of this approximation, results reported by `Region` should not
-> be construed as the authoritative count for that county – they are the
+> be construed as the authoritative count for that county; they are the
 > best available standardized proxy, and the mapping in effect today is
 > not necessarily the mapping that applied when a record was first
 > received.
 
 This matters for `sysPrep` because both geography functions operate
-entirely on `Region`/`HospitalRegion` as received – they reassign which
+entirely on `Region`/`HospitalRegion` as received; they reassign which
 existing value applies to a row, they do not independently geocode or
 validate the underlying zip-to-county mapping.
 
@@ -107,10 +107,10 @@ distinguishes between **patient location** and **facility location**
 data sources:
 
 - In a **patient location** pull (e.g., `va_er`), the display criterion
-  is the patient’s residence – the data show who, from a given
+  is the patient’s residence: the data show who, from a given
   jurisdiction, presented for care anywhere.
 - In a **facility location** pull (e.g., `va_hosp`), the display
-  criterion is the treating facility – the data show everyone who
+  criterion is the treating facility: the data show everyone who
   presented at an in-jurisdiction facility, combining residents and
   visitors alike.
 
@@ -120,7 +120,7 @@ data sources:
 preserves that patient-location semantics for the in-state majority and
 only substitutes facility geography as a fallback.
 [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
-instead converts the dataset to facility-location semantics uniformly –
+instead converts the dataset to facility-location semantics uniformly,
 useful when your source pull, or your research question, is
 facility-location in nature to begin with.
 
@@ -128,7 +128,7 @@ facility-location in nature to begin with.
 
 ESSENCE encodes geography in the format `{SITE}_{REGION}`, where `SITE`
 is the NSSP Site Short Name (e.g., `"KY"`) and `REGION` is the ESSENCE
-Region – a county name derived from a zip-code-to-county lookup table
+Region, a county name derived from a zip-code-to-county lookup table
 maintained by ESSENCE (e.g., `"Jefferson"`). Some site names contain
 additional underscores (e.g., multi-word state abbreviations used in
 certain NSSP configurations), so the site prefix is defined as all
@@ -183,7 +183,7 @@ fundamentally in **which rows are modified**:
 | **Resulting column meaning** | Mixed: residential for in-state, treating for out-of-state | Treating facility county for everyone |
 
 Both default to writing a new column rather than overwriting `Region` in
-place – `Region` itself is never touched unless you explicitly opt into
+place; `Region` itself is never touched unless you explicitly opt into
 that with `overwrite = TRUE` (covered at the end of this vignette). This
 means calling both functions back to back gives you all three
 geographies side by side with zero extra arguments:
@@ -225,7 +225,7 @@ geo_all |>
 matches it for in-state visits and substitutes treating geography for
 the rest; `region_facility` substitutes treating geography for **every**
 row, including the in-state majority. One pass over the data, three
-usable geographies – no `preserve_original_geographies`, no manual
+usable geographies, no `preserve_original_geographies`, no manual
 copying.
 
 This distinction matters for how the resulting data should be
@@ -237,7 +237,7 @@ interpreted and which analyses it supports.
 is a **targeted intervention** on problem rows. It identifies visits
 where the patient geography is unavailable or out-of-area and writes the
 treating facility’s county, for those visits only, to `region_hybrid`.
-`region` is left exactly as received from ESSENCE for every row –
+`region` is left exactly as received from ESSENCE for every row,
 in-state and out-of-state alike.
 
 `region_hybrid` is a **hybrid** column: it holds residential geography
@@ -281,7 +281,7 @@ dplyr::count(treating_geo, .out_of_state)
 
 ``` r
 
-# Compare original region against the hybrid result for reassigned rows --
+# Compare original region against the hybrid result for reassigned rows;
 # no preserve_original_geographies needed, since region was never modified
 treating_geo |>
   dplyr::filter(.out_of_state) |>
@@ -304,13 +304,13 @@ treating_geo |>
 
 The `.out_of_state` column (logical) marks every row where
 `region_hybrid` differs from `region`. Rows where
-`.out_of_state = FALSE` have `region_hybrid == region` – the patient’s
+`.out_of_state = FALSE` have `region_hybrid == region`: the patient’s
 residential county, unchanged.
 
 If you’d rather overwrite `region`/`zip_code` in place instead of
-getting a `region_hybrid`/`zip_code_hybrid` column – reproducing the
-only behavior this function had before `new_region_col`/`new_zip_col`
-existed – pass their own names explicitly and opt in with
+getting a `region_hybrid`/`zip_code_hybrid` column (reproducing the only
+behavior this function had before `new_region_col`/`new_zip_col`
+existed), pass their own names explicitly and opt in with
 `overwrite = TRUE`:
 
 ``` r
@@ -347,7 +347,7 @@ treating_overwrite |>
 ```
 
 `preserve_original_geographies` only has an effect in this
-`overwrite = TRUE` mode – when it applies,
+`overwrite = TRUE` mode: when it applies,
 `original_region`/`original_zip_code` are added before overwriting,
 retaining pre-reassignment values as an audit trail. For in-state
 visits, `original_region` is `NA` because no change was made. In the
@@ -373,8 +373,8 @@ facility-geography value in `region_facility`, regardless of whether the
 patient was in-state, out-of-state, or unknown. `region` itself is
 untouched, exactly as with
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md).
-`region_facility` never reflects where patients live – it always
-reflects where they received care.
+`region_facility` never reflects where patients live; it always reflects
+where they received care.
 
 ``` r
 
@@ -416,10 +416,10 @@ Unlike
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md),
 where only out-of-state/unknown rows differ between `region` and
 `region_hybrid`, here **every** row differs between `region` and
-`region_facility` – that’s the “universal” part.
+`region_facility`; that’s the “universal” part.
 
 > **Is this only renaming `HospitalRegion` to `Region`?** Mechanically,
-> close –
+> close:
 > [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
 > writes `HospitalRegion` and/or `HospitalZip` to
 > `region_facility`/`zip_code_facility` for all rows, depending on which
@@ -429,18 +429,17 @@ where only out-of-state/unknown rows differ between `region` and
 > appropriate for every analysis. When only `HospitalRegion` is present,
 > only region is reassigned. Some practitioners have applied this rename
 > informally as an ad hoc pipeline step. `sysPrep` formalizes that
-> practice – documents the intent, handles whichever geography types are
+> practice: documents the intent, handles whichever geography types are
 > available, and writes to a new column by default so the original
 > values are always available for audit or comparison without any extra
 > argument.
-> [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
-> – the hybrid selective approach – has no simple column-rename
-> equivalent, which is what motivated formalizing both methods in the
-> same package.
+> [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md),
+> the hybrid selective approach, has no simple column-rename equivalent,
+> which is what motivated formalizing both methods in the same package.
 
 Hospital-level spatial clustering (point-based) concentrates
 observations at individual facility locations and can identify which
-specific facilities are experiencing elevated burden – including spikes
+specific facilities are experiencing elevated burden, including spikes
 that would be diluted or invisible at the regional level. However,
 hospital-level scan statistics generally do not explicitly model
 residual spatial autocorrelation or facility-specific reporting patterns
@@ -451,7 +450,7 @@ independent of true changes in underlying incidence. This concern is
 more pronounced in urban areas, where hospitals are denser and
 submission patterns may vary across nearby facilities. Reassigning all
 visits to `HospitalRegion` before aggregation reduces facility-level
-noise by aggregating across treating facilities within a region –
+noise by aggregating across treating facilities within a region,
 allowing spacetime permutation methods and other scan statistics to
 treat a rural county with one hospital comparably to an urban county
 with many. Region-level binning does not eliminate spatial
@@ -462,19 +461,19 @@ A second advantage is logistical: hospital-level spatial clustering
 requires latitude/longitude coordinates from the NSSP Master Facility
 Table, an additional lookup outside the standard ESSENCE data pull.
 Region-level attribution achieves a close approximation of
-hospital-level cluster detection using `HospitalRegion` – a field
+hospital-level cluster detection using `HospitalRegion`, a field
 returned without any coordinate lookup, **provided it’s included in the
 pull**: `HospitalRegion` isn’t guaranteed on every ESSENCE pull by
 default, only when it’s part of your site’s default returned columns or
 explicitly requested via the API’s `&field=` parameter. The same
 logistical advantage also supports a distinct, simpler use case: total
 treated volume by urban vs. rural county, with no interest in which
-specific hospital saw each visit at all – not an approximation of
+specific hospital saw each visit at all, not an approximation of
 hospital-level detection, just county-level counting using a field you
 already requested rather than a coordinate lookup you’d have to add.
 
 > **What does a county with no ESSENCE-participating hospital show?**
-> `0`, always – not a small or uncertain number, a hard zero, regardless
+> `0`, always: not a small or uncertain number, a hard zero, regardless
 > of how much true burden that county’s residents actually generate.
 > This is a direct consequence of ESSENCE being facility-based:
 > `region_facility` can only ever reflect counties containing a facility
@@ -502,7 +501,7 @@ whether the surveillance question is “which facility?” or “which area?”.
 - Cross-state facility comparisons where residential geography is an
   inappropriate common denominator.
 - Comparing total treated volume across urban and rural counties without
-  differentiating which hospital saw each visit – useful when a
+  differentiating which hospital saw each visit, useful when a
   facility-to-county lookup table isn’t available but `HospitalRegion`/
   `HospitalZip` already are.
 
@@ -524,12 +523,12 @@ area while preserving the residential geography of the majority.
 [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)):
 treating facility geography for all patients.
 
-This is semantically **uniform** – `region_facility` means the same
-thing for every row. It is most useful when the analytical unit is where
-care was delivered, not where patients live.
+This is semantically **uniform**: `region_facility` means the same thing
+for every row. It is most useful when the analytical unit is where care
+was delivered, not where patients live.
 
 `region` itself, meanwhile, is never touched by either function unless
-you explicitly opt into `overwrite = TRUE` – so it’s always available as
+you explicitly opt into `overwrite = TRUE`, so it’s always available as
 the untouched original, regardless of which (or both) of these you
 compute. Neither function is universally correct. The choice should be
 documented in your analysis methods and driven by the research question.
@@ -540,7 +539,7 @@ documented in your analysis methods and driven by the research question.
 |----|----|----|
 | County-level incidence rate (retain most OOS visits) | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | Preserves residential geography for in-state majority; uses facility geography as fallback |
 | Which counties have highest treatment burden? | [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) | All visits attributed to treating county uniformly |
-| Where do patients live who are treated at this facility? | Neither – use `Region` directly | Residential geography is the question; don’t reassign |
+| Where do patients live who are treated at this facility? | Neither; use `Region` directly | Residential geography is the question; don’t reassign |
 | Spatial cluster detection by facility county | [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) | Uniform attribution aligns with facility-based cluster geometry |
 | Sensitivity analysis: effect of OOS exclusion | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | Use `.out_of_state` flag to toggle OOS visits in/out |
 | Trend analysis, mixed state border facility | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md) | Avoids flattening in-state residential variation |
@@ -550,7 +549,7 @@ documented in your analysis methods and driven by the research question.
 Every example above wrote to a new column
 (`region_hybrid`/`region_facility`) and left `region`/`zip_code` alone.
 That’s the default for a reason: it’s non-destructive, so calling either
-function is always safe to try, safe to re-run, and safe to chain –
+function is always safe to try, safe to re-run, and safe to chain:
 there’s no risk of losing the original values just by calling the
 function.
 
@@ -559,11 +558,11 @@ function.
 ([`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md))
 or `"region_facility"`/`"zip_code_facility"`
 ([`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)).
-Pass `NULL` to either to skip that geography type entirely – e.g.
+Pass `NULL` to either to skip that geography type entirely, e.g.
 `new_zip_col = NULL` to reassign region only.
 
-If the target you name already exists as a column – whether that’s
-`region_col`/`zip_col` itself, or any other existing column – the
+If the target you name already exists as a column, whether that’s
+`region_col`/`zip_col` itself, or any other existing column, the
 function aborts rather than silently overwriting it, unless you set
 `overwrite = TRUE`. This is what makes reproducing the original
 in-place-overwrite behavior an explicit, visible choice rather than the
@@ -580,10 +579,10 @@ essence_clean |>
 ```
 
 `preserve_original_geographies = TRUE` only has an effect in this
-`overwrite = TRUE` mode – it adds `original_region`/`original_zip_code`
+`overwrite = TRUE` mode: it adds `original_region`/`original_zip_code`
 columns holding the pre-overwrite values before they’re replaced. In the
 default new-column mode, it has no effect and is unnecessary, since
-`region` was never modified in the first place – it already *is* the
+`region` was never modified in the first place; it already *is* the
 original.
 
 For

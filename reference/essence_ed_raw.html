@@ -84,12 +84,12 @@ column structure as <a href="essence_raw.html">essence_raw</a>, plus <code>HasBe
 
 
 <dl><dt>Plain ED-only visits</dt>
-<dd><p><code>HasBeenE = 1</code>, <code>HasBeenAdmitted = 0</code> –
+<dd><p><code>HasBeenE = 1</code>, <code>HasBeenAdmitted = 0</code>:
 the majority of rows.</p></dd>
 
 <dt>Correctly carried-through escalation</dt>
 <dd><p><code>HasBeenE = 1</code> and
-<code>HasBeenAdmitted = 1</code> on one already-deduplicated record – needs no
+<code>HasBeenAdmitted = 1</code> on one already-deduplicated record; needs no
 cross-pull linking, since there is only ever one record. These 2
 visits also have <code>HasBeenI = 1</code>, so that
 <code><a href="link_encounters.html">link_encounters()</a></code>'s preference for <code>HasBeenAdmitted</code> over

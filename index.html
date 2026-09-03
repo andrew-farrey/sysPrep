@@ -65,11 +65,11 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><code>sysPrep</code> provides formalized preprocessing methods for syndromic surveillance data from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (<a href="https://www.cdc.gov/nssp/" class="external-link">ESSENCE</a>) API.</p>
-<p><code>sysPrep</code>’s functions operate on line-level ESSENCE records returned by the dataDetails API endpoint (Full Details pulls). Its functions will not work on ESSENCE data returned by the tableBuilder or timeSeries API endpoints. That distinction traces back to how these preprocessing steps were identified in Kentucky: line-level review of individual ESSENCE records exposed issues that aggregate-level QA had missed entirely, while investigating false-positive spatial clusters that turned out to be artifacts of duplicated visit records rather than true anomalies, at a real cost in analyst time spent chasing them down.</p>
-<p>Fixing them requires that same line-level wrangling: correcting, merging, or removing individual records, not adjusting aggregate counts after the fact. Applied continuously as ESSENCE data is ingested into a statewide overdose surveillance system, these steps make the resulting data more accurate and more representative of true patient burden at reporting hospitals, and close much of the gap that otherwise left ESSENCE-based overdose surveillance less competitive than EMS-based data sources (e.g., ODMAP, Biospatial) as an anomaly detection source for small-count, high-impact cluster detection.</p>
-<p>Geographic reassignment closes a related gap: EMS-based systems report incidence at the location where care was rendered, not the patient’s jurisdiction of residence, and ESSENCE data defaults to the latter – <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>/<code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code> bring ESSENCE into that same incidence-based frame.</p>
-<p>Note that these methods are <strong>not required</strong> to perform case counting, cluster detection, or anomaly detection with ESSENCE data. Many surveillance questions tolerate the data quality issues <code>sysPrep</code> addresses without materially affecting conclusions. They are most valuable for <strong>small-count, high-impact case definitions</strong>, where external validity and minimizing false-positive clusters/anomalies matter most.</p>
+<p><code>sysPrep</code> is an R package that provides formalized preprocessing methods for syndromic surveillance data from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (<a href="https://www.cdc.gov/nssp/" class="external-link">ESSENCE</a>) API. Its methods focus on preparing ESSENCE data for real-world, applied public health surveillance.</p>
+<p><code>sysPrep</code>’s functions were developed by troubleshooting repeated false-positive overdose clusters back to duplicate ESSENCE visit records: a cause only visible in line-level data pulled via ESSENCE’s <code>dataDetails</code> API endpoint (Full Details). Its functions will not work on pre-aggregated ESSENCE data pulled using the <code>tableBuilder</code> or <code>timeSeries</code> API endpoints.</p>
+<p>Applied continuously in a statewide overdose surveillance system, these steps make ESSENCE data more representative of true patient burden and close much of the gap that otherwise left ESSENCE-based surveillance less competitive than EMS-based sources (e.g., ODMAP, Biospatial) for applied overdose surveillance.</p>
+<p>Geographic reassignment closes a related gap: EMS-based systems report incidence at the location where care was rendered, not the patient’s jurisdiction of residence, and ESSENCE data defaults to the latter. <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>/<code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code> bring ESSENCE into that same incidence-based frame.</p>
+<p>These methods are <strong>not required</strong> to perform case counting, cluster detection, or anomaly detection with ESSENCE data. Many surveillance questions tolerate the data quality issues <code>sysPrep</code> addresses without materially affecting conclusions. They are most valuable for <strong>small-count, high-impact case definitions</strong>, where external validity and minimizing false-positive clusters/anomalies matter most.</p>
 <p>Raw ESSENCE data pulls can present four categories of data quality issues that bias case counts or distort cluster/anomaly detection if left unaddressed:</p>
 <table class="table">
 <colgroup>
@@ -83,33 +83,33 @@
 <tbody>
 <tr>
 <td>
-<strong>Duplicate Records</strong> – multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions</td>
+<strong>Duplicate Records</strong>: multiple rows per visit due to visit date changes to the initial record, patient ID corrections, and patient class transitions</td>
 <td>
 <code><a href="reference/dedupe.html">dedupe()</a></code>, <code><a href="reference/summarize_duplicates.html">summarize_duplicates()</a></code>, <code><a href="reference/classify_duplicates.html">classify_duplicates()</a></code>
 </td>
 </tr>
 <tr>
 <td>
-<strong>Non-Emergency Providers</strong> – facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency <code>FacilityType</code>, included in pulls</td>
+<strong>Non-Emergency Providers</strong>: facilities without EDs, and free-standing emergency departments (FSEDs) onboarded to ESSENCE with a non-emergency <code>FacilityType</code>, included in pulls</td>
 <td>
 <code><a href="reference/filter_care_setting.html">filter_care_setting()</a></code>, <code><a href="reference/review_facility_ed_visits.html">review_facility_ed_visits()</a></code>
 </td>
 </tr>
 <tr>
 <td>
-<strong>Mis-Submitted and Invisible Direct Admissions</strong> – some inpatient admissions are mistakenly submitted as unrelated to a preceding ED visit (a data quality artifact), and genuine direct admissions are excluded entirely from HasBeenE = 1 queries</td>
+<strong>Mis-Submitted and Invisible Direct Admissions</strong>: some inpatient admissions are mistakenly submitted as unrelated to a preceding ED visit (a data quality artifact), and genuine direct admissions are excluded entirely from HasBeenE = 1 queries</td>
 <td><code><a href="reference/link_encounters.html">link_encounters()</a></code></td>
 </tr>
 <tr>
 <td>
-<strong>Out-of-State and OTHER_REGION (unknown residence) Visits</strong> – these visits’ <code>Region</code> doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered</td>
+<strong>Out-of-State and OTHER_REGION (unknown residence) Visits</strong>: these visits’ <code>Region</code> doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered</td>
 <td>
 <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code>, <code><a href="reference/assign_facility_geography.html">assign_facility_geography()</a></code>
 </td>
 </tr>
 </tbody>
 </table>
-<p><code>sysPrep</code> synthesizes these methods into a reproducible, documented pipeline – a foundation other ESSENCE practitioners can adopt, evaluate, or adapt to their own data.</p>
+<p><code>sysPrep</code> synthesizes these methods into a reproducible, documented pipeline: a foundation other ESSENCE practitioners can adopt, evaluate, or adapt to their own data.</p>
 <div class="section level3">
 <h3 id="validated-data-sources">Validated Data Sources<a class="anchor" aria-label="anchor" href="#validated-data-sources"></a>
 </h3>
@@ -182,7 +182,7 @@
 <span><span class="co"># Distribution of care pathways</span></span>
 <span><span class="va">episodes</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.patient_class_sequence</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>For comparing residential vs. treating geography side by side – both geography functions write to new columns by default, so chaining them adds <code>region_hybrid</code> and <code>region_facility</code> without disturbing <code>region</code> itself (built fresh here rather than reusing <code>clean</code> above, since <code>clean</code> already ran <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code> once as step 3 of its own pipeline):</p>
+<p>For comparing residential vs. treating geography side by side, both geography functions write to new columns by default, so chaining them adds <code>region_hybrid</code> and <code>region_facility</code> without disturbing <code>region</code> itself (built fresh here rather than reusing <code>clean</code> above, since <code>clean</code> already ran <code><a href="reference/assign_treating_geography.html">assign_treating_geography()</a></code> once as step 3 of its own pipeline):</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">geo_all</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/dedupe.html">dedupe</a></span><span class="op">(</span>order_by <span class="op">=</span> <span class="va">Arrived_Date_Time</span>, keep <span class="op">=</span> <span class="st">"last"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -210,7 +210,7 @@
 </h2>
 <ul>
 <li>
-<a href="https://github.com/CDCgov/Rnssp" class="external-link"><code>Rnssp</code></a>: NSSP ESSENCE API access, alerting algorithms, and syndromic surveillance utilities. <code>sysPrep</code> is designed to operate on data returned by <code>Rnssp</code> API calls – it offers an optional preprocessing layer between raw API output and case counting or cluster detection, for surveillance programs where that layer adds value.</li>
+<a href="https://github.com/CDCgov/Rnssp" class="external-link"><code>Rnssp</code></a>: NSSP ESSENCE API access, alerting algorithms, and syndromic surveillance utilities. <code>sysPrep</code> is designed to operate on data returned by <code>Rnssp</code> API calls; it offers an optional preprocessing layer between raw API output and case counting or cluster detection, for surveillance programs where that layer adds value.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -218,10 +218,10 @@
 </h2>
 <p><code>sysPrep</code> relies heavily on several packages whose authors deserve explicit credit:</p>
 <ul>
-<li><p><strong><a href="https://sfirke.github.io/janitor/" class="external-link"><code>janitor</code></a></strong> (Sam Firke) – <code>clean_names()</code> is called on entry and exit of every function in the package. The column-name agnosticism that lets <code>sysPrep</code> accept both raw ESSENCE PascalCase and post-<code>clean_names()</code> snake_case is built entirely on this foundation.</p></li>
-<li><p><strong><a href="https://dplyr.tidyverse.org/" class="external-link"><code>dplyr</code></a>, <a href="https://rlang.r-lib.org/" class="external-link"><code>rlang</code></a>, and <a href="https://tidyr.tidyverse.org/" class="external-link"><code>tidyr</code></a></strong> (Hadley Wickham, Lionel Henry, and the tidyverse team) – the data manipulation backbone and the <code>inform()</code> / <code>warn()</code> / <code>abort()</code> messaging infrastructure used throughout.</p></li>
-<li><p><strong><a href="https://cli.r-lib.org/" class="external-link"><code>cli</code></a></strong> (Gábor Csárdi) – the rich formatted output for the <code>print.essence_dup_summary()</code> and <code>print.essence_dup_classified()</code> S3 methods.</p></li>
-<li><p><strong><a href="https://github.com/CDCgov/Rnssp" class="external-link"><code>Rnssp</code></a></strong> (Gbedegnon Roseric Azondekon, Michael Sheppard, and the CDC BioSense team) – the upstream package that handles NSSP ESSENCE API authentication and data retrieval. <code>sysPrep</code> would have no data to preprocess without it.</p></li>
+<li><p><strong><a href="https://sfirke.github.io/janitor/" class="external-link"><code>janitor</code></a></strong> (Sam Firke): <code>clean_names()</code> is called on entry and exit of every function in the package. The column-name agnosticism that lets <code>sysPrep</code> accept both raw ESSENCE PascalCase and post-<code>clean_names()</code> snake_case is built entirely on this foundation.</p></li>
+<li><p><strong><a href="https://dplyr.tidyverse.org/" class="external-link"><code>dplyr</code></a>, <a href="https://rlang.r-lib.org/" class="external-link"><code>rlang</code></a>, and <a href="https://tidyr.tidyverse.org/" class="external-link"><code>tidyr</code></a></strong> (Hadley Wickham, Lionel Henry, and the tidyverse team): the data manipulation backbone and the <code>inform()</code> / <code>warn()</code> / <code>abort()</code> messaging infrastructure used throughout.</p></li>
+<li><p><strong><a href="https://cli.r-lib.org/" class="external-link"><code>cli</code></a></strong> (Gábor Csárdi): the rich formatted output for the <code>print.essence_dup_summary()</code> and <code>print.essence_dup_classified()</code> S3 methods.</p></li>
+<li><p><strong><a href="https://github.com/CDCgov/Rnssp" class="external-link"><code>Rnssp</code></a></strong> (Gbedegnon Roseric Azondekon, Michael Sheppard, and the CDC BioSense team): the upstream package that handles NSSP ESSENCE API authentication and data retrieval. <code>sysPrep</code> would have no data to preprocess without it.</p></li>
 </ul>
 <p>The methods formalized in <code>sysPrep</code> were developed through applied drug overdose surveillance and cluster detection work using NSSP ESSENCE data.</p>
 </div>

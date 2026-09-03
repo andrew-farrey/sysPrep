@@ -5,14 +5,14 @@ for all visits, regardless of patient residence. By default this
 writes new columns (region_facility/zip_code_facility), leaving
 Region/ZipCode untouched; set overwrite = TRUE to overwrite them in
 place instead. This scopes geography to true incidence-at-location (to
-the extent NSSP ESSENCE supports it) – by attributing every visit to
+the extent NSSP ESSENCE supports it) by attributing every visit to
 where care was received rather than where the patient resides."><meta property="og:description" content="Writes the treating hospital's corresponding geographic fields
 (HospitalRegion and/or HospitalZip) to new_region_col/new_zip_col
 for all visits, regardless of patient residence. By default this
 writes new columns (region_facility/zip_code_facility), leaving
 Region/ZipCode untouched; set overwrite = TRUE to overwrite them in
 place instead. This scopes geography to true incidence-at-location (to
-the extent NSSP ESSENCE supports it) – by attributing every visit to
+the extent NSSP ESSENCE supports it) by attributing every visit to
 where care was received rather than where the patient resides."><meta property="og:image" content="https://andrew-farrey.github.io/sysPrep/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -54,7 +54,7 @@ for <strong>all</strong> visits, regardless of patient residence. By default thi
 writes new columns (<code>region_facility</code>/<code>zip_code_facility</code>), leaving
 <code>Region</code>/<code>ZipCode</code> untouched; set <code>overwrite = TRUE</code> to overwrite them in
 place instead. This scopes geography to true incidence-at-location (to
-the extent NSSP ESSENCE supports it) – by attributing every visit to
+the extent NSSP ESSENCE supports it) by attributing every visit to
 where care was received rather than where the patient resides.</p>
     </div>
 
@@ -109,7 +109,7 @@ Unquoted column name for the hospital zip code field. Defaults to
 
 <dt id="arg-new-region-col">new_region_col<a class="anchor" aria-label="anchor" href="#arg-new-region-col"></a></dt>
 <dd><p>Character string or <code>NULL</code>. Name of the column to
-write facility region values to. Defaults to <code>"region_facility"</code> – a
+write facility region values to. Defaults to <code>"region_facility"</code>: a
 new column, leaving <code>region_col</code> untouched. Pass <code>NULL</code> to skip region
 entirely. Pass <code>region_col</code>'s own name (with <code>overwrite = TRUE</code>) to
 overwrite it in place instead. See Details.</p></dd>
@@ -124,7 +124,7 @@ Same behavior as <code>new_region_col</code>, independently, for zip.</p></dd>
 <dt id="arg-overwrite">overwrite<a class="anchor" aria-label="anchor" href="#arg-overwrite"></a></dt>
 <dd><p>Logical. If <code>FALSE</code> (default), <code>new_region_col</code>/
 <code>new_zip_col</code> naming a column that already exists in <code>data</code> aborts
-rather than silently overwriting it. Set <code>TRUE</code> to allow it – this is
+rather than silently overwriting it. Set <code>TRUE</code> to allow it; this is
 required to reproduce the original in-place-overwrite behavior. See
 Details.</p></dd>
 
@@ -165,7 +165,7 @@ that facility geography has been applied. When <code>overwrite = TRUE</code> and
 
 <p><code><a href="assign_treating_geography.html">assign_treating_geography()</a></code> selectively reassigns geography only for
 out-of-state and <code>OTHER_REGION</code> visits, preserving residential geography
-for in-state patients – a hybrid approach. <code>assign_facility_geography()</code>
+for in-state patients: a hybrid approach. <code>assign_facility_geography()</code>
 applies reassignment universally: all visits, including in-state patients,
 receive the treating facility's geography. This produces a dataset scoped
 entirely to incidence-at-location rather than patient residence.</p>
@@ -200,15 +200,15 @@ clustering requires latitude/longitude coordinates sourced from the NSSP
 Master Facility Table, an additional logistical step outside the standard
 ESSENCE data pull. Region-level binning achieves a close approximation of
 hospital-level cluster detection using <code>HospitalRegion</code>/<code>HospitalZip</code>
-instead – provided they're included in the pull. Neither is guaranteed
+instead, provided they're included in the pull. Neither is guaranteed
 by default; both require being part of your site's default returned
 columns or explicitly requested via the API's <code>&amp;field=</code> parameter.</p></li>
 </ul><p>One consequence of region-level attribution is that detectable cluster
 polygons are limited to regions that contain at least one participating
 ESSENCE facility. Regions with no participating hospitals cannot contribute
 counts and will not appear as cluster candidates, regardless of actual
-burden in those areas. This is not unique to this approach – it is a
-general property of facility-based surveillance – but it is worth noting
+burden in those areas. This is not unique to this approach; it is a
+general property of facility-based surveillance, but it is worth noting
 explicitly when interpreting spatial cluster output.</p>
 <p>This method is currently being evaluated for adoption as an additional
 scan statistic pipeline for daily prospective overdose surveillance in
@@ -225,7 +225,7 @@ than where they live.</p></li>
 <li><p>Approximating hospital-level cluster detection without Master Facility
 Table lookups or coordinate-based spatial methods.</p></li>
 <li><p>Comparing total treated volume across urban and rural counties without
-differentiating which specific hospital saw each visit – useful when a
+differentiating which specific hospital saw each visit, useful when a
 facility-to-county lookup table isn't available but <code>HospitalRegion</code>/
 <code>HospitalZip</code> already are. The tradeoff is the one described above: a
 county with no participating ESSENCE facility always shows <code>0</code>,
@@ -237,7 +237,7 @@ regardless of actual resident burden.</p></li>
 
 
 <p><code>HospitalRegion</code>, like <code>Region</code>, is drawn from a maintained zip-to-county
-mapping rather than a live geocode – by default assigned from the
+mapping rather than a live geocode: by default assigned from the
 facility's zip code centroid, though site administrators can override
 this via BioSense Access Management to instead reflect the facility's
 listed county. <code>Region</code>-based output should not be construed as an
@@ -247,7 +247,7 @@ authoritative county-level count for either patient or facility geography.</p>
 was received, so the resulting population is a combination of
 jurisdiction residents and visitors who presented at in-jurisdiction
 facilities. This differs from a <strong>patient location</strong> pull (<code>va_er</code>),
-which <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code> is closer to preserving – see that
+which <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code> is closer to preserving; see that
 function's documentation for the same caveat on <code>Region</code> field
 interpretation.</p>
 </div>
@@ -266,7 +266,7 @@ overwrite <code>region_col</code>/<code>zip_col</code> in place instead (the onl
 function had before this parameter existed), pass their own name to
 <code>new_region_col</code>/<code>new_zip_col</code> and set <code>overwrite = TRUE</code>. <code>overwrite</code>
 guards <strong>any</strong> collision with an existing column, not just the source
-column – see <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>'s documentation for the full
+column; see <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>'s documentation for the full
 behavior, which is identical here.</p>
 </div>
 
@@ -275,7 +275,7 @@ behavior, which is identical here.</p>
 
 
 <p><code>preserve_original_geographies</code> only has an effect in <code>overwrite = TRUE</code>
-mode – see <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>. When it does apply here, since
+mode; see <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>. When it does apply here, since
 all rows are reassigned, <code>original_region</code>/<code>original_zip_code</code> retain the
 original patient residential geography for every visit, enabling
 residential vs. treating geography comparisons in a single dataset.</p>
@@ -290,7 +290,7 @@ out-of-state visits only.</p></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Build a deduplicated, filtered base to demonstrate on -- essence_clean</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Build a deduplicated, filtered base to demonstrate on: essence_clean</span></span></span>
 <span class="r-in"><span><span class="co"># itself already has region_hybrid/region_facility applied, so it isn't a</span></span></span>
 <span class="r-in"><span><span class="co"># fresh starting point for these examples</span></span></span>
 <span class="r-in"><span><span class="va">ed_clean</span> <span class="op">&lt;-</span> <span class="va">essence_raw</span> <span class="op">|&gt;</span></span></span>
@@ -325,7 +325,7 @@ out-of-state visits only.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region_facility &lt;chr&gt;, zip_code_facility &lt;chr&gt;, .facility_geography &lt;lgl&gt;</span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Overwrite region/zip_code in place (the original behavior) -- requires</span></span></span>
+<span class="r-in"><span><span class="co"># Overwrite region/zip_code in place (the original behavior); requires</span></span></span>
 <span class="r-in"><span><span class="co"># naming the source columns explicitly and opting in with overwrite</span></span></span>
 <span class="r-in"><span><span class="va">ed_clean</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">assign_facility_geography</span><span class="op">(</span></span></span>

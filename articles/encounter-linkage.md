@@ -1,15 +1,15 @@
 # Linking ED and Inpatient Records for Accurate Burden Estimation
 
-`sysPrep`’s other core functions –
-[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
+`sysPrep`’s other core functions
+([`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
 [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md),
-[`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
-– remove duplicate ESSENCE rows for one visit within a single pull.
+[`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md))
+remove duplicate ESSENCE rows for one visit within a single pull.
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 solves the same overcounting problem in a harder form: a visit split
 across two separately queried pulls, where the duplicate doesn’t look
 like one. Neither ESSENCE nor the BioSense Platform surfaces, flags, or
-resolves this on their own – finding it takes looking at the underlying
+resolves this on their own; finding it takes looking at the underlying
 records directly.
 
 ## The Care Pathway Artifact Problem
@@ -22,39 +22,39 @@ showing `HasBeenAdmitted = 1` and `HasBeenE = 0`
 (`C_Patient_Class = "I"`) can mean either of two very different things:
 
 - **A true direct admission.** The patient was referred from primary
-  care, outpatient care, or urgent care – or admitted based on a
-  pre-arranged plan – and genuinely never went through the ED at this
+  care, outpatient care, or urgent care, or admitted based on a
+  pre-arranged plan, and genuinely never went through the ED at this
   facility. This is a real clinical pathway, not a data quality problem.
 - **A mis-submitted continuity break.** The patient *was* triaged and
   treated in the ED first, but the facility’s system closed that
   encounter as a discharge instead of tracking the ED-to-inpatient
-  transition as one continuous record. The result is two records – one
+  transition as one continuous record. The result is two records: one
   correctly showing `HasBeenE = 1`, one showing `HasBeenAdmitted = 1`
-  and `HasBeenE = 0` – that share the same `facility_col x visit_col`
-  key but otherwise look, to ESSENCE, like two unrelated encounters.
-  This is a data quality artifact, not a distinct clinical pathway.
+  and `HasBeenE = 0`, that share the same `facility_col x visit_col` key
+  but otherwise look, to ESSENCE, like two unrelated encounters. This is
+  a data quality artifact, not a distinct clinical pathway.
 
 Nothing in a single row distinguishes these two cases. The only way to
 tell them apart is to check whether a matching ED record exists under
-the same `facility_col x visit_col` key – which is exactly what
+the same `facility_col x visit_col` key, which is exactly what
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 does.
 
 This has a direct, structural consequence for burden estimation.
-Querying the inpatient pull with `HasBeenE = 0` added on purpose –
+Querying the inpatient pull with `HasBeenE = 0` added on purpose,
 specifically to exclude anything already captured by the `HasBeenE = 1`
-pull – looks like a safe way to avoid double-counting, and by the API’s
+pull, looks like a safe way to avoid double-counting, and by the API’s
 own field semantics it should be: `HasBeenE = 0` is supposed to mean no
 ED encounter appears anywhere in that record’s history. It isn’t safe.
 Some records that correctly show `HasBeenE = 0` were, clinically,
-discharged from the ED and immediately readmitted – the ED encounter
+discharged from the ED and immediately readmitted; the ED encounter
 lives entirely on the separate record already captured in the first
 pull, so the exclusion filter never catches it. If you don’t know this
 and want to include inpatient admissions in your burden counts, running
 a `HasBeenE = 1` query and combining it with an otherwise-identical
-`HasBeenE = 0` / `HasBeenAdmitted = 1` query – expecting the sum to be
-an accurate “severe healthcare visit” census – does not produce one:
-that proportion of ED visits gets counted a second time, once under each
+`HasBeenE = 0` / `HasBeenAdmitted = 1` query, expecting the sum to be an
+accurate “severe healthcare visit” census, does not produce one: that
+proportion of ED visits gets counted a second time, once under each
 query. At the same time, genuinely new direct admissions in the second
 query are exactly what you’re trying to capture.
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
@@ -65,24 +65,24 @@ own distinct encounters.
 
 In Kentucky’s overdose surveillance data, some of the decline in the
 `HasBeenE = 1` trend over time is genuinely explained by growth in the
-`HasBeenE = 0` / `HasBeenAdmitted = 1` trend – but not as much as
-naively binning the two would suggest, since some proportion of that
-apparent direct-admit growth is the same double-counting artifact
-described above, not a new encounter. Reimbursement or clinical-protocol
-changes, improving HL7/EHR data quality over time, or both together are
-plausible contributors to a genuine pathway shift, but this can’t be
-attributed to either cause specifically. Practitioners unaware of this
-risk face it in two directions: naively summing separately-queried
-`HasBeenE = 1` and direct-admit counts overstates the true combined
-severe-visit census, while naively comparing the two trends to explain a
-decline in one against growth in the other overstates how much of that
-decline reflects a genuine pathway shift.
+`HasBeenE = 0` / `HasBeenAdmitted = 1` trend, but not as much as naively
+binning the two would suggest, since some proportion of that apparent
+direct-admit growth is the same double-counting artifact described
+above, not a new encounter. Reimbursement or clinical-protocol changes,
+improving HL7/EHR data quality over time, or both together are plausible
+contributors to a genuine pathway shift, but this can’t be attributed to
+either cause specifically. Practitioners unaware of this risk face it in
+two directions: naively summing separately-queried `HasBeenE = 1` and
+direct-admit counts overstates the true combined severe-visit census,
+while naively comparing the two trends to explain a decline in one
+against growth in the other overstates how much of that decline reflects
+a genuine pathway shift.
 
 > **How common is this, and would I know if it were happening in my
 > data?** This isn’t a widely documented ESSENCE data quality issue.
 > Using `HasBeenE = 1` and direct-admit data together for burden
-> estimation isn’t itself a widely formalized practice in ESSENCE – in
-> print or elsewhere – so the risk rarely surfaces. It came out of
+> estimation isn’t itself a widely formalized practice in ESSENCE, in
+> print or elsewhere, so the risk rarely surfaces. It came out of
 > record-level review of Kentucky’s data, not published guidance. Most
 > users working from pre-aggregated `HasBeenE = 1` and
 > `HasBeenAdmitted = 1` counts through timeSeries or tableBuilder have
@@ -96,7 +96,7 @@ patient interaction once regardless of which pathway they followed.
 
 > **Could you address this by filtering to `HasBeenAdmitted = 1`
 > instead?** A query filtered to `HasBeenAdmitted = 1` returns all
-> admitted visits – including those with `HasBeenE = 1`, which are
+> admitted visits, including those with `HasBeenE = 1`, which are
 > already present in the ED pull. Using only the inpatient pull would
 > miss all ED visits that did not result in admission, which represent
 > the majority of emergency encounters.
@@ -168,11 +168,11 @@ relevant flags for encounter linkage are:
 |----|----|----|
 | `1` | `0` | ED visit, discharged or left without being admitted |
 | `1` | `1` | ED visit that escalated to inpatient admission |
-| `0` | `1` | Direct admission – no ED visit in this encounter |
+| `0` | `1` | Direct admission: no ED visit in this encounter |
 | `0` | `0` | Not applicable (neither ED nor inpatient) |
 
 A `HasBeenE = 1` filtered query returns rows in the first two patterns
-only. The third pattern – direct admissions – requires a separate
+only. The third pattern, direct admissions, requires a separate
 `HasBeenAdmitted = 1` query to capture.
 
 `HasBeenI` is an alternative inpatient flag available in some ESSENCE
@@ -206,7 +206,7 @@ returning `ed_data` unchanged with cosmetic metadata columns appended.
 
 `sysPrep` ships two small synthetic datasets purpose-built for this
 demonstration: `essence_ed_raw` (a `HasBeenE = 1` pull) and
-`essence_inp_raw` (a separately queried `HasBeenAdmitted = 1` pull) –
+`essence_inp_raw` (a separately queried `HasBeenAdmitted = 1` pull),
 distinct from the larger, general-purpose `essence_raw` used elsewhere
 in this documentation, since `essence_raw` represents a single realistic
 ED pull and was never meant to be split into two:
@@ -235,7 +235,7 @@ inpatient_clean <- essence_inp_raw |>
 
 > **Can I just row-bind the ED and admission pulls and run
 > [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
-> on the result, instead of passing them separately?** No – this risks
+> on the result, instead of passing them separately?** No: this risks
 > silently losing visits.
 > [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)’s
 > `facility_col x visit_col` grouping does not distinguish an ED record
@@ -243,7 +243,7 @@ inpatient_clean <- essence_inp_raw |>
 > [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)’s
 > perspective they are simply two rows sharing a key. `keep = "last"` or
 > `keep = "first"` will pick whichever row has the later or earlier
-> `Arrived_Date_Time` and discard the other – unpredictably decreasing
+> `Arrived_Date_Time` and discard the other, unpredictably decreasing
 > either the ED visit count or the direct-admit count, depending on that
 > ordering, rather than merging the two into one complete encounter.
 > Always deduplicate each pull separately (as shown above) and pass both
@@ -306,7 +306,7 @@ dplyr::glimpse(episodes)
 ```
 
 Every row above shows real `0`/`1` values for
-`has_been_e`/`has_been_admitted` – never `NA` – regardless of whether it
+`has_been_e`/`has_been_admitted`, never `NA`, regardless of whether it
 came from a single pre-merge row or a merged pair: deriving
 `patient_class` from `HasBeen_` flags (the fallback used here, since
 this synthetic data has no `C_Patient_Class_List`) pivots those flag
@@ -315,7 +315,7 @@ columns to build `patient_class`, but
 retains the true original values underneath so they survive into the
 output unchanged.
 
-`nrow(episodes)` is already the true unduplicated encounter count –
+`nrow(episodes)` is already the true unduplicated encounter count,
 smaller than the naive combined denominator, since some admission-pull
 rows merged into an existing ED episode instead of adding a new one:
 
@@ -330,18 +330,18 @@ nrow(episodes)                         # true unduplicated encounter count
 Four episode metadata columns are added to every row, regardless of
 `return_format`:
 
-**`.episode_id`** – A character key combining facility and visit
+**`.episode_id`**: A character key combining facility and visit
 identifier, shared across all rows belonging to the same encounter. Used
 internally to group rows into episodes and available for joining or
 filtering downstream.
 
-**`.patient_class_sequence`** – A collapsed string of the patient
-classes present in the episode, in the order they actually occurred
-(using `C_Visit_Date_Time`, `Date`+`Time`, or
-`C_Patient_Class_MDT_Updates` when available – see
+**`.patient_class_sequence`**: A collapsed string of the patient classes
+present in the episode, in the order they actually occurred (using
+`C_Visit_Date_Time`, `Date`+`Time`, or `C_Patient_Class_MDT_Updates`
+when available; see
 [`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)).
 The ED and admission records are genuinely separate rows with their own
-timestamps, so this can reflect a true reversal –
+timestamps, so this can reflect a true reversal,
 e.g. `"Direct Admit->ED"` if an admission record’s timestamp somehow
 precedes the ED record’s, versus the expected `"ED->Direct Admit"` for a
 normal continuity-break artifact (ED visit, then mis-submitted admission
@@ -353,12 +353,12 @@ This column enables filtering to specific episode types (e.g.,
 continuity-break cases) even though the underlying rows have already
 been merged.
 
-**`.episode_n_rows`** – The number of original rows the episode was
-built from before merging. Episodes with no linkage have
+**`.episode_n_rows`**: The number of original rows the episode was built
+from before merging. Episodes with no linkage have
 `.episode_n_rows = 1`; episodes merged from an ED row and an admission
 row have `.episode_n_rows = 2`.
 
-**`.index_encounter`** – In collapsed output (the default), always
+**`.index_encounter`**: In collapsed output (the default), always
 `TRUE`, since every row already represents exactly one merged encounter;
 the column is retained for schema consistency with the diagnostic
 long-format output described below, not because a filtering step is
@@ -366,7 +366,7 @@ required.
 
 ``` r
 
-# Distribution of care pathways -- already one row per encounter
+# Distribution of care pathways: already one row per encounter
 episodes |>
   dplyr::count(.patient_class_sequence, sort = TRUE)
 #> # A tibble: 4 × 2
@@ -381,13 +381,13 @@ episodes |>
 `"ED"` visits never touched the admission pull at all. `"Admitted->ED"`
 visits escalated to inpatient care within the ED pull itself
 (`HasBeenE = 1` and `HasBeenAdmitted = 1` on one already-deduplicated
-record) – these need no cross-pull linking, since there was only ever
-one record. `"Direct Admit"` visits are genuine admissions with no
-preceding ED encounter at all, structurally invisible to a
-`HasBeenE = 1` query and only captured because a second pull was
-queried. `"ED->Direct Admit"` visits are the continuity-break artifact
-itself: an ED visit and its mis-submitted direct-admit continuation,
-reported under two different `C_BioSense_ID` values sharing one
+record); these need no cross-pull linking, since there was only ever one
+record. `"Direct Admit"` visits are genuine admissions with no preceding
+ED encounter at all, structurally invisible to a `HasBeenE = 1` query
+and only captured because a second pull was queried.
+`"ED->Direct Admit"` visits are the continuity-break artifact itself: an
+ED visit and its mis-submitted direct-admit continuation, reported under
+two different `C_BioSense_ID` values sharing one
 `HospitalName x Visit_ID`, correctly merged into a single encounter
 instead of being counted twice.
 
@@ -406,7 +406,7 @@ dplyr::filter(episodes, patient_class == "Direct Admit") |>
 
 ### Inspecting the Raw Linkage Mechanism: `return_format = "long"`
 
-Set `return_format = "long"` to see the pre-merge rows directly – for
+Set `return_format = "long"` to see the pre-merge rows directly, for
 example, to audit which fields differed between the ED and admission
 records before they were reconciled, or to understand the linkage
 mechanism itself. No merge is applied in this mode.
@@ -429,9 +429,9 @@ dplyr::count(episodes_long, patient_class)
 ```
 
 In long format, `.index_encounter` marks the row that survives a “one
-row per episode” filter – `TRUE` on the ED row when both ED and
-admission rows are present, or on the single row for ED-only or Direct
-Admit-only episodes:
+row per episode” filter: `TRUE` on the ED row when both ED and admission
+rows are present, or on the single row for ED-only or Direct Admit-only
+episodes:
 
 ``` r
 
@@ -454,7 +454,7 @@ record.
 ## Burden Estimation from Linked Data
 
 With the default collapsed output, unduplicated burden estimation is
-just a count – no `.index_encounter` filter is needed, since every row
+just a count; no `.index_encounter` filter is needed, since every row
 already represents one merged encounter:
 
 ``` r
@@ -481,13 +481,13 @@ without inflating the ED rows.
 The `.patient_class_sequence` breakdown is informative for understanding
 the severity composition of the case count:
 
-- `"ED"` – Emergency department visit without inpatient admission
-- `"Admitted->ED"` – Emergency department visit that escalated to
+- `"ED"`: Emergency department visit without inpatient admission
+- `"Admitted->ED"`: Emergency department visit that escalated to
   inpatient admission within the ED pull alone (merged into a single
   row, primary values from the ED row)
-- `"Direct Admit"` – Genuine inpatient admission with no preceding ED
+- `"Direct Admit"`: Genuine inpatient admission with no preceding ED
   encounter at all, only visible because a second pull was queried
-- `"ED->Direct Admit"` – The continuity-break artifact: an ED visit and
+- `"ED->Direct Admit"`: The continuity-break artifact: an ED visit and
   its mis-submitted direct-admit continuation, reported as two records
   and correctly merged into one encounter
 
@@ -512,6 +512,6 @@ episodes |>
 ```
 
 If you instead requested `return_format = "long"` for diagnostic
-purposes, filter to `.index_encounter == TRUE` first – otherwise
+purposes, filter to `.index_encounter == TRUE` first; otherwise
 multi-class episodes would be counted twice, once per pre-merge row,
 inflating cluster statistics.

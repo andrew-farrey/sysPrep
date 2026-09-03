@@ -1,19 +1,11 @@
 # Link ED and inpatient admission records into unified care episodes
 
 Prevents overcounting distinct patients and visits when one real-world
-episode of care is split across two separately queried ESSENCE pulls –
-the same problem
-[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
-solves for duplicate rows within a single pull, applied to a harder case
-ESSENCE itself never flags. Links ED and direct-admit inpatient records
-sharing the same `facility_col` x `visit_col` key into a single
-composite row per true care episode, and reconciles their field values
-so information present on only one of the source rows is not silently
-discarded. Corrects two related but distinct duplication mechanisms: the
-encounter-continuity data quality issue where a patient's ED discharge
-and immediate direct-admit readmission are reported as separate records
-sharing the same `Visit_ID` at the same facility, and true direct
-admissions that are structurally invisible to a `HasBeenE = 1` query.
+episode of care is split across two separately queried ESSENCE pulls, a
+duplication ESSENCE itself never flags. Links ED and direct-admit
+inpatient records sharing the same `facility_col` x `visit_col` key into
+one composite row per true care episode, reconciling field values so
+information present on only one source row isn't discarded.
 
 ## Usage
 
@@ -47,7 +39,7 @@ link_encounters(
   Required. A deduplicated data frame of inpatient visits queried with
   `HasBeenAdmitted = 1` or `HasBeenI = 1`. Rows with `HasBeenE = 1` are
   automatically removed to prevent duplicate rows for the same
-  underlying record. `link_encounters()` aborts if this is `NULL` – see
+  underlying record. `link_encounters()` aborts if this is `NULL`; see
   Details.
 
 - facility_col:
@@ -74,7 +66,7 @@ link_encounters(
   `"union_delimited"`, `"union_ccdd"`, `"prefer_yes"`, or
   `"prefer_admission"`. Only used when `return_format = "collapsed"`.
   Defaults to a curated set of ESSENCE fields known to carry information
-  only visible in the direct-admit record – see Details. Extend or
+  only visible in the direct-admit record; see Details. Extend or
   override for other fields as needed.
 
 - merge_delimiter:
@@ -115,20 +107,20 @@ visit per patient class, unmerged. Both include episode metadata columns
 
 ### Why this matters for case counts
 
-Querying the inpatient pull with `HasBeenE = 0` added on purpose –
+Querying the inpatient pull with `HasBeenE = 0` added on purpose,
 specifically to exclude anything already captured by the `HasBeenE = 1`
-pull – looks like a safe way to avoid double-counting. By the API's own
+pull, looks like a safe way to avoid double-counting. By the API's own
 field semantics it should be: `HasBeenE = 0` means no ED encounter
 appears anywhere in that record's history. It isn't. Some records that
 correctly show `HasBeenE = 0` were, clinically, discharged from the ED
-and immediately readmitted – the ED encounter lives entirely on a
+and immediately readmitted; the ED encounter lives entirely on a
 separate record already captured in the first pull, so the exclusion
 filter never catches it. If you don't know this and want to include
 inpatient admissions in your burden counts, summing the two pulls
 double-counts that proportion of ED visits a second time. This is the
 same problem
 [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
-solves for retransmitted or split ESSENCE rows – the duplicate here
+solves for retransmitted or split ESSENCE rows: the duplicate here
 doesn't share a flag value that would mark it as related.
 `link_encounters()` finds the relationship directly, by checking for a
 matching ED record under the same `facility_col` x `visit_col` key,
@@ -144,8 +136,8 @@ things, and nothing in that single row tells you which:
 in the ED first, but the facility's system closed that encounter as a
 discharge instead of tracking the ED-to-inpatient transition as one
 continuous record. The result is two records sharing the same
-`facility_col` x `visit_col` key – one correctly showing `HasBeenE = 1`,
-one showing `HasBeenAdmitted = 1` and `HasBeenE = 0` – that otherwise
+`facility_col` x `visit_col` key: one correctly showing `HasBeenE = 1`,
+one showing `HasBeenAdmitted = 1` and `HasBeenE = 0`, that otherwise
 look unrelated. The ED record's fields (e.g. `Discharge_Disposition`,
 `CCDD`, `C_Death`) reflect only what was known at ED discharge, not the
 outcome of the encounter that actually continued. Counting both records
@@ -153,12 +145,12 @@ separately double-counts a single real-world event. This is a data
 quality artifact, not a distinct clinical pathway.
 
 **The invisibility gap.** A patient admitted directly to an inpatient
-unit without ED triage – via physician referral, a pre-arranged
-admission, or similar – genuinely has `HasBeenAdmitted = 1` and
+unit without ED triage, via physician referral, a pre-arranged
+admission, or similar, genuinely has `HasBeenAdmitted = 1` and
 `HasBeenE = 0` with no preceding ED record to find. This visit never
 appears in a `HasBeenE = 1` query regardless of which syndrome
 definition or date range is used. This is a real clinical pathway, not a
-data quality problem – but a `HasBeenE = 1`-only pull will always miss
+data quality problem, but a `HasBeenE = 1`-only pull will always miss
 it.
 
 The only way to tell these two cases apart is to check whether a
@@ -173,10 +165,9 @@ discarded.
 ### Merge behavior (`return_format = "collapsed"`, the default)
 
 Every column matching `has_been_*` is reconciled by taking the max
-across the episode's rows – e.g., if the ED row has
-`HasBeenAdmitted = 0` and the direct-admit row has
-`HasBeenAdmitted = 1`, the merged row correctly shows
-`HasBeenAdmitted = 1`.
+across the episode's rows: e.g., if the ED row has `HasBeenAdmitted = 0`
+and the direct-admit row has `HasBeenAdmitted = 1`, the merged row
+correctly shows `HasBeenAdmitted = 1`.
 
 Columns named in `merge_fields` are reconciled using the strategy
 assigned to them:
@@ -203,8 +194,8 @@ assigned to them:
 
 - `"prefer_yes"`:
 
-  If any row's value is affirmative – case-insensitive `"Yes"`, or
-  `1`/`"1"` for 0/1-coded flag columns – the merged value is that row's
+  If any row's value is affirmative (case-insensitive `"Yes"`, or
+  `1`/`"1"` for 0/1-coded flag columns), the merged value is that row's
   affirmative value. Otherwise falls back to the primary row's value.
 
 - `"prefer_admission"`:
@@ -218,7 +209,7 @@ its value from the **primary row**: the `"ED"`-class row if one exists
 in the episode, else the first row in original order.
 
 Set `return_format = "long"` to get the diagnostic long-format output
-instead – one row per patient-class per episode, with no merge applied.
+instead: one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.
 
 ### Why `inpatient_admission_data` is required
@@ -233,7 +224,7 @@ on its own, in either direction: a genuine direct admission
 (`HasBeenE = 0`) is structurally absent from it by construction, and an
 ED-to-inpatient escalation that *is* visible within it already lives on
 one already-deduplicated record (both `HasBeenE` and `HasBeenAdmitted`
-set), which needs no linking – there was never a second record to link
+set), which needs no linking; there was never a second record to link
 against. Supplying `inpatient_admission_data` is what makes linking
 possible at all; `link_encounters()` aborts without it rather than
 silently returning `ed_data` unchanged with cosmetic metadata columns
@@ -245,12 +236,12 @@ frame and call
 on the combined result instead of using the two-pull approach above.**
 [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
 `keep` strategies are not aware of the distinction between an ED record
-and its corresponding direct-admit record – both just look like two rows
-sharing a `facility_col` x `visit_col` key – and will discard one of
-them based on `order_by` rather than merging them, silently and
-unpredictably reducing either the ED or the direct-admit count depending
-on which record's `Arrived_Date_Time` happens to win. Always deduplicate
-each pull separately, then pass both to `link_encounters()`.
+and its corresponding direct-admit record: both just look like two rows
+sharing a `facility_col` x `visit_col` key, and will discard one of them
+based on `order_by` rather than merging them, silently and unpredictably
+reducing either the ED or the direct-admit count depending on which
+record's `Arrived_Date_Time` happens to win. Always deduplicate each
+pull separately, then pass both to `link_encounters()`.
 
 ### Linking key and its limitation
 
@@ -259,7 +250,7 @@ Records are linked by `facility_col` \\\times\\ `visit_col`
 
 **Limitation:** if a facility's HL7 feed assigns a genuinely different
 `Visit_ID` to the inpatient leg of a care episode, `link_encounters()`
-cannot detect the relationship – the two records will appear as separate
+cannot detect the relationship: the two records will appear as separate
 episodes. This is a distinct scenario from the continuity-break artifact
 above (which assumes the `Visit_ID` is shared) and is not addressed by
 this function. If your data includes `C_Unique_Patient_ID` (MRN),
@@ -270,7 +261,7 @@ pass is a reasonable additional QA step for this scenario.
 
 `HasBeen_` flag columns (`HasBeenE`, `HasBeenAdmitted`/`HasBeenI`,
 `HasBeenO`) are convenience columns that ESSENCE derives from
-`C_Patient_Class_List` – they are easier to interpret and are the fields
+`C_Patient_Class_List`; they are easier to interpret and are the fields
 most existing pulls and case definitions already include, so
 `link_encounters()` uses them by default. They are pivoted to long
 format, with each flag with value `1` contributing one row.
@@ -310,7 +301,7 @@ required to match these preferred names verbatim:
 ### Chronological ordering of `.patient_class_sequence`
 
 `.patient_class_sequence` reflects the actual order encounters occurred
-in, not alphabetical order – e.g. `"Direct Admit->ED"` when the
+in, not alphabetical order: e.g. `"Direct Admit->ED"` when the
 direct-admit record's timestamp precedes the ED record's, which is the
 reverse of what typically indicates the continuity-break artifact (an ED
 visit that transitions into a direct-admit readmission, not a direct
@@ -320,11 +311,11 @@ field, per row, in this priority:
 1.  **`C_Patient_Class_MDT_Updates`** (requires `C_Patient_Class_List`).
     A concatenated list of timestamps positionally aligned with
     `C_Patient_Class_List`, giving the exact moment each class was
-    assigned – the only field that can order two classes assigned within
+    assigned; the only field that can order two classes assigned within
     a single record (e.g. `"EI"`). Rows where the two lists' lengths
     disagree fall back to the next tier.
 
-2.  **`C_Visit_Date_Time`**. Applied per record – all classes derived
+2.  **`C_Visit_Date_Time`**. Applied per record: all classes derived
     from one record share that record's timestamp, so this only
     differentiates classes across separate records sharing the same
     `facility_col` x `visit_col` key (i.e. the ED record vs. the
@@ -356,7 +347,7 @@ merged into it).
 
   All patient classes for the episode in chronological order and
   collapsed, e.g., `"Direct Admit->ED"` when the direct admit occurred
-  first – see Details.
+  first; see Details.
 
 - `.episode_n_rows`:
 
@@ -382,7 +373,7 @@ for geography attribution.
 ``` r
 # essence_ed_raw and essence_inp_raw are two small synthetic datasets
 # representing the two separately queried ESSENCE pulls link_encounters()
-# expects -- see `?essence_ed_raw`/`?essence_inp_raw`
+# expects; see `?essence_ed_raw`/`?essence_inp_raw`
 ed_clean <- essence_ed_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(

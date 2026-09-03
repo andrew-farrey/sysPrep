@@ -143,8 +143,8 @@ mechanisms, each with different causes and implications:</p>
 concatenating <code>C_Visit_Date</code>, <code>C_BioSense_Facility_ID</code> (<code>Hospital</code>),
 and <code>C_Unique_Patient_ID</code>. <code>C_Visit_Date</code> itself takes its date value
 from <code>C_Visit_Date_Time</code>. When a hospital's system updates
-<code>C_Visit_Date_Time</code> as providers interact with the patient – rather
-than fixing it at initial registration – and one such update crosses
+<code>C_Visit_Date_Time</code> as providers interact with the patient, rather
+than fixing it at initial registration, and one such update crosses
 midnight, <code>C_Visit_Date</code> changes to the next calendar day, which
 recomputes <code>C_BioSense_ID</code> for the same <code>Visit_ID</code> and produces two
 rows that refer to the same encounter. This is the most widespread
@@ -161,7 +161,7 @@ group.</p></dd>
 <dd><p><code>C_Unique_Patient_ID</code> (which maps to MRN in
 Kentucky) is also one of the three fields concatenated into
 <code>C_BioSense_ID</code>, so updating it mid-visit recomputes <code>C_BioSense_ID</code>
-and produces a new row – for example, when an initial local
+and produces a new row, for example, when an initial local
 (facility- or department-specific) MRN is replaced with a
 community-wide or health-system-level MRN, or with a different local
 MRN. Detected by multiple distinct <code>C_Unique_Patient_ID</code> values
@@ -170,13 +170,13 @@ within a group. Not all ESSENCE sites use MRN as
 
 <dt><code>"patient_class_change"</code></dt>
 <dd><p>Under normal HL7 processing, patient
-class transitions are handled without generating duplicate rows –
+class transitions are handled without generating duplicate rows:
 the transition is appended to <code>C_Patient_Class_List</code> and the
 <code>HasBeenE</code>, <code>HasBeenI</code>, <code>HasBeenAdmitted</code> flags are updated in place.
 This type is detected when the same <code>Visit_ID</code> appears with multiple
 distinct <code>c_patient_class</code> values, which may indicate a feed
 configuration issue or a concurrent triggering event. Requires
-<code>c_patient_class</code> to be present in the data – available via the
+<code>c_patient_class</code> to be present in the data; available via the
 standard ESSENCE API. See also <code><a href="link_encounters.html">link_encounters()</a></code> for burden
 estimation from multi-class episodes.</p></dd>
 
@@ -220,15 +220,15 @@ functional.</p>
 
 
 <p><code>classify_duplicates()</code> can be run on a raw (unlinked) ESSENCE pull, or on
-the long-format output of <code><a href="link_encounters.html">link_encounters()</a></code> – it only requires
+the long-format output of <code><a href="link_encounters.html">link_encounters()</a></code>: it only requires
 <code>facility_col</code>/<code>visit_col</code> and the identifying columns above, regardless
 of which record structure they come from. Either way, <code>patient_class_change</code>
 (and every other type here) is detected from rows that still exist
 side-by-side with a shared <code>facility_col</code> x <code>visit_col</code> key: it looks for
 more than one distinct value of a field (here, <code>c_patient_class</code>) across
 those rows, not from any single row. Once those rows have already been
-collapsed into one – e.g. by <code><a href="dedupe.html">dedupe()</a></code>, or by <code><a href="link_encounters.html">link_encounters()</a></code> with
-<code>return_format = "collapsed"</code> – there is only one row left per key, so
+collapsed into one, e.g. by <code><a href="dedupe.html">dedupe()</a></code>, or by <code><a href="link_encounters.html">link_encounters()</a></code> with
+<code>return_format = "collapsed"</code>, there is only one row left per key, so
 <code>n_rows == 1</code> and nothing is classified as a duplicate at all, regardless
 of what mechanism originally produced the now-merged rows. Classify before
 collapsing if you want to see which mechanism was responsible.</p>
@@ -246,7 +246,7 @@ pairs with more than one row, consistent with
 <code><a href="summarize_duplicates.html">summarize_duplicates()</a></code><code>$duplicate_ids</code>.</p></dd>
 
 <dt><code>"tibble"</code></dt>
-<dd><p>The visit-group level summary tibble only – one row
+<dd><p>The visit-group level summary tibble only: one row
 per facility x visit_col with <code>dup_type</code> and supporting <code>n_*</code>
 metrics. Suitable for joining back to original data or piping into
 further analysis.</p></dd>

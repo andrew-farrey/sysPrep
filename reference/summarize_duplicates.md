@@ -47,8 +47,8 @@ A named list of class `essence_dup_summary` with components
 
 A duplicate is any `facility_col x visit_col` group containing more than
 one row. The same `Visit_ID` appearing at two different facilities does
-not constitute a duplicate – `Visit_ID` is unique only within a
-facility. Duplicate detection is therefore always scoped to
+not constitute a duplicate: `Visit_ID` is unique only within a facility.
+Duplicate detection is therefore always scoped to
 `facility x visit_col`.
 
 ### Return value components
