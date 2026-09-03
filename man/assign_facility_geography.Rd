@@ -123,7 +123,10 @@ hospital as an independent spatial unit.
 clustering requires latitude/longitude coordinates sourced from the NSSP
 Master Facility Table, an additional logistical step outside the standard
 ESSENCE data pull. Region-level binning achieves a close approximation of
-hospital-level cluster detection using fields already present in the pull.
+hospital-level cluster detection using \code{HospitalRegion}/\code{HospitalZip}
+instead -- provided they're included in the pull. Neither is guaranteed
+by default; both require being part of your site's default returned
+columns or explicitly requested via the API's \verb{&field=} parameter.
 }
 
 One consequence of region-level attribution is that detectable cluster
@@ -147,6 +150,12 @@ than where they live.
 \item Incidence-at-location burden estimation irrespective of patient origin.
 \item Approximating hospital-level cluster detection without Master Facility
 Table lookups or coordinate-based spatial methods.
+\item Comparing total treated volume across urban and rural counties without
+differentiating which specific hospital saw each visit -- useful when a
+facility-to-county lookup table isn't available but \code{HospitalRegion}/
+\code{HospitalZip} already are. The tradeoff is the one described above: a
+county with no participating ESSENCE facility always shows \code{0},
+regardless of actual resident burden.
 }
 }
 
