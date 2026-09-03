@@ -3,35 +3,28 @@
 #' Link ED and inpatient admission records into unified care episodes
 #'
 #' Prevents overcounting distinct patients and visits when one real-world
-#' episode of care is split across two separately queried ESSENCE pulls --
-#' the same problem [dedupe()] solves for duplicate rows within a single
-#' pull, applied to a harder case ESSENCE itself never flags. Links ED and
-#' direct-admit inpatient records sharing the same `facility_col` x
-#' `visit_col` key into a single composite row per true care episode, and
-#' reconciles their field values so information present on only one of
-#' the source rows is not silently discarded. Corrects two related but
-#' distinct duplication mechanisms: the encounter-continuity data quality
-#' issue where a patient's ED discharge and immediate direct-admit
-#' readmission are reported as separate records sharing the same
-#' `Visit_ID` at the same facility, and true direct admissions that are
-#' structurally invisible to a `HasBeenE = 1` query.
+#' episode of care is split across two separately queried ESSENCE pulls,
+#' a duplication ESSENCE itself never flags. Links ED and direct-admit
+#' inpatient records sharing the same `facility_col` x `visit_col` key
+#' into one composite row per true care episode, reconciling field values
+#' so information present on only one source row isn't discarded.
 #'
 #' @details
 #' ## Why this matters for case counts
 #'
-#' Querying the inpatient pull with `HasBeenE = 0` added on purpose --
+#' Querying the inpatient pull with `HasBeenE = 0` added on purpose,
 #' specifically to exclude anything already captured by the
-#' `HasBeenE = 1` pull -- looks like a safe way to avoid double-counting.
+#' `HasBeenE = 1` pull, looks like a safe way to avoid double-counting.
 #' By the API's own field semantics it should be: `HasBeenE = 0` means no
 #' ED encounter appears anywhere in that record's history. It isn't. Some
 #' records that correctly show `HasBeenE = 0` were, clinically, discharged
-#' from the ED and immediately readmitted -- the ED encounter lives
+#' from the ED and immediately readmitted; the ED encounter lives
 #' entirely on a separate record already captured in the first pull, so
 #' the exclusion filter never catches it. If you don't know this and want
 #' to include inpatient admissions in your burden counts, summing the two
 #' pulls double-counts that proportion of ED visits a second time. This is
 #' the same problem [dedupe()] solves for retransmitted or split ESSENCE
-#' rows -- the duplicate here doesn't share a flag value that would mark
+#' rows: the duplicate here doesn't share a flag value that would mark
 #' it as related. `link_encounters()` finds the relationship directly, by
 #' checking for a matching ED record under the same `facility_col` x
 #' `visit_col` key, instead of trusting `HasBeenE` alone.
@@ -46,8 +39,8 @@
 #' in the ED first, but the facility's system closed that encounter as a
 #' discharge instead of tracking the ED-to-inpatient transition as one
 #' continuous record. The result is two records sharing the same
-#' `facility_col` x `visit_col` key -- one correctly showing `HasBeenE = 1`,
-#' one showing `HasBeenAdmitted = 1` and `HasBeenE = 0` -- that otherwise
+#' `facility_col` x `visit_col` key: one correctly showing `HasBeenE = 1`,
+#' one showing `HasBeenAdmitted = 1` and `HasBeenE = 0`, that otherwise
 #' look unrelated. The ED record's fields (e.g. `Discharge_Disposition`,
 #' `CCDD`, `C_Death`) reflect only what was known at ED discharge, not the
 #' outcome of the encounter that actually continued. Counting both records
@@ -55,12 +48,12 @@
 #' quality artifact, not a distinct clinical pathway.
 #'
 #' **The invisibility gap.** A patient admitted directly to an inpatient
-#' unit without ED triage -- via physician referral, a pre-arranged
-#' admission, or similar -- genuinely has `HasBeenAdmitted = 1` and
+#' unit without ED triage, via physician referral, a pre-arranged
+#' admission, or similar, genuinely has `HasBeenAdmitted = 1` and
 #' `HasBeenE = 0` with no preceding ED record to find. This visit never
 #' appears in a `HasBeenE = 1` query regardless of which syndrome
 #' definition or date range is used. This is a real clinical pathway, not
-#' a data quality problem -- but a `HasBeenE = 1`-only pull will always
+#' a data quality problem, but a `HasBeenE = 1`-only pull will always
 #' miss it.
 #'
 #' The only way to tell these two cases apart is to check whether a
@@ -75,7 +68,7 @@
 #' ## Merge behavior (`return_format = "collapsed"`, the default)
 #'
 #' Every column matching `has_been_*` is reconciled by taking the max across
-#' the episode's rows -- e.g., if the ED row has `HasBeenAdmitted = 0` and the
+#' the episode's rows: e.g., if the ED row has `HasBeenAdmitted = 0` and the
 #' direct-admit row has `HasBeenAdmitted = 1`, the merged row correctly shows
 #' `HasBeenAdmitted = 1`.
 #'
@@ -93,8 +86,8 @@
 #'     (fixed by the ESSENCE convention, not configurable), splits each half
 #'     on `merge_delimiter`, unions unique values within each half
 #'     separately, rejoins.}
-#'   \item{`"prefer_yes"`}{If any row's value is affirmative -- case-insensitive
-#'     `"Yes"`, or `1`/`"1"` for 0/1-coded flag columns -- the merged value is
+#'   \item{`"prefer_yes"`}{If any row's value is affirmative (case-insensitive
+#'     `"Yes"`, or `1`/`"1"` for 0/1-coded flag columns), the merged value is
 #'     that row's affirmative value. Otherwise falls back to the primary
 #'     row's value.}
 #'   \item{`"prefer_admission"`}{Uses the value from whichever row's
@@ -108,7 +101,7 @@
 #' the episode, else the first row in original order.
 #'
 #' Set `return_format = "long"` to get the diagnostic long-format output
-#' instead -- one row per patient-class per episode, with no merge applied.
+#' instead: one row per patient-class per episode, with no merge applied.
 #' Useful for inspecting the raw linkage mechanism directly.
 #'
 #' ## Why `inpatient_admission_data` is required
@@ -123,7 +116,7 @@
 #' is structurally absent from it by construction, and an ED-to-inpatient
 #' escalation that *is* visible within it already lives on one
 #' already-deduplicated record (both `HasBeenE` and `HasBeenAdmitted` set),
-#' which needs no linking -- there was never a second record to link
+#' which needs no linking; there was never a second record to link
 #' against. Supplying `inpatient_admission_data` is what makes linking
 #' possible at all; `link_encounters()` aborts without it rather than
 #' silently returning `ed_data` unchanged with cosmetic metadata columns
@@ -133,8 +126,8 @@
 #' frame and call [dedupe()] on the combined result instead of using the
 #' two-pull approach above.** `dedupe()`'s `keep` strategies are not aware
 #' of the distinction between an ED record and its corresponding
-#' direct-admit record -- both just look like two rows sharing a
-#' `facility_col` x `visit_col` key -- and will discard one of them based
+#' direct-admit record: both just look like two rows sharing a
+#' `facility_col` x `visit_col` key, and will discard one of them based
 #' on `order_by` rather than merging them, silently and unpredictably
 #' reducing either the ED or the direct-admit count depending on which
 #' record's `Arrived_Date_Time` happens to win. Always deduplicate each
@@ -147,7 +140,7 @@
 #'
 #' **Limitation:** if a facility's HL7 feed assigns a genuinely different
 #' `Visit_ID` to the inpatient leg of a care episode, `link_encounters()`
-#' cannot detect the relationship -- the two records will appear as separate
+#' cannot detect the relationship: the two records will appear as separate
 #' episodes. This is a distinct scenario from the continuity-break artifact
 #' above (which assumes the `Visit_ID` is shared) and is not addressed by
 #' this function. If your data
@@ -158,7 +151,7 @@
 #' ## Patient class derivation: HasBeen_ pivot (standard)
 #' `HasBeen_` flag columns (`HasBeenE`, `HasBeenAdmitted`/`HasBeenI`,
 #' `HasBeenO`) are convenience columns that ESSENCE derives from
-#' `C_Patient_Class_List` -- they are easier to interpret and are the
+#' `C_Patient_Class_List`; they are easier to interpret and are the
 #' fields most existing pulls and case definitions already include, so
 #' `link_encounters()` uses them by default. They are pivoted to long
 #' format, with each flag with value `1` contributing one row.
@@ -194,7 +187,7 @@
 #'
 #' ## Chronological ordering of `.patient_class_sequence`
 #' `.patient_class_sequence` reflects the actual order encounters occurred
-#' in, not alphabetical order -- e.g. `"Direct Admit->ED"` when the
+#' in, not alphabetical order: e.g. `"Direct Admit->ED"` when the
 #' direct-admit record's timestamp precedes the ED record's, which is the
 #' reverse of what typically indicates the continuity-break artifact
 #' (an ED visit that transitions into a direct-admit readmission, not a
@@ -204,10 +197,10 @@
 #'   \item **`C_Patient_Class_MDT_Updates`** (requires `C_Patient_Class_List`).
 #'     A concatenated list of timestamps positionally aligned with
 #'     `C_Patient_Class_List`, giving the exact moment each class was
-#'     assigned -- the only field that can order two classes assigned
+#'     assigned; the only field that can order two classes assigned
 #'     within a single record (e.g. `"EI"`). Rows where the two lists'
 #'     lengths disagree fall back to the next tier.
-#'   \item **`C_Visit_Date_Time`**. Applied per record -- all classes
+#'   \item **`C_Visit_Date_Time`**. Applied per record: all classes
 #'     derived from one record share that record's timestamp, so this only
 #'     differentiates classes across separate records sharing the same
 #'     `facility_col` x `visit_col` key (i.e. the ED record vs. the
@@ -232,7 +225,7 @@
 #'     `visit_col`, shared across all rows belonging to the same care episode.}
 #'   \item{`.patient_class_sequence`}{All patient classes for the episode
 #'     in chronological order and collapsed, e.g., `"Direct Admit->ED"`
-#'     when the direct admit occurred first -- see Details.}
+#'     when the direct admit occurred first; see Details.}
 #'   \item{`.episode_n_rows`}{Number of original rows the episode was built
 #'     from before merging.}
 #'   \item{`.index_encounter`}{In long format, `TRUE` on the row that
@@ -248,7 +241,7 @@
 #'   inpatient visits queried with `HasBeenAdmitted = 1` or `HasBeenI = 1`.
 #'   Rows with `HasBeenE = 1` are automatically removed to prevent duplicate
 #'   rows for the same underlying record. `link_encounters()` aborts if this
-#'   is `NULL` -- see Details.
+#'   is `NULL`; see Details.
 #' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name identifying the facility. Defaults to `HospitalName`.
 #'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
@@ -262,7 +255,7 @@
 #'   `"prefer_yes"`, or `"prefer_admission"`. Only used when
 #'   `return_format = "collapsed"`. Defaults to a curated set of ESSENCE
 #'   fields known to carry information only visible in the direct-admit
-#'   record -- see Details. Extend or override for other fields as needed.
+#'   record; see Details. Extend or override for other fields as needed.
 #' @param merge_delimiter Character string. Delimiter used by the
 #'   `"union_delimited"` and `"union_ccdd"` strategies. Defaults to `";"`,
 #'   matching ESSENCE's convention for `CCDDCategory_flat` and the
@@ -286,7 +279,7 @@
 #' @examples
 #' # essence_ed_raw and essence_inp_raw are two small synthetic datasets
 #' # representing the two separately queried ESSENCE pulls link_encounters()
-#' # expects -- see `?essence_ed_raw`/`?essence_inp_raw`
+#' # expects; see `?essence_ed_raw`/`?essence_inp_raw`
 #' ed_clean <- essence_ed_raw |>
 #'   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
 #'   filter_care_setting(
@@ -350,7 +343,7 @@ link_encounters <- function(ed_data,
         "(`HasBeenE = 0`) structurally never appears in it, and an ED-to-",
         "inpatient escalation already visible within `ed_data` (both ",
         "`HasBeenE` and `HasBeenAdmitted` set on one already-deduplicated ",
-        "record) needs no linking -- there is only ever one record to ",
+        "record) needs no linking; there is only ever one record to ",
         "link. Query a second ESSENCE pull filtered to `HasBeenAdmitted = ",
         "1` (or `HasBeenI = 1`), deduplicate it separately with `dedupe()`, ",
         "and pass it as `inpatient_admission_data`. See ",
@@ -389,7 +382,7 @@ link_encounters <- function(ed_data,
   pc_list_str <- if (use_pc_list) rlang::as_string(pc_list_col) else NA_character_
 
   # Detect C_Patient_Class_MDT_Updates (optional, per-class timestamps used
-  # to chronologically order `.patient_class_sequence` -- see below) ----
+  # to chronologically order `.patient_class_sequence`; see below) ----
   mdt_col     <- resolve_col_optional(ed_data, rlang::sym("C_Patient_Class_MDT_Updates"))
   use_mdt     <- use_pc_list && !is.null(mdt_col)
   mdt_col_str <- if (use_mdt) rlang::as_string(mdt_col) else NA_character_
@@ -431,7 +424,7 @@ link_encounters <- function(ed_data,
     # Prefer HasBeenAdmitted over HasBeenI when both present ----
     # `HasBeenI` is excluded from the pivot below (so it doesn't contribute
     # a second, redundant "Admitted" row for the same admission) but its
-    # column and true 0/1 values are left in `ed_data` untouched -- an
+    # column and true 0/1 values are left in `ed_data` untouched; an
     # earlier version of this code dropped the `HasBeenI` column outright,
     # which discarded its real values for every `ed_data` row and surfaced
     # as `has_been_i = NA` on all of them after `bind_rows()` with
@@ -452,13 +445,13 @@ link_encounters <- function(ed_data,
 
     # Inform about outpatient/observation visits ----
     # A `HasBeenO = 1` co-occurring flag is ordinary ESSENCE data, not a
-    # sign of anything wrong -- a patient can genuinely be seen in
+    # sign of anything wrong: a patient can genuinely be seen in
     # outpatient/observation care and also be triaged in the ED or
     # admitted on the same record. In `link_encounters()`'s intended usage
     # (an ED pull and an inpatient/direct-admit pull), every episode also
     # has an ED or Admitted component, so the "Outpatient" pivot row it
     # contributes is never the primary row and never appears as the
-    # collapsed output's `patient_class` value -- it only surfaces in
+    # collapsed output's `patient_class` value; it only surfaces in
     # `.patient_class_sequence` and in `return_format = "long"` output ----
     if (!is.null(has_been_o_col)) {
       has_been_o_str <- rlang::as_string(has_been_o_col)
@@ -493,7 +486,7 @@ link_encounters <- function(ed_data,
         paste0(
           n_missing_pc_list, " row(s) had missing or empty ",
           "`C_Patient_Class_List` values. These rows are retained with ",
-          "`patient_class = NA` rather than dropped -- review before relying ",
+          "`patient_class = NA` rather than dropped; review before relying ",
           "on `.index_encounter`-based counts for these visits."
         )
       )
@@ -513,7 +506,7 @@ link_encounters <- function(ed_data,
     # Pair C_Patient_Class_MDT_Updates timestamps with the C_Patient_Class_List
     # split above. ESSENCE encodes this as pipe-delimited "{position};
     # timestamp;" segments, one per patient class, where `position` is the
-    # 1-based character position in C_Patient_Class_List -- e.g.
+    # 1-based character position in C_Patient_Class_List, e.g.
     # "{1};2026-06-19 16:00:06.000;|{2};2026-06-19 17:55:10.000;" for
     # C_Patient_Class_List = "EI" gives "E" (position 1) a timestamp of
     # 16:00:06 and "I" (position 2) a timestamp of 17:55:10. Positions with
@@ -533,7 +526,7 @@ link_encounters <- function(ed_data,
           paste0(
             n_unparsed, " row(s) had a non-empty `C_Patient_Class_MDT_Updates` ",
             "value that could not be parsed in the expected ",
-            "`{position};timestamp;` format -- chronological ordering for ",
+            "`{position};timestamp;` format; chronological ordering for ",
             "these rows falls back to `C_Visit_Date_Time` or `Date`+`Time` ",
             "if available."
           )
@@ -582,12 +575,12 @@ link_encounters <- function(ed_data,
       )
     )
 
-    # Pivot HasBeen_ flags to long format -- preserve a copy of each
+    # Pivot HasBeen_ flags to long format: preserve a copy of each
     # pivoted column under a "_orig" name first, since pivot_longer()
     # consumes (removes) the columns it pivots on. Every synthetic row
     # produced from one original record describes that same record, so
     # each should retain that record's true has_been_* values regardless
-    # of which flag triggered its own creation -- e.g. an "Admitted->ED"
+    # of which flag triggered its own creation, e.g. an "Admitted->ED"
     # escalation splits one row (HasBeenE = 1, HasBeenAdmitted = 1) into
     # two synthetic rows ("ED" and "Admitted"), and both must still show
     # has_been_e = 1 and has_been_admitted = 1, not just the flag that
@@ -639,7 +632,7 @@ link_encounters <- function(ed_data,
 
     inpatient_admission_data <- clean_names_safe(inpatient_admission_data)
 
-    # Remove HasBeenE = 1 rows -- already in ed_data ----
+    # Remove HasBeenE = 1 rows: already in ed_data ----
     ip_hbe_col <- resolve_col_optional(
       inpatient_admission_data,
       rlang::sym("HasBeenE")
@@ -655,7 +648,7 @@ link_encounters <- function(ed_data,
           verbose,
           paste0(
             n_ed_rows, " row(s) with `HasBeenE = 1` removed from ",
-            "`inpatient_admission_data` -- these visits are already present ",
+            "`inpatient_admission_data`; these visits are already present ",
             "in `ed_data` and would produce double-counted episodes. ",
             "This is expected behavior when `HasBeenAdmitted = 1` is used ",
             "as the inpatient pull filter."
@@ -726,7 +719,7 @@ link_encounters <- function(ed_data,
   # Build episode metadata ----
   # `.by =` groups only for the duration of this one mutate() call, without
   # materializing a separate grouped-tibble object the way group_by() +
-  # ungroup() does -- cheaper to keep alive across a year of rows ----
+  # ungroup() does; cheaper to keep alive across a year of rows ----
   result <- ed_long |>
     dplyr::mutate(
       .episode_id = paste(
@@ -755,13 +748,13 @@ link_encounters <- function(ed_data,
   # until the final bind completes). The block below reconciles only the
   # columns that actually change (has_been_* flags and merge_fields) as
   # plain vectorized, per-episode-grouped column operations, then does a
-  # single row filter to keep one row per episode -- no per-group
+  # single row filter to keep one row per episode, no per-group
   # data.frame construction, no giant final bind ----
   if (return_format == "collapsed") {
     has_been_cols <- grep("^has_been_", names(result), value = TRUE)
     merge_cols    <- intersect(names(merge_fields), names(result))
 
-    # Episodes with exactly one row need no reconciliation -- the "merged"
+    # Episodes with exactly one row need no reconciliation; the "merged"
     # result is trivially that row's own value. Isolating them skips
     # merge_field_value() (and the has_been_ max()) entirely for what is,
     # in real ESSENCE data, the large majority of visits (only episodes
@@ -836,7 +829,7 @@ parse_mdt_updates <- function(mdt_str, n_classes) {
 # Parses a character vector of timestamps for chronological ordering
 # purposes. A single malformed or non-standard-format value must not abort
 # the whole vectorized parse (as.POSIXct() throws rather than warns when a
-# string matches none of its tryFormats) -- unparseable values become NA
+# string matches none of its tryFormats); unparseable values become NA
 # instead, so ordering degrades gracefully to the next tier for just that
 # row rather than erroring out link_encounters() entirely. Recognizes
 # space- and "T"-separated ISO 8601-style timestamps (with or without a
@@ -858,7 +851,7 @@ safe_as_posixct <- function(x) {
   # once (one C-level strptime() pass) and only keep trying remaining
   # unparsed elements with the next format. This gives the same per-element
   # "first matching format wins" result as the old row-by-row loop, without
-  # a separate R function call + tryCatch per row -- the row-by-row version
+  # a separate R function call + tryCatch per row; the row-by-row version
   # is what made this the dominant cost on a full year of data ----
   remaining <- !is.na(x_clean) & x_clean != ""
   for (fmt in formats) {
@@ -944,7 +937,7 @@ merge_union_ccdd <- function(values, delimiter) {
   if (length(values) == 0L) return(NA_character_)
 
   # Vectorized across all of this group's values at once, rather than
-  # calling strsplit()/trimws() per value in a loop -- trimws() compiles a
+  # calling strsplit()/trimws() per value in a loop; trimws() compiles a
   # perl regex on every call, and this function runs once per multi-row
   # episode, so per-value looping is the difference between O(episodes)
   # and O(episodes x rows-per-episode) regex compiles on a full year of
@@ -974,8 +967,8 @@ merge_union_ccdd <- function(values, delimiter) {
 }
 
 # merge_prefer_yes() ----
-# If any value is affirmative -- case-insensitive "Yes", or 1/"1" for
-# 0/1-coded flag columns -- the merged value is that affirmative value.
+# If any value is affirmative (case-insensitive "Yes", or 1/"1" for
+# 0/1-coded flag columns), the merged value is that affirmative value.
 # Otherwise falls back to primary_value.
 merge_prefer_yes <- function(values, primary_value) {
   values_clean  <- values[!is.na(values)]

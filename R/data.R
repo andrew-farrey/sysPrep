@@ -47,7 +47,7 @@
 #'     class (`"E"` for ED, `"I"` for inpatient). `classify_duplicates()`
 #'     detects `patient_class_change` duplicates generically, from any two
 #'     rows sharing a `facility x Visit_ID` key with distinct
-#'     `C_Patient_Class` values -- not a specific from/to pair. `"E"` to
+#'     `C_Patient_Class` values, not a specific from/to pair. `"E"` to
 #'     `"I"` is used here only as a common, realistic illustration; see
 #'     Details.}
 #'   \item{Region}{Character. Patient ESSENCE Region of residence in
@@ -64,24 +64,24 @@
 #' ## Duplicate patterns included
 #' \describe{
 #'   \item{`standard`}{5 visits with an extra row differing only in
-#'     `Arrived_Date_Time` -- representing a record retransmission.}
+#'     `Arrived_Date_Time`, representing a record retransmission.}
 #'   \item{`visit_date_change`}{3 visits with a second row carrying a new
-#'     `C_BioSense_ID` and a `Date` advanced by 1 day -- representing a
+#'     `C_BioSense_ID` and a `Date` advanced by 1 day, representing a
 #'     midnight-crossing visit where `Admit_Date_Time` was updated.}
 #'   \item{`pid_change`}{2 visits with a second row carrying a different
-#'     `C_Unique_Patient_ID` -- representing a corrected patient identifier.}
+#'     `C_Unique_Patient_ID`, representing a corrected patient identifier.}
 #'   \item{`patient_class_change`}{2 visits with a second row carrying
 #'     `C_Patient_Class = "I"` (`HasBeenE`/`HasBeenAdmitted` flipped to
 #'     match) against the original row's `"E"`, and later `C_Visit_Date_Time`/
-#'     `Arrived_Date_Time` values -- representing an ED visit and its
+#'     `Arrived_Date_Time` values, representing an ED visit and its
 #'     direct-admit continuation transmitted as two records sharing one
 #'     `Visit_ID` rather than one record with an updated
 #'     `C_Patient_Class_List`. Since `dedupe(keep = "last")` keeps the more
 #'     recent row by `Arrived_Date_Time`, these two visits survive into
-#'     [essence_clean] as `c_patient_class = "I"` -- the ED encounter is
+#'     [essence_clean] as `c_patient_class = "I"`: the ED encounter is
 #'     silently dropped by deduplication alone, illustrating the gap
 #'     `link_encounters()` is designed to catch instead. `essence_raw` is
-#'     not itself used to demonstrate `link_encounters()` -- see
+#'     not itself used to demonstrate `link_encounters()`; see
 #'     [essence_ed_raw]/[essence_inp_raw], which are purpose-built for
 #'     that.}
 #'   \item{`visit_date_change+pid_change`}{1 visit exhibiting both
@@ -114,7 +114,7 @@
 #' The result of running `essence_raw` through the full `sysPrep` preprocessing
 #' pipeline: deduplication, care setting filtering with FSED correction, and
 #' both geography attribution functions chained on their default (additive)
-#' behavior -- `region`/`zip_code` are the untouched originals throughout;
+#' behavior: `region`/`zip_code` are the untouched originals throughout;
 #' [assign_treating_geography()] and [assign_facility_geography()] each add
 #' their own new columns alongside them rather than overwriting. Intended to
 #' demonstrate the expected output of the package workflow and to serve as
@@ -141,7 +141,7 @@
 #'   \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 #'   \item{has_been_e}{Integer. `1` for an ED pull; `0` on the two visits
 #'     where a `patient_class_change` direct-admit row outranked the ED row
-#'     under `dedupe(keep = "last")` -- see `c_patient_class` and
+#'     under `dedupe(keep = "last")`; see `c_patient_class` and
 #'     `?essence_raw`.}
 #'   \item{has_been_admitted}{Integer. `1` if the visit resulted in
 #'     inpatient admission.}
@@ -151,13 +151,13 @@
 #'     `?essence_raw`); `"E"` otherwise. Unchanged by the preprocessing
 #'     pipeline.}
 #'   \item{region}{Character. Patient ESSENCE Region of residence in
-#'     `{SITE}_{REGION}` format, exactly as received -- never modified by
+#'     `{SITE}_{REGION}` format, exactly as received; never modified by
 #'     either geography function.}
 #'   \item{zip_code}{Character. Patient zip code, exactly as received.}
 #'   \item{sex}{Character. `"M"`, `"F"`, or `"U"`.}
 #'   \item{c_patient_age}{Integer. Patient age in years.}
 #'   \item{.out_of_state}{Logical. `TRUE` for visits where `region` is
-#'     out-of-state, `"OTHER_REGION"`, or unknown residence -- these are the
+#'     out-of-state, `"OTHER_REGION"`, or unknown residence; these are the
 #'     visits where `region_hybrid` differs from `region`. Added by
 #'     [assign_treating_geography()].}
 #'   \item{region_hybrid}{Character. `region` for in-state visits;
@@ -170,7 +170,7 @@
 #'     [assign_facility_geography()].}
 #'   \item{zip_code_facility}{Character. `zip_code` analog of
 #'     `region_facility`.}
-#'   \item{.facility_geography}{Logical. Always `TRUE` -- signals that
+#'   \item{.facility_geography}{Logical. Always `TRUE`; signals that
 #'     facility geography has been computed for every row. Added by
 #'     [assign_facility_geography()].}
 #' }
@@ -200,10 +200,10 @@
 #' @details
 #' ## Visit types included
 #' \describe{
-#'   \item{Plain ED-only visits}{`HasBeenE = 1`, `HasBeenAdmitted = 0` --
+#'   \item{Plain ED-only visits}{`HasBeenE = 1`, `HasBeenAdmitted = 0`:
 #'     the majority of rows.}
 #'   \item{Correctly carried-through escalation}{`HasBeenE = 1` and
-#'     `HasBeenAdmitted = 1` on one already-deduplicated record -- needs no
+#'     `HasBeenAdmitted = 1` on one already-deduplicated record; needs no
 #'     cross-pull linking, since there is only ever one record. These 2
 #'     visits also have `HasBeenI = 1`, so that
 #'     `link_encounters()`'s preference for `HasBeenAdmitted` over
@@ -244,11 +244,11 @@
 #' \describe{
 #'   \item{Continuity-break admission half}{2 rows (`HasBeenE = 0`,
 #'     `HasBeenAdmitted = 1`) sharing `HospitalName x Visit_ID` with a real
-#'     row in [essence_ed_raw] -- the mis-submitted direct-admit
+#'     row in [essence_ed_raw]: the mis-submitted direct-admit
 #'     continuation of an ED visit reported as two unrelated records.}
 #'   \item{Genuine direct admission}{4 rows (`HasBeenE = 0`,
 #'     `HasBeenAdmitted = 1`) with a `Visit_ID` that appears nowhere in
-#'     [essence_ed_raw] -- true direct admissions with no preceding ED
+#'     [essence_ed_raw]: true direct admissions with no preceding ED
 #'     visit at all, structurally invisible to a `HasBeenE = 1` query.}
 #' }
 #'

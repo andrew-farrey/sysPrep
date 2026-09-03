@@ -4,19 +4,19 @@
 
 ## Test environments
 
-* local Windows 11, R 4.5.2 (2025-10-31 ucrt), x86_64-w64-mingw32 -- 0 errors,
+* local Windows 11, R 4.5.2 (2025-10-31 ucrt), x86_64-w64-mingw32: 0 errors,
   0 warnings, 0 notes (checked 2026-09-01)
 * GitHub Actions (`.github/workflows/R-CMD-check.yaml`, runs on every push):
   ubuntu-latest (release, devel), ubuntu-latest (oldrel-1), macOS-latest
-  (release), windows-latest (release) -- all passing as of the latest push
+  (release), windows-latest (release); all passing as of the latest push
   (2026-09-01); see the Actions tab for current status
 * win-builder (R-devel, R Under development (unstable) (2026-08-31 r90457
-  ucrt), x86_64-w64-mingw32) -- checked 2026-09-01, re-checked same day
+  ucrt), x86_64-w64-mingw32): checked 2026-09-01, re-checked same day
   after fixes below: 1 NOTE, only the two expected/false-positive
   sub-items remain (see below).
-  win-builder (R-release) -- TODO: run via `devtools::check_win_release()`
+  win-builder (R-release): TODO, run via `devtools::check_win_release()`
   and replace this line with actual results
-* R-hub -- TODO: run `rhub::rhub_setup()` (writes
+* R-hub: TODO, run `rhub::rhub_setup()` (writes
   `.github/workflows/rhub.yaml`, not yet added), commit + push, then
   `rhub::rhub_check()`, and replace this line with actual results
 
@@ -38,8 +38,8 @@ records from the ESSENCE `va_er` (Patient Location, Full Details) and
 This is a new submission. The win-builder (R-devel) check reported one
 NOTE, expected for a first submission:
 
-* "Possibly misspelled words in DESCRIPTION: NSSP, Syndromic, syndromic"
-  -- these are correct: NSSP is the National Syndromic Surveillance
+* "Possibly misspelled words in DESCRIPTION: NSSP, Syndromic, syndromic":
+  these are correct. NSSP is the National Syndromic Surveillance
   Program (a real, proper-noun program name), and "syndromic" is a
   standard epidemiological term, not a typo.
 * The URL/file-URI items flagged in that same check (a redirecting

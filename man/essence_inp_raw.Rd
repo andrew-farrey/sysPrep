@@ -29,11 +29,11 @@ real patient or facility data are included.
 \describe{
 \item{Continuity-break admission half}{2 rows (\code{HasBeenE = 0},
 \code{HasBeenAdmitted = 1}) sharing \verb{HospitalName x Visit_ID} with a real
-row in \link{essence_ed_raw} -- the mis-submitted direct-admit
+row in \link{essence_ed_raw}: the mis-submitted direct-admit
 continuation of an ED visit reported as two unrelated records.}
 \item{Genuine direct admission}{4 rows (\code{HasBeenE = 0},
 \code{HasBeenAdmitted = 1}) with a \code{Visit_ID} that appears nowhere in
-\link{essence_ed_raw} -- true direct admissions with no preceding ED
+\link{essence_ed_raw}: true direct admissions with no preceding ED
 visit at all, structurally invisible to a \code{HasBeenE = 1} query.}
 }
 }

@@ -3,8 +3,8 @@
 #' Assign treating facility geography to out-of-state and OTHER_REGION visits
 #'
 #' Identifies visits where the patient's recorded `Region` does not belong to
-#' the site of interest -- including out-of-state residents and visits with
-#' `OTHER_REGION` or missing `Region` values -- and writes the treating
+#' the site of interest, including out-of-state residents and visits with
+#' `OTHER_REGION` or missing `Region` values, and writes the treating
 #' hospital's corresponding geographic fields (`HospitalRegion` and/or
 #' `HospitalZip`) for those visits to `new_region_col`/`new_zip_col`. By
 #' default this writes new columns (`region_hybrid`/`zip_code_hybrid`),
@@ -18,7 +18,7 @@
 #' patients whose legal address is unavailable to the treating facility
 #' (`OTHER_REGION`). Simply discarding these visits understates the true
 #' incidence burden experienced by facilities in the surveillance area.
-#' This dropping is rarely a deliberate choice -- a region-based map or
+#' This dropping is rarely a deliberate choice: a region-based map or
 #' summary table scoped to in-state values will silently exclude these rows
 #' without an explicit filter. EMS-based systems report incidence at the
 #' location of care rather than patient residence; this function brings
@@ -29,17 +29,17 @@
 #'
 #' ## Site prefix detection
 #' The `Region` field uses the format `{SITE}_{REGION}`, where `SITE` is
-#' the NSSP Site Short Name and `REGION` is the ESSENCE Region -- a county
+#' the NSSP Site Short Name and `REGION` is the ESSENCE Region, a county
 #' name derived from a zip-code-to-county lookup table maintained by
 #' ESSENCE. Because some site names contain multiple underscores, the
 #' prefix is all characters before the **last** underscore. A visit is
 #' classified as out-of-state or unknown residence when its `Region` does
 #' not begin with `paste0(site, "_")`, or when `Region` is `"OTHER_REGION"`,
 #' `paste0(site, "_UNKNOWN")` (e.g. `"KY_UNKNOWN"`), or `NA`. Unlike
-#' `"OTHER_REGION"`, the `"{site}_UNKNOWN"` form carries the site prefix --
+#' `"OTHER_REGION"`, the `"{site}_UNKNOWN"` form carries the site prefix:
 #' ESSENCE uses it for a known-site record whose residential geography
 #' could not be determined, as distinct from a residence that is genuinely
-#' unmapped to any region -- so it is checked explicitly rather than relying
+#' unmapped to any region, so it is checked explicitly rather than relying
 #' on the prefix mismatch below. For example, with `site = "KY"`:
 #' - `"KY_Jefferson"` -> in-state, unchanged
 #' - `"TN_Davidson"` -> out-of-state, region assigned from `HospitalRegion`
@@ -49,20 +49,20 @@
 #' ## Geography types and output columns
 #' Both region and zip are attempted by default (`new_region_col` and
 #' `new_zip_col` both default to a column name). Pass `NULL` to either to
-#' skip that type entirely -- e.g. `new_zip_col = NULL` to reassign only
+#' skip that type entirely, e.g. `new_zip_col = NULL` to reassign only
 #' region. If the source columns required for a requested type are absent,
 #' that type is skipped with an informative message regardless of
 #' `new_region_col`/`new_zip_col`.
 #'
 #' By default, results are written to new columns (`region_hybrid`/
-#' `zip_code_hybrid`), and `region_col`/`zip_col` are never modified -- safe
+#' `zip_code_hybrid`), and `region_col`/`zip_col` are never modified; safe
 #' to call repeatedly without risk of losing the original values. To
 #' overwrite `region_col`/`zip_col` in place instead (the only behavior this
 #' function had before this parameter existed), pass their own name to
 #' `new_region_col`/`new_zip_col` and set `overwrite = TRUE`:
 #' `assign_treating_geography(new_region_col = "region", overwrite = TRUE)`.
 #' `overwrite` guards **any** collision with an existing column, not just
-#' the source column -- if `new_region_col`/`new_zip_col` names a column
+#' the source column: if `new_region_col`/`new_zip_col` names a column
 #' that already exists in `data` for any reason, `overwrite = TRUE` is
 #' required or the function aborts rather than silently overwriting it.
 #'
@@ -72,7 +72,7 @@
 #' and `OTHER_REGION` visits are attributed to the treating facility's
 #' geography rather than discarded. This matters for cluster detection: a
 #' geographically concentrated surge of out-of-state overdoses at a single
-#' facility -- common near state borders or in tourist destinations -- will
+#' facility, common near state borders or in tourist destinations, will
 #' appear in facility-level and county-level signals only if those visits
 #' are attributed to the treating location. Discarding them suppresses the
 #' signal entirely.
@@ -102,7 +102,7 @@
 #' does not support reassigning NSSP-site-submitted custom region fields.
 #'
 #' `Region` is a maintained many-to-one zip-to-county mapping
-#' (`Zipcode_to_CountyRegionMapping`), not a live geocode of the record --
+#' (`Zipcode_to_CountyRegionMapping`), not a live geocode of the record;
 #' zip codes are assigned to a region by centroid by default, but individual
 #' assignments may be overridden by site or state administrators to better
 #' reflect where the bulk of a zip code's population lives. Because of this
@@ -110,7 +110,7 @@
 #' authoritative county-level count; they are ESSENCE's standardized
 #' construct for enabling consistent sub-state reporting across data
 #' sources, not ground truth. This function reassigns `Region` using
-#' whatever mapping is already present in `HospitalRegion` -- it does not
+#' whatever mapping is already present in `HospitalRegion`; it does not
 #' independently geocode or validate that mapping.
 #'
 #' `essence_raw`/`essence_clean` and the examples throughout this package
@@ -118,7 +118,7 @@
 #' reflects patient residence for the jurisdiction of interest. In a
 #' **facility location** pull (`va_hosp`), the population represented
 #' includes both residents and visitors who presented for care at
-#' in-jurisdiction facilities -- `assign_facility_geography()` is the
+#' in-jurisdiction facilities; `assign_facility_geography()` is the
 #' more natural fit for that data source, since it scopes every row to
 #' where care was received rather than mixing residence-based and
 #' visitor rows under one semantic.
@@ -127,7 +127,7 @@
 #' `preserve_original_geographies` only has an effect in `overwrite = TRUE`
 #' mode. When `new_region_col`/`new_zip_col` write to new columns (the
 #' default), `region_col`/`zip_col` are never touched, so there is nothing
-#' to preserve -- the original values already remain exactly where they
+#' to preserve: the original values already remain exactly where they
 #' were. When `overwrite = TRUE` and `preserve_original_geographies = TRUE`,
 #' `original_region` and/or `original_zip_code` columns are added before
 #' overwriting, retaining the pre-overwrite values for QA, audit trails, or
@@ -150,7 +150,7 @@
 #'   Unquoted column name for the hospital zip code field. Defaults to
 #'   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
 #' @param new_region_col Character string or `NULL`. Name of the column to
-#'   write reassigned region values to. Defaults to `"region_hybrid"` -- a
+#'   write reassigned region values to. Defaults to `"region_hybrid"`: a
 #'   new column, leaving `region_col` untouched. Pass `NULL` to skip region
 #'   reassignment entirely. Pass `region_col`'s own name (with
 #'   `overwrite = TRUE`) to overwrite it in place instead of writing a new
@@ -160,7 +160,7 @@
 #'   Same behavior as `new_region_col`, independently, for zip.
 #' @param overwrite Logical. If `FALSE` (default), `new_region_col`/
 #'   `new_zip_col` naming a column that already exists in `data` aborts
-#'   rather than silently overwriting it. Set `TRUE` to allow it -- this is
+#'   rather than silently overwriting it. Set `TRUE` to allow it; this is
 #'   required to reproduce the original in-place-overwrite behavior. See
 #'   Details.
 #' @param preserve_original_geographies Logical. If `TRUE`, adds
@@ -180,7 +180,7 @@
 #'   `original_region` and/or `original_zip_code` columns are also present.
 #'
 #' @examples
-#' # Build a deduplicated, filtered base to demonstrate on -- essence_clean
+#' # Build a deduplicated, filtered base to demonstrate on: essence_clean
 #' # itself already has region_hybrid/region_facility applied, so it isn't a
 #' # fresh starting point for these examples
 #' ed_clean <- essence_raw |>
@@ -191,13 +191,13 @@
 #' # visits; region/zip_code themselves are never touched
 #' ed_clean |> assign_treating_geography()
 #'
-#' # Region only -- ZipCode not in pull
+#' # Region only: ZipCode not in pull
 #' ed_clean |> assign_treating_geography(new_zip_col = NULL)
 #'
 #' # Non-Kentucky site
 #' ed_clean |> assign_treating_geography(site = "OH")
 #'
-#' # Overwrite region/zip_code in place (the original behavior) -- requires
+#' # Overwrite region/zip_code in place (the original behavior); requires
 #' # naming the source columns explicitly and opting in with overwrite
 #' ed_clean |>
 #'   assign_treating_geography(
@@ -244,7 +244,7 @@ assign_treating_geography <- function(data,
   hosp_zip_col_str    <- if (!is.null(hosp_zip_sym))    rlang::as_string(hosp_zip_sym)
 
   # Which geography types to process is driven directly by new_region_col/
-  # new_zip_col -- NULL skips that type entirely ----
+  # new_zip_col: NULL skips that type entirely ----
   do_region <- !is.null(new_region_col)
   do_zip    <- !is.null(new_zip_col)
 
@@ -277,7 +277,7 @@ assign_treating_geography <- function(data,
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
-  # Resolve output columns -- aborts on a reserved-name collision, or on an
+  # Resolve output columns: aborts on a reserved-name collision, or on an
   # existing-column collision unless overwrite = TRUE. By default
   # new_region_col/new_zip_col name new columns, leaving region_col/zip_col
   # untouched; passing the source column's own name plus overwrite = TRUE
@@ -299,7 +299,7 @@ assign_treating_geography <- function(data,
 
   # Identify out-of-state / OTHER_REGION / unknown-residence visits ----
   # `"{site}_UNKNOWN"` (e.g. "KY_UNKNOWN") is ESSENCE's placeholder for a
-  # known-site record whose residential geography could not be determined --
+  # known-site record whose residential geography could not be determined;
   # unlike "OTHER_REGION", it carries the site prefix, so it would otherwise
   # pass the str_starts() check below and be silently left as "in-state" ----
   site_prefix <- paste0(site, "_")

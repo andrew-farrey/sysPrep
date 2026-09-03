@@ -26,7 +26,7 @@ encounter.}
 \item{arrived_date_time}{POSIXct. NSSP record receipt timestamp.}
 \item{has_been_e}{Integer. \code{1} for an ED pull; \code{0} on the two visits
 where a \code{patient_class_change} direct-admit row outranked the ED row
-under \code{dedupe(keep = "last")} -- see \code{c_patient_class} and
+under \code{dedupe(keep = "last")}; see \code{c_patient_class} and
 \code{?essence_raw}.}
 \item{has_been_admitted}{Integer. \code{1} if the visit resulted in
 inpatient admission.}
@@ -36,13 +36,13 @@ direct-admit continuation row over the original ED row (see
 \code{?essence_raw}); \code{"E"} otherwise. Unchanged by the preprocessing
 pipeline.}
 \item{region}{Character. Patient ESSENCE Region of residence in
-\verb{\{SITE\}_\{REGION\}} format, exactly as received -- never modified by
+\verb{\{SITE\}_\{REGION\}} format, exactly as received; never modified by
 either geography function.}
 \item{zip_code}{Character. Patient zip code, exactly as received.}
 \item{sex}{Character. \code{"M"}, \code{"F"}, or \code{"U"}.}
 \item{c_patient_age}{Integer. Patient age in years.}
 \item{.out_of_state}{Logical. \code{TRUE} for visits where \code{region} is
-out-of-state, \code{"OTHER_REGION"}, or unknown residence -- these are the
+out-of-state, \code{"OTHER_REGION"}, or unknown residence; these are the
 visits where \code{region_hybrid} differs from \code{region}. Added by
 \code{\link[=assign_treating_geography]{assign_treating_geography()}}.}
 \item{region_hybrid}{Character. \code{region} for in-state visits;
@@ -55,7 +55,7 @@ regardless of patient residence. Added by
 \code{\link[=assign_facility_geography]{assign_facility_geography()}}.}
 \item{zip_code_facility}{Character. \code{zip_code} analog of
 \code{region_facility}.}
-\item{.facility_geography}{Logical. Always \code{TRUE} -- signals that
+\item{.facility_geography}{Logical. Always \code{TRUE}; signals that
 facility geography has been computed for every row. Added by
 \code{\link[=assign_facility_geography]{assign_facility_geography()}}.}
 }
@@ -71,7 +71,7 @@ essence_clean
 The result of running \code{essence_raw} through the full \code{sysPrep} preprocessing
 pipeline: deduplication, care setting filtering with FSED correction, and
 both geography attribution functions chained on their default (additive)
-behavior -- \code{region}/\code{zip_code} are the untouched originals throughout;
+behavior: \code{region}/\code{zip_code} are the untouched originals throughout;
 \code{\link[=assign_treating_geography]{assign_treating_geography()}} and \code{\link[=assign_facility_geography]{assign_facility_geography()}} each add
 their own new columns alongside them rather than overwriting. Intended to
 demonstrate the expected output of the package workflow and to serve as

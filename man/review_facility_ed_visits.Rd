@@ -69,7 +69,7 @@ and outlier flag columns \code{.outlier_low}, \code{.outlier_high},
 \code{.outlier_flag}, \code{.outlier_direction}, and \code{.outlier_method}.
 }
 \description{
-Computes visit counts per facility and flags statistical outliers --
+Computes visit counts per facility and flags statistical outliers:
 facilities with disproportionately low or high visit volumes relative to
 the pull as a whole. Intended as an ongoing data quality monitoring tool
 for production surveillance pipelines, where unexpectedly low counts may
@@ -82,7 +82,7 @@ misconfiguration.
 
 Low-count outliers are expected and normal for narrow syndrome definitions,
 particularly at small rural hospitals. A rural ED with two opioid overdose
-visits in a given month is not a data quality problem -- it may reflect
+visits in a given month is not a data quality problem; it may reflect
 true low incidence. This function is best used on \strong{denominator data}
 (all-cause ED visits) where facility volumes are stable and comparable.
 When applied to narrow case definitions, some ED facilities will routinely
@@ -100,7 +100,7 @@ distribution. Default thresholds of 5th and 95th percentile are
 interpretable and robust to skewed count distributions.}
 \item{\code{"iqr"}}{Flags facilities below \code{Q1 - iqr_multiplier * IQR} and
 above \code{Q3 + iqr_multiplier * IQR}. Tukey fences with the default
-multiplier of 1.5 are sensitive to data dropouts -- a facility that
+multiplier of 1.5 are sensitive to data dropouts: a facility that
 abruptly stops sending visits during a pull window will fall well
 below the lower fence. Increase \code{iqr_multiplier} to reduce
 sensitivity.}

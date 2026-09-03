@@ -24,8 +24,6 @@
     "Control and Prevention (CDC).\n\n",
     "Docs:      https://andrew-farrey.github.io/sysPrep/\n",
     "Vignettes: browseVignettes(\"sysPrep\")\n\n",
-    "Built with \u2764\ufe0f by a member of the NSSP Community of Practice.\n",
-    "\n",
     "Deduplication method used by your site not present?\n",
     "Please let me know by submitting an issue here:\n",
     "https://github.com/andrew-farrey/sysPrep/issues"

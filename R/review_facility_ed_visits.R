@@ -2,7 +2,7 @@
 # review_facility_ed_visits() ----
 #' Review facility ED visit counts for data quality assessment
 #'
-#' Computes visit counts per facility and flags statistical outliers --
+#' Computes visit counts per facility and flags statistical outliers:
 #' facilities with disproportionately low or high visit volumes relative to
 #' the pull as a whole. Intended as an ongoing data quality monitoring tool
 #' for production surveillance pipelines, where unexpectedly low counts may
@@ -14,7 +14,7 @@
 #' ## Interpreting results
 #' Low-count outliers are expected and normal for narrow syndrome definitions,
 #' particularly at small rural hospitals. A rural ED with two opioid overdose
-#' visits in a given month is not a data quality problem -- it may reflect
+#' visits in a given month is not a data quality problem; it may reflect
 #' true low incidence. This function is best used on **denominator data**
 #' (all-cause ED visits) where facility volumes are stable and comparable.
 #' When applied to narrow case definitions, some ED facilities will routinely
@@ -30,7 +30,7 @@
 #'     interpretable and robust to skewed count distributions.}
 #'   \item{`"iqr"`}{Flags facilities below `Q1 - iqr_multiplier * IQR` and
 #'     above `Q3 + iqr_multiplier * IQR`. Tukey fences with the default
-#'     multiplier of 1.5 are sensitive to data dropouts -- a facility that
+#'     multiplier of 1.5 are sensitive to data dropouts: a facility that
 #'     abruptly stops sending visits during a pull window will fall well
 #'     below the lower fence. Increase `iqr_multiplier` to reduce
 #'     sensitivity.}
@@ -169,7 +169,7 @@ review_facility_ed_visits <- function(data,
     inform_if(
       verbose,
       paste0(
-        "No `date_col` supplied -- using raw visit counts. ",
+        "No `date_col` supplied; using raw visit counts. ",
         "Supply a date column (e.g., `date_col = Date`) to normalize to ",
         "visits per day for dropout detection or cross-pull comparisons."
       )
@@ -218,7 +218,7 @@ review_facility_ed_visits <- function(data,
     facility_counts
   }
 
-  # Only compute the quantiles the chosen `method` actually uses -- e.g. the
+  # Only compute the quantiles the chosen `method` actually uses, e.g. the
   # IQR quantiles are wasted work (recomputed per group) under the default
   # method = "percentile", and vice versa for method = "iqr".
   needs_pct <- method != "iqr"
@@ -254,7 +254,7 @@ review_facility_ed_visits <- function(data,
 
   # Apply outlier flags ----
   # `method` is a single scalar value for the whole call, so the comparison
-  # is chosen once with if/else rather than dplyr::case_when() -- case_when()
+  # is chosen once with if/else rather than dplyr::case_when(); case_when()
   # with a scalar LHS and vector RHS is deprecated as of dplyr 1.2.0.
   facility_counts <- facility_counts |>
     dplyr::mutate(

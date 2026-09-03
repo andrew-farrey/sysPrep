@@ -43,7 +43,7 @@ Unquoted column name for the hospital zip code field. Defaults to
 \code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{new_region_col}{Character string or \code{NULL}. Name of the column to
-write reassigned region values to. Defaults to \code{"region_hybrid"} -- a
+write reassigned region values to. Defaults to \code{"region_hybrid"}: a
 new column, leaving \code{region_col} untouched. Pass \code{NULL} to skip region
 reassignment entirely. Pass \code{region_col}'s own name (with
 \code{overwrite = TRUE}) to overwrite it in place instead of writing a new
@@ -55,7 +55,7 @@ Same behavior as \code{new_region_col}, independently, for zip.}
 
 \item{overwrite}{Logical. If \code{FALSE} (default), \code{new_region_col}/
 \code{new_zip_col} naming a column that already exists in \code{data} aborts
-rather than silently overwriting it. Set \code{TRUE} to allow it -- this is
+rather than silently overwriting it. Set \code{TRUE} to allow it; this is
 required to reproduce the original in-place-overwrite behavior. See
 Details.}
 
@@ -80,8 +80,8 @@ column is added indicating which rows were reassigned. When
 }
 \description{
 Identifies visits where the patient's recorded \code{Region} does not belong to
-the site of interest -- including out-of-state residents and visits with
-\code{OTHER_REGION} or missing \code{Region} values -- and writes the treating
+the site of interest, including out-of-state residents and visits with
+\code{OTHER_REGION} or missing \code{Region} values, and writes the treating
 hospital's corresponding geographic fields (\code{HospitalRegion} and/or
 \code{HospitalZip}) for those visits to \code{new_region_col}/\code{new_zip_col}. By
 default this writes new columns (\code{region_hybrid}/\code{zip_code_hybrid}),
@@ -96,7 +96,7 @@ ESSENCE surveillance data includes visits from out-of-state residents and
 patients whose legal address is unavailable to the treating facility
 (\code{OTHER_REGION}). Simply discarding these visits understates the true
 incidence burden experienced by facilities in the surveillance area.
-This dropping is rarely a deliberate choice -- a region-based map or
+This dropping is rarely a deliberate choice: a region-based map or
 summary table scoped to in-state values will silently exclude these rows
 without an explicit filter. EMS-based systems report incidence at the
 location of care rather than patient residence; this function brings
@@ -109,17 +109,17 @@ single geographic field.
 \subsection{Site prefix detection}{
 
 The \code{Region} field uses the format \verb{\{SITE\}_\{REGION\}}, where \code{SITE} is
-the NSSP Site Short Name and \code{REGION} is the ESSENCE Region -- a county
+the NSSP Site Short Name and \code{REGION} is the ESSENCE Region, a county
 name derived from a zip-code-to-county lookup table maintained by
 ESSENCE. Because some site names contain multiple underscores, the
 prefix is all characters before the \strong{last} underscore. A visit is
 classified as out-of-state or unknown residence when its \code{Region} does
 not begin with \code{paste0(site, "_")}, or when \code{Region} is \code{"OTHER_REGION"},
 \code{paste0(site, "_UNKNOWN")} (e.g. \code{"KY_UNKNOWN"}), or \code{NA}. Unlike
-\code{"OTHER_REGION"}, the \code{"{site}_UNKNOWN"} form carries the site prefix --
+\code{"OTHER_REGION"}, the \code{"{site}_UNKNOWN"} form carries the site prefix:
 ESSENCE uses it for a known-site record whose residential geography
 could not be determined, as distinct from a residence that is genuinely
-unmapped to any region -- so it is checked explicitly rather than relying
+unmapped to any region, so it is checked explicitly rather than relying
 on the prefix mismatch below. For example, with \code{site = "KY"}:
 \itemize{
 \item \code{"KY_Jefferson"} -> in-state, unchanged
@@ -133,20 +133,20 @@ on the prefix mismatch below. For example, with \code{site = "KY"}:
 
 Both region and zip are attempted by default (\code{new_region_col} and
 \code{new_zip_col} both default to a column name). Pass \code{NULL} to either to
-skip that type entirely -- e.g. \code{new_zip_col = NULL} to reassign only
+skip that type entirely, e.g. \code{new_zip_col = NULL} to reassign only
 region. If the source columns required for a requested type are absent,
 that type is skipped with an informative message regardless of
 \code{new_region_col}/\code{new_zip_col}.
 
 By default, results are written to new columns (\code{region_hybrid}/
-\code{zip_code_hybrid}), and \code{region_col}/\code{zip_col} are never modified -- safe
+\code{zip_code_hybrid}), and \code{region_col}/\code{zip_col} are never modified; safe
 to call repeatedly without risk of losing the original values. To
 overwrite \code{region_col}/\code{zip_col} in place instead (the only behavior this
 function had before this parameter existed), pass their own name to
 \code{new_region_col}/\code{new_zip_col} and set \code{overwrite = TRUE}:
 \code{assign_treating_geography(new_region_col = "region", overwrite = TRUE)}.
 \code{overwrite} guards \strong{any} collision with an existing column, not just
-the source column -- if \code{new_region_col}/\code{new_zip_col} names a column
+the source column: if \code{new_region_col}/\code{new_zip_col} names a column
 that already exists in \code{data} for any reason, \code{overwrite = TRUE} is
 required or the function aborts rather than silently overwriting it.
 }
@@ -158,7 +158,7 @@ patient residential geography is preserved unchanged, while out-of-state
 and \code{OTHER_REGION} visits are attributed to the treating facility's
 geography rather than discarded. This matters for cluster detection: a
 geographically concentrated surge of out-of-state overdoses at a single
-facility -- common near state borders or in tourist destinations -- will
+facility, common near state borders or in tourist destinations, will
 appear in facility-level and county-level signals only if those visits
 are attributed to the treating location. Discarding them suppresses the
 signal entirely.
@@ -190,7 +190,7 @@ Because the underlying lookup table is not publicly accessible, this function
 does not support reassigning NSSP-site-submitted custom region fields.
 
 \code{Region} is a maintained many-to-one zip-to-county mapping
-(\code{Zipcode_to_CountyRegionMapping}), not a live geocode of the record --
+(\code{Zipcode_to_CountyRegionMapping}), not a live geocode of the record;
 zip codes are assigned to a region by centroid by default, but individual
 assignments may be overridden by site or state administrators to better
 reflect where the bulk of a zip code's population lives. Because of this
@@ -198,7 +198,7 @@ approximation, \code{Region}-based results should not be construed as the
 authoritative county-level count; they are ESSENCE's standardized
 construct for enabling consistent sub-state reporting across data
 sources, not ground truth. This function reassigns \code{Region} using
-whatever mapping is already present in \code{HospitalRegion} -- it does not
+whatever mapping is already present in \code{HospitalRegion}; it does not
 independently geocode or validate that mapping.
 
 \code{essence_raw}/\code{essence_clean} and the examples throughout this package
@@ -206,7 +206,7 @@ model an ESSENCE \strong{patient location} pull (\code{va_er}), where \code{Regi
 reflects patient residence for the jurisdiction of interest. In a
 \strong{facility location} pull (\code{va_hosp}), the population represented
 includes both residents and visitors who presented for care at
-in-jurisdiction facilities -- \code{assign_facility_geography()} is the
+in-jurisdiction facilities; \code{assign_facility_geography()} is the
 more natural fit for that data source, since it scopes every row to
 where care was received rather than mixing residence-based and
 visitor rows under one semantic.
@@ -217,7 +217,7 @@ visitor rows under one semantic.
 \code{preserve_original_geographies} only has an effect in \code{overwrite = TRUE}
 mode. When \code{new_region_col}/\code{new_zip_col} write to new columns (the
 default), \code{region_col}/\code{zip_col} are never touched, so there is nothing
-to preserve -- the original values already remain exactly where they
+to preserve: the original values already remain exactly where they
 were. When \code{overwrite = TRUE} and \code{preserve_original_geographies = TRUE},
 \code{original_region} and/or \code{original_zip_code} columns are added before
 overwriting, retaining the pre-overwrite values for QA, audit trails, or
@@ -225,7 +225,7 @@ residential vs. treating geography comparisons.
 }
 }
 \examples{
-# Build a deduplicated, filtered base to demonstrate on -- essence_clean
+# Build a deduplicated, filtered base to demonstrate on: essence_clean
 # itself already has region_hybrid/region_facility applied, so it isn't a
 # fresh starting point for these examples
 ed_clean <- essence_raw |>
@@ -236,13 +236,13 @@ ed_clean <- essence_raw |>
 # visits; region/zip_code themselves are never touched
 ed_clean |> assign_treating_geography()
 
-# Region only -- ZipCode not in pull
+# Region only: ZipCode not in pull
 ed_clean |> assign_treating_geography(new_zip_col = NULL)
 
 # Non-Kentucky site
 ed_clean |> assign_treating_geography(site = "OH")
 
-# Overwrite region/zip_code in place (the original behavior) -- requires
+# Overwrite region/zip_code in place (the original behavior); requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_treating_geography(

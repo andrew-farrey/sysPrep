@@ -73,8 +73,8 @@ mechanisms, each with different causes and implications:
 concatenating \code{C_Visit_Date}, \code{C_BioSense_Facility_ID} (\code{Hospital}),
 and \code{C_Unique_Patient_ID}. \code{C_Visit_Date} itself takes its date value
 from \code{C_Visit_Date_Time}. When a hospital's system updates
-\code{C_Visit_Date_Time} as providers interact with the patient -- rather
-than fixing it at initial registration -- and one such update crosses
+\code{C_Visit_Date_Time} as providers interact with the patient, rather
+than fixing it at initial registration, and one such update crosses
 midnight, \code{C_Visit_Date} changes to the next calendar day, which
 recomputes \code{C_BioSense_ID} for the same \code{Visit_ID} and produces two
 rows that refer to the same encounter. This is the most widespread
@@ -89,20 +89,20 @@ group.}
 \item{\code{"pid_change"}}{\code{C_Unique_Patient_ID} (which maps to MRN in
 Kentucky) is also one of the three fields concatenated into
 \code{C_BioSense_ID}, so updating it mid-visit recomputes \code{C_BioSense_ID}
-and produces a new row -- for example, when an initial local
+and produces a new row, for example, when an initial local
 (facility- or department-specific) MRN is replaced with a
 community-wide or health-system-level MRN, or with a different local
 MRN. Detected by multiple distinct \code{C_Unique_Patient_ID} values
 within a group. Not all ESSENCE sites use MRN as
 \code{C_Unique_Patient_ID}.}
 \item{\code{"patient_class_change"}}{Under normal HL7 processing, patient
-class transitions are handled without generating duplicate rows --
+class transitions are handled without generating duplicate rows:
 the transition is appended to \code{C_Patient_Class_List} and the
 \code{HasBeenE}, \code{HasBeenI}, \code{HasBeenAdmitted} flags are updated in place.
 This type is detected when the same \code{Visit_ID} appears with multiple
 distinct \code{c_patient_class} values, which may indicate a feed
 configuration issue or a concurrent triggering event. Requires
-\code{c_patient_class} to be present in the data -- available via the
+\code{c_patient_class} to be present in the data; available via the
 standard ESSENCE API. See also \code{\link[=link_encounters]{link_encounters()}} for burden
 estimation from multi-class episodes.}
 \item{\code{"type_unknown"}}{Multiple rows exist but all assessed fields
@@ -135,15 +135,15 @@ functional.
 \subsection{Linked vs. unlinked input}{
 
 \code{classify_duplicates()} can be run on a raw (unlinked) ESSENCE pull, or on
-the long-format output of \code{\link[=link_encounters]{link_encounters()}} -- it only requires
+the long-format output of \code{\link[=link_encounters]{link_encounters()}}: it only requires
 \code{facility_col}/\code{visit_col} and the identifying columns above, regardless
 of which record structure they come from. Either way, \code{patient_class_change}
 (and every other type here) is detected from rows that still exist
 side-by-side with a shared \code{facility_col} x \code{visit_col} key: it looks for
 more than one distinct value of a field (here, \code{c_patient_class}) across
 those rows, not from any single row. Once those rows have already been
-collapsed into one -- e.g. by \code{\link[=dedupe]{dedupe()}}, or by \code{\link[=link_encounters]{link_encounters()}} with
-\code{return_format = "collapsed"} -- there is only one row left per key, so
+collapsed into one, e.g. by \code{\link[=dedupe]{dedupe()}}, or by \code{\link[=link_encounters]{link_encounters()}} with
+\code{return_format = "collapsed"}, there is only one row left per key, so
 \code{n_rows == 1} and nothing is classified as a duplicate at all, regardless
 of what mechanism originally produced the now-merged rows. Classify before
 collapsing if you want to see which mechanism was responsible.
@@ -157,7 +157,7 @@ with \verb{$duplicate_ids}, \verb{$visit_groups}, \verb{$by_facility}, and
 \verb{$overall}. \verb{$duplicate_ids} is a tibble of facility x visit_col
 pairs with more than one row, consistent with
 \code{\link[=summarize_duplicates]{summarize_duplicates()}}\verb{$duplicate_ids}.}
-\item{\code{"tibble"}}{The visit-group level summary tibble only -- one row
+\item{\code{"tibble"}}{The visit-group level summary tibble only: one row
 per facility x visit_col with \code{dup_type} and supporting \verb{n_*}
 metrics. Suitable for joining back to original data or piping into
 further analysis.}

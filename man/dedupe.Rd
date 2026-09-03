@@ -69,7 +69,7 @@ duplication in a specific pull before deduplicating.
 \subsection{Deduplication key}{
 
 The deduplication key is always \verb{facility_col x visit_col}. Visit_ID is
-unique within a facility in ESSENCE -- the same Visit_ID at two different
+unique within a facility in ESSENCE; the same Visit_ID at two different
 facilities represents two distinct encounters and is not collapsed.
 }
 
@@ -80,7 +80,7 @@ facilities represents two distinct encounters and is not collapsed.
 \code{order_by} is supplied, retains the earliest record by that column.
 Fastest and most transparent.}
 \item{\code{"last"}}{Retains the final row. When \code{order_by} is supplied,
-retains the most recently received record -- appropriate when ESSENCE
+retains the most recently received record; appropriate when ESSENCE
 records are updated chronologically and later rows reflect corrected
 information. Use \code{Arrived_Date_Time} as \code{order_by} to retain the most
 recently transmitted version of each record.}

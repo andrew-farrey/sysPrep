@@ -30,10 +30,10 @@ patient or facility data are included.
 \subsection{Visit types included}{
 
 \describe{
-\item{Plain ED-only visits}{\code{HasBeenE = 1}, \code{HasBeenAdmitted = 0} --
+\item{Plain ED-only visits}{\code{HasBeenE = 1}, \code{HasBeenAdmitted = 0}:
 the majority of rows.}
 \item{Correctly carried-through escalation}{\code{HasBeenE = 1} and
-\code{HasBeenAdmitted = 1} on one already-deduplicated record -- needs no
+\code{HasBeenAdmitted = 1} on one already-deduplicated record; needs no
 cross-pull linking, since there is only ever one record. These 2
 visits also have \code{HasBeenI = 1}, so that
 \code{link_encounters()}'s preference for \code{HasBeenAdmitted} over

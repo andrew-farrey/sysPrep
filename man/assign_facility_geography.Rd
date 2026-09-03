@@ -38,7 +38,7 @@ Unquoted column name for the hospital zip code field. Defaults to
 \code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{new_region_col}{Character string or \code{NULL}. Name of the column to
-write facility region values to. Defaults to \code{"region_facility"} -- a
+write facility region values to. Defaults to \code{"region_facility"}: a
 new column, leaving \code{region_col} untouched. Pass \code{NULL} to skip region
 entirely. Pass \code{region_col}'s own name (with \code{overwrite = TRUE}) to
 overwrite it in place instead. See Details.}
@@ -49,7 +49,7 @@ Same behavior as \code{new_region_col}, independently, for zip.}
 
 \item{overwrite}{Logical. If \code{FALSE} (default), \code{new_region_col}/
 \code{new_zip_col} naming a column that already exists in \code{data} aborts
-rather than silently overwriting it. Set \code{TRUE} to allow it -- this is
+rather than silently overwriting it. Set \code{TRUE} to allow it; this is
 required to reproduce the original in-place-overwrite behavior. See
 Details.}
 
@@ -80,7 +80,7 @@ for \strong{all} visits, regardless of patient residence. By default this
 writes new columns (\code{region_facility}/\code{zip_code_facility}), leaving
 \code{Region}/\code{ZipCode} untouched; set \code{overwrite = TRUE} to overwrite them in
 place instead. This scopes geography to true incidence-at-location (to
-the extent NSSP ESSENCE supports it) -- by attributing every visit to
+the extent NSSP ESSENCE supports it) by attributing every visit to
 where care was received rather than where the patient resides.
 }
 \details{
@@ -88,7 +88,7 @@ where care was received rather than where the patient resides.
 
 \code{\link[=assign_treating_geography]{assign_treating_geography()}} selectively reassigns geography only for
 out-of-state and \code{OTHER_REGION} visits, preserving residential geography
-for in-state patients -- a hybrid approach. \code{assign_facility_geography()}
+for in-state patients: a hybrid approach. \code{assign_facility_geography()}
 applies reassignment universally: all visits, including in-state patients,
 receive the treating facility's geography. This produces a dataset scoped
 entirely to incidence-at-location rather than patient residence.
@@ -124,7 +124,7 @@ clustering requires latitude/longitude coordinates sourced from the NSSP
 Master Facility Table, an additional logistical step outside the standard
 ESSENCE data pull. Region-level binning achieves a close approximation of
 hospital-level cluster detection using \code{HospitalRegion}/\code{HospitalZip}
-instead -- provided they're included in the pull. Neither is guaranteed
+instead, provided they're included in the pull. Neither is guaranteed
 by default; both require being part of your site's default returned
 columns or explicitly requested via the API's \verb{&field=} parameter.
 }
@@ -133,8 +133,8 @@ One consequence of region-level attribution is that detectable cluster
 polygons are limited to regions that contain at least one participating
 ESSENCE facility. Regions with no participating hospitals cannot contribute
 counts and will not appear as cluster candidates, regardless of actual
-burden in those areas. This is not unique to this approach -- it is a
-general property of facility-based surveillance -- but it is worth noting
+burden in those areas. This is not unique to this approach; it is a
+general property of facility-based surveillance, but it is worth noting
 explicitly when interpreting spatial cluster output.
 
 This method is currently being evaluated for adoption as an additional
@@ -151,7 +151,7 @@ than where they live.
 \item Approximating hospital-level cluster detection without Master Facility
 Table lookups or coordinate-based spatial methods.
 \item Comparing total treated volume across urban and rural counties without
-differentiating which specific hospital saw each visit -- useful when a
+differentiating which specific hospital saw each visit, useful when a
 facility-to-county lookup table isn't available but \code{HospitalRegion}/
 \code{HospitalZip} already are. The tradeoff is the one described above: a
 county with no participating ESSENCE facility always shows \code{0},
@@ -162,7 +162,7 @@ regardless of actual resident burden.
 \subsection{ESSENCE Region field and facility location pulls}{
 
 \code{HospitalRegion}, like \code{Region}, is drawn from a maintained zip-to-county
-mapping rather than a live geocode -- by default assigned from the
+mapping rather than a live geocode: by default assigned from the
 facility's zip code centroid, though site administrators can override
 this via BioSense Access Management to instead reflect the facility's
 listed county. \code{Region}-based output should not be construed as an
@@ -173,7 +173,7 @@ This function's output is best understood as approximating an ESSENCE
 was received, so the resulting population is a combination of
 jurisdiction residents and visitors who presented at in-jurisdiction
 facilities. This differs from a \strong{patient location} pull (\code{va_er}),
-which \code{\link[=assign_treating_geography]{assign_treating_geography()}} is closer to preserving -- see that
+which \code{\link[=assign_treating_geography]{assign_treating_geography()}} is closer to preserving; see that
 function's documentation for the same caveat on \code{Region} field
 interpretation.
 }
@@ -191,21 +191,21 @@ overwrite \code{region_col}/\code{zip_col} in place instead (the only behavior t
 function had before this parameter existed), pass their own name to
 \code{new_region_col}/\code{new_zip_col} and set \code{overwrite = TRUE}. \code{overwrite}
 guards \strong{any} collision with an existing column, not just the source
-column -- see \code{\link[=assign_treating_geography]{assign_treating_geography()}}'s documentation for the full
+column; see \code{\link[=assign_treating_geography]{assign_treating_geography()}}'s documentation for the full
 behavior, which is identical here.
 }
 
 \subsection{Preserved geographies}{
 
 \code{preserve_original_geographies} only has an effect in \code{overwrite = TRUE}
-mode -- see \code{\link[=assign_treating_geography]{assign_treating_geography()}}. When it does apply here, since
+mode; see \code{\link[=assign_treating_geography]{assign_treating_geography()}}. When it does apply here, since
 all rows are reassigned, \code{original_region}/\code{original_zip_code} retain the
 original patient residential geography for every visit, enabling
 residential vs. treating geography comparisons in a single dataset.
 }
 }
 \examples{
-# Build a deduplicated, filtered base to demonstrate on -- essence_clean
+# Build a deduplicated, filtered base to demonstrate on: essence_clean
 # itself already has region_hybrid/region_facility applied, so it isn't a
 # fresh starting point for these examples
 ed_clean <- essence_raw |>
@@ -216,7 +216,7 @@ ed_clean <- essence_raw |>
 # region/zip_code themselves are never touched
 ed_clean |> assign_facility_geography()
 
-# Overwrite region/zip_code in place (the original behavior) -- requires
+# Overwrite region/zip_code in place (the original behavior); requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_facility_geography(

@@ -35,7 +35,7 @@ ESSENCE data before \code{\link[=dedupe]{dedupe()}}.
 
 A duplicate is any \verb{facility_col x visit_col} group containing more than
 one row. The same \code{Visit_ID} appearing at two different facilities does
-not constitute a duplicate -- \code{Visit_ID} is unique only within a facility.
+not constitute a duplicate: \code{Visit_ID} is unique only within a facility.
 Duplicate detection is therefore always scoped to \verb{facility x visit_col}.
 }
 

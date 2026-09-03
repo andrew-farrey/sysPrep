@@ -43,7 +43,7 @@ inpatient admission (discharge-disposition aware).}
 class (\code{"E"} for ED, \code{"I"} for inpatient). \code{classify_duplicates()}
 detects \code{patient_class_change} duplicates generically, from any two
 rows sharing a \verb{facility x Visit_ID} key with distinct
-\code{C_Patient_Class} values -- not a specific from/to pair. \code{"E"} to
+\code{C_Patient_Class} values, not a specific from/to pair. \code{"E"} to
 \code{"I"} is used here only as a common, realistic illustration; see
 Details.}
 \item{Region}{Character. Patient ESSENCE Region of residence in
@@ -79,24 +79,24 @@ values are entirely synthetic. No real patient or facility data are included.
 
 \describe{
 \item{\code{standard}}{5 visits with an extra row differing only in
-\code{Arrived_Date_Time} -- representing a record retransmission.}
+\code{Arrived_Date_Time}, representing a record retransmission.}
 \item{\code{visit_date_change}}{3 visits with a second row carrying a new
-\code{C_BioSense_ID} and a \code{Date} advanced by 1 day -- representing a
+\code{C_BioSense_ID} and a \code{Date} advanced by 1 day, representing a
 midnight-crossing visit where \code{Admit_Date_Time} was updated.}
 \item{\code{pid_change}}{2 visits with a second row carrying a different
-\code{C_Unique_Patient_ID} -- representing a corrected patient identifier.}
+\code{C_Unique_Patient_ID}, representing a corrected patient identifier.}
 \item{\code{patient_class_change}}{2 visits with a second row carrying
 \code{C_Patient_Class = "I"} (\code{HasBeenE}/\code{HasBeenAdmitted} flipped to
 match) against the original row's \code{"E"}, and later \code{C_Visit_Date_Time}/
-\code{Arrived_Date_Time} values -- representing an ED visit and its
+\code{Arrived_Date_Time} values, representing an ED visit and its
 direct-admit continuation transmitted as two records sharing one
 \code{Visit_ID} rather than one record with an updated
 \code{C_Patient_Class_List}. Since \code{dedupe(keep = "last")} keeps the more
 recent row by \code{Arrived_Date_Time}, these two visits survive into
-\link{essence_clean} as \code{c_patient_class = "I"} -- the ED encounter is
+\link{essence_clean} as \code{c_patient_class = "I"}: the ED encounter is
 silently dropped by deduplication alone, illustrating the gap
 \code{link_encounters()} is designed to catch instead. \code{essence_raw} is
-not itself used to demonstrate \code{link_encounters()} -- see
+not itself used to demonstrate \code{link_encounters()}; see
 \link{essence_ed_raw}/\link{essence_inp_raw}, which are purpose-built for
 that.}
 \item{\code{visit_date_change+pid_change}}{1 visit exhibiting both

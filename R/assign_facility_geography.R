@@ -8,14 +8,14 @@
 #' writes new columns (`region_facility`/`zip_code_facility`), leaving
 #' `Region`/`ZipCode` untouched; set `overwrite = TRUE` to overwrite them in
 #' place instead. This scopes geography to true incidence-at-location (to
-#' the extent NSSP ESSENCE supports it) -- by attributing every visit to
+#' the extent NSSP ESSENCE supports it) by attributing every visit to
 #' where care was received rather than where the patient resides.
 #'
 #' @details
 #' ## Why this function exists
 #' [assign_treating_geography()] selectively reassigns geography only for
 #' out-of-state and `OTHER_REGION` visits, preserving residential geography
-#' for in-state patients -- a hybrid approach. `assign_facility_geography()`
+#' for in-state patients: a hybrid approach. `assign_facility_geography()`
 #' applies reassignment universally: all visits, including in-state patients,
 #' receive the treating facility's geography. This produces a dataset scoped
 #' entirely to incidence-at-location rather than patient residence.
@@ -50,7 +50,7 @@
 #'   Master Facility Table, an additional logistical step outside the standard
 #'   ESSENCE data pull. Region-level binning achieves a close approximation of
 #'   hospital-level cluster detection using `HospitalRegion`/`HospitalZip`
-#'   instead -- provided they're included in the pull. Neither is guaranteed
+#'   instead, provided they're included in the pull. Neither is guaranteed
 #'   by default; both require being part of your site's default returned
 #'   columns or explicitly requested via the API's `&field=` parameter.
 #'
@@ -58,8 +58,8 @@
 #' polygons are limited to regions that contain at least one participating
 #' ESSENCE facility. Regions with no participating hospitals cannot contribute
 #' counts and will not appear as cluster candidates, regardless of actual
-#' burden in those areas. This is not unique to this approach -- it is a
-#' general property of facility-based surveillance -- but it is worth noting
+#' burden in those areas. This is not unique to this approach; it is a
+#' general property of facility-based surveillance, but it is worth noting
 #' explicitly when interpreting spatial cluster output.
 #'
 #' This method is currently being evaluated for adoption as an additional
@@ -74,7 +74,7 @@
 #' - Approximating hospital-level cluster detection without Master Facility
 #'   Table lookups or coordinate-based spatial methods.
 #' - Comparing total treated volume across urban and rural counties without
-#'   differentiating which specific hospital saw each visit -- useful when a
+#'   differentiating which specific hospital saw each visit, useful when a
 #'   facility-to-county lookup table isn't available but `HospitalRegion`/
 #'   `HospitalZip` already are. The tradeoff is the one described above: a
 #'   county with no participating ESSENCE facility always shows `0`,
@@ -82,7 +82,7 @@
 #'
 #' ## ESSENCE Region field and facility location pulls
 #' `HospitalRegion`, like `Region`, is drawn from a maintained zip-to-county
-#' mapping rather than a live geocode -- by default assigned from the
+#' mapping rather than a live geocode: by default assigned from the
 #' facility's zip code centroid, though site administrators can override
 #' this via BioSense Access Management to instead reflect the facility's
 #' listed county. `Region`-based output should not be construed as an
@@ -93,7 +93,7 @@
 #' was received, so the resulting population is a combination of
 #' jurisdiction residents and visitors who presented at in-jurisdiction
 #' facilities. This differs from a **patient location** pull (`va_er`),
-#' which [assign_treating_geography()] is closer to preserving -- see that
+#' which [assign_treating_geography()] is closer to preserving; see that
 #' function's documentation for the same caveat on `Region` field
 #' interpretation.
 #'
@@ -109,12 +109,12 @@
 #' function had before this parameter existed), pass their own name to
 #' `new_region_col`/`new_zip_col` and set `overwrite = TRUE`. `overwrite`
 #' guards **any** collision with an existing column, not just the source
-#' column -- see [assign_treating_geography()]'s documentation for the full
+#' column; see [assign_treating_geography()]'s documentation for the full
 #' behavior, which is identical here.
 #'
 #' ## Preserved geographies
 #' `preserve_original_geographies` only has an effect in `overwrite = TRUE`
-#' mode -- see [assign_treating_geography()]. When it does apply here, since
+#' mode; see [assign_treating_geography()]. When it does apply here, since
 #' all rows are reassigned, `original_region`/`original_zip_code` retain the
 #' original patient residential geography for every visit, enabling
 #' residential vs. treating geography comparisons in a single dataset.
@@ -133,7 +133,7 @@
 #'   Unquoted column name for the hospital zip code field. Defaults to
 #'   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
 #' @param new_region_col Character string or `NULL`. Name of the column to
-#'   write facility region values to. Defaults to `"region_facility"` -- a
+#'   write facility region values to. Defaults to `"region_facility"`: a
 #'   new column, leaving `region_col` untouched. Pass `NULL` to skip region
 #'   entirely. Pass `region_col`'s own name (with `overwrite = TRUE`) to
 #'   overwrite it in place instead. See Details.
@@ -142,7 +142,7 @@
 #'   Same behavior as `new_region_col`, independently, for zip.
 #' @param overwrite Logical. If `FALSE` (default), `new_region_col`/
 #'   `new_zip_col` naming a column that already exists in `data` aborts
-#'   rather than silently overwriting it. Set `TRUE` to allow it -- this is
+#'   rather than silently overwriting it. Set `TRUE` to allow it; this is
 #'   required to reproduce the original in-place-overwrite behavior. See
 #'   Details.
 #' @param preserve_original_geographies Logical. If `TRUE`, adds
@@ -163,7 +163,7 @@
 #'   `original_zip_code` columns are also present.
 #'
 #' @examples
-#' # Build a deduplicated, filtered base to demonstrate on -- essence_clean
+#' # Build a deduplicated, filtered base to demonstrate on: essence_clean
 #' # itself already has region_hybrid/region_facility applied, so it isn't a
 #' # fresh starting point for these examples
 #' ed_clean <- essence_raw |>
@@ -174,7 +174,7 @@
 #' # region/zip_code themselves are never touched
 #' ed_clean |> assign_facility_geography()
 #'
-#' # Overwrite region/zip_code in place (the original behavior) -- requires
+#' # Overwrite region/zip_code in place (the original behavior); requires
 #' # naming the source columns explicitly and opting in with overwrite
 #' ed_clean |>
 #'   assign_facility_geography(
@@ -222,7 +222,7 @@ assign_facility_geography <- function(data,
   hosp_zip_col_str    <- if (!is.null(hosp_zip_sym))    rlang::as_string(hosp_zip_sym)
 
   # Which geography types to process is driven directly by new_region_col/
-  # new_zip_col -- NULL skips that type entirely ----
+  # new_zip_col: NULL skips that type entirely ----
   do_region <- !is.null(new_region_col)
   do_zip    <- !is.null(new_zip_col)
 
@@ -239,7 +239,7 @@ assign_facility_geography <- function(data,
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
-  # Resolve output columns -- aborts on a reserved-name collision, or on an
+  # Resolve output columns: aborts on a reserved-name collision, or on an
   # existing-column collision unless overwrite = TRUE. By default
   # new_region_col/new_zip_col name new columns, leaving region_col/zip_col
   # untouched; passing the source column's own name plus overwrite = TRUE
