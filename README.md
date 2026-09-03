@@ -14,37 +14,38 @@ Electronic Surveillance System for the Early Notification of
 Community-based Epidemics ([ESSENCE](https://www.cdc.gov/nssp/)) API.
 
 `sysPrep`'s functions operate on line-level ESSENCE records returned by
-the dataDetails API endpoint (Full Details pulls) -- not on pre-aggregated
-output from the tableBuilder or timeSeries endpoints, which collapse away
-the same row-level defects these functions are designed to catch. That
+the dataDetails API endpoint (Full Details pulls). It does not work on ESSENCE
+data returned by the tableBuilder or timeSeries API endpoints. That
 distinction traces back to how these preprocessing steps were identified
-in Kentucky: only line-level review of individual ESSENCE records exposed
-problems that aggregate-level QA had missed entirely, while investigating
+in Kentucky: line-level review of individual ESSENCE records exposed
+issues that aggregate-level QA had missed entirely, while investigating
 false-positive spatial clusters that turned out to be artifacts of
 duplicated visit records rather than true anomalies, at a real cost in
-analyst time spent chasing them down. Fixing them requires that same
-line-level wrangling: correcting, merging, or removing individual
-records, not adjusting aggregate counts after the fact. Applied
-continuously as ESSENCE data is
-ingested into a statewide overdose surveillance system, these steps make
-the resulting data more accurate and more representative of true patient
-burden at reporting hospitals, and close much of the gap that otherwise
-left ESSENCE-based overdose surveillance less competitive than EMS-based
-data sources (e.g., ODMAP, Biospatial) as an anomaly detection source for
-small-count, high-impact cluster detection. Geographic reassignment
-closes a related gap: EMS-based systems report incidence at the location
-where care was rendered, not the patient's jurisdiction of residence, and
-ESSENCE data defaults to the latter --
+analyst time spent chasing them down. 
+
+Fixing them requires that same line-level wrangling: correcting, merging, or 
+removing individual records, not adjusting aggregate counts after the fact. 
+Applied continuously as ESSENCE data is ingested into a statewide overdose 
+surveillance system, these steps make the resulting data more accurate and more 
+representative of true patient burden at reporting hospitals, and close much of 
+the gap that otherwise left ESSENCE-based overdose surveillance less competitive 
+than EMS-based data sources (e.g., ODMAP, Biospatial) as an anomaly detection 
+source for small-count, high-impact cluster detection. 
+
+Geographic reassignment closes a related gap: EMS-based systems report incidence 
+at the location where care was rendered, not the patient's jurisdiction of 
+residence, and ESSENCE data defaults to the latter --
 `assign_treating_geography()`/`assign_facility_geography()` bring
 ESSENCE into that same incidence-based frame.
 
-These methods are **not required** to perform case counting, cluster
+Note that these methods are **not required** to perform case counting, cluster
 detection, or anomaly detection with ESSENCE data. Many surveillance
 questions tolerate the data quality issues `sysPrep` addresses without
 materially affecting conclusions. They are most valuable for
 **small-count, high-impact case definitions**, where external validity
-and minimizing false-positive clusters/anomalies matter most. Raw
-ESSENCE data pulls can present four categories of data quality issues
+and minimizing false-positive clusters/anomalies matter most. 
+
+Raw ESSENCE data pulls can present four categories of data quality issues
 that bias case counts or distort cluster/anomaly detection if left
 unaddressed:
 
