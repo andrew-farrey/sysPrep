@@ -9,7 +9,7 @@ of Community-based Epidemics ([ESSENCE](https://www.cdc.gov/nssp/)) API.
 Its methods focus on preparing ESSENCE data for real-world, applied
 public health surveillance.
 
-`sysPrep`’s functions were developed by troubleshooting repeated
+`sysPrep`’s functions were developed through troubleshooting repeated
 false-positive overdose clusters back to duplicate ESSENCE visit
 records: a cause only visible in line-level data pulled via ESSENCE’s
 `dataDetails` API endpoint (Full Details). Its functions will not work
