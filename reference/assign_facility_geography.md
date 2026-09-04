@@ -160,6 +160,16 @@ two advantages over true hospital-level cluster detection:
   your site's default returned columns or explicitly requested via the
   API's `&field=` parameter.
 
+Both advantages above assume complete geographic attribution. Without
+it, out-of-state and unknown-residence visits treated at a facility
+either fall outside a region-scoped surveillance area entirely or bin to
+an unrelated region, silently understating exactly the facilities most
+likely to generate a true signal: border and mobile-population
+facilities. Region-level detection is only competitive with
+hospital-level detection, sensitivity-wise, once that gap is closed; see
+[`vignette("geography-assignment")`](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.md)
+for the full mechanism.
+
 One consequence of region-level attribution is that detectable cluster
 polygons are limited to regions that contain at least one participating
 ESSENCE facility. Regions with no participating hospitals cannot

@@ -129,6 +129,21 @@ facility’s patient population shifts over time, more transient patients,
 more border traffic, or a policy change affecting unhoused populations,
 the exclusion of <code>OTHER_REGION</code> records can create apparent
 trends in what is actually a stable underlying burden.</p>
+<p><strong>Reduced cluster/anomaly detection sensitivity.</strong>
+Hospital-level cluster detection sees every visit treated at a facility,
+regardless of patient residence. Region- or zip-level detection using
+unmodified <code>Region</code> doesn’t: out-of-state and
+unknown-residence visits either fall outside the surveillance area
+entirely or get binned to a region unrelated to where the activity
+occurred. A border facility’s own region can show a materially smaller
+signal than that facility’s true hospital-level volume, purely from this
+dropout, not from any real difference in incidence. Reassigning those
+visits to the treating facility’s region closes most of that gap,
+bringing region-level sensitivity close to hospital-level, though not
+identical when a region contains more than one hospital (see
+<code><a href="../reference/assign_facility_geography.html">?assign_facility_geography</a></code>’s own discussion of
+hospital-level vs. region-level cluster detection for that separate
+tradeoff).</p>
 <p>This is also why <code>sysPrep</code> treats the fix as attribution
 rather than exclusion-avoidance alone: EMS-based systems (e.g., ODMAP,
 Biospatial) report incidence at the location where care was rendered,
