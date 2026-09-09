@@ -59,9 +59,9 @@ real patient or facility data are included.</p>
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A data frame with approximately 6 rows and 18 columns. Same
-column structure as <a href="essence_raw.html">essence_raw</a>; see its documentation for column
-definitions.</p>
+    <p>A data frame with approximately 6 rows and 19 columns. Same
+column structure as <a href="essence_raw.html">essence_raw</a>, plus <code>HasBeenI</code> (see Details); see
+<a href="essence_raw.html">essence_raw</a>'s documentation for the other column definitions.</p>
     </div>
     <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
@@ -87,7 +87,13 @@ continuation of an ED visit reported as two unrelated records.</p></dd>
 visit at all, structurally invisible to a <code>HasBeenE = 1</code> query.</p></dd>
 
 
-</dl></div>
+</dl><p><code>HasBeenI = 1</code> for every row here, mirroring <code>HasBeenAdmitted</code>, as real
+ESSENCE data typically has them move together for a genuine admission.
+Every <code>has_been_*</code> column, including <code>has_been_i</code>, is guaranteed a real
+<code>0</code>/<code>1</code> value with no <code>NA</code> in this dataset and in <a href="essence_ed_raw.html">essence_ed_raw</a>; the
+two combined never produce an <code>NA</code> <code>has_been_*</code> column in
+<code><a href="link_encounters.html">link_encounters()</a></code>'s output.</p>
+</div>
 
     </div>
     <div class="section level2">

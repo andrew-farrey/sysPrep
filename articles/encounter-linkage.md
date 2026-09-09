@@ -6,11 +6,11 @@
 [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md))
 remove duplicate ESSENCE rows for one visit within a single pull.
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-solves the same overcounting problem in a harder form: a visit split
-across two separately queried pulls, where the duplicate doesn’t look
-like one. Neither ESSENCE nor the BioSense Platform surfaces, flags, or
-resolves this on their own; finding it takes looking at the underlying
-records directly.
+solves the same overcounting problem in a more complex form: a visit
+split across two separately queried pulls, where the duplicate doesn’t
+look like one. Neither ESSENCE nor the BioSense Platform surfaces,
+flags, or resolves this on their own; detecting it requires reviewing
+the underlying records directly.
 
 ## The Care Pathway Artifact Problem
 
@@ -290,7 +290,7 @@ dplyr::glimpse(episodes)
 #> $ date                    <date> 2023-10-18, 2023-12-06, 2023-09-07, 2023-09-1…
 #> $ c_visit_date_time       <dttm> 2023-10-18 04:35:33, 2023-12-06 19:49:26, 202…
 #> $ arrived_date_time       <dttm> 2023-10-18 05:03:18, 2023-12-06 19:57:46, 202…
-#> $ has_been_i              <int> NA, NA, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, NA, 0…
+#> $ has_been_i              <int> 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1…
 #> $ c_patient_class         <chr> "I", "I", "E", "E", "E", "I", "I", "E", "E", "…
 #> $ region                  <chr> "KY_Hardin", "KY_Madison", "KY_Madison", "KY_J…
 #> $ zip_code                <chr> "41011", "42001", "42001", "41042", "42701", "…
@@ -306,11 +306,11 @@ dplyr::glimpse(episodes)
 ```
 
 Every row above shows real `0`/`1` values for
-`has_been_e`/`has_been_admitted`, never `NA`, regardless of whether it
-came from a single pre-merge row or a merged pair: deriving
-`patient_class` from `HasBeen_` flags (the fallback used here, since
-this synthetic data has no `C_Patient_Class_List`) pivots those flag
-columns to build `patient_class`, but
+`has_been_e`/`has_been_admitted`/ `has_been_i`, never `NA`, regardless
+of whether it came from a single pre-merge row or a merged pair:
+deriving `patient_class` from `HasBeen_` flags (the fallback used here,
+since this synthetic data has no `C_Patient_Class_List`) pivots those
+flag columns to build `patient_class`, but
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 retains the true original values underneath so they survive into the
 output unchanged.
