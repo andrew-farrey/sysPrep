@@ -19,10 +19,10 @@ library(dplyr)
 `sysPrep`'s other core functions (`dedupe()`, `summarize_duplicates()`,
 `classify_duplicates()`) remove duplicate ESSENCE rows for one visit
 within a single pull. `link_encounters()` solves the same overcounting
-problem in a harder form: a visit split across two separately queried
+problem in a more complex form: a visit split across two separately queried
 pulls, where the duplicate doesn't look like one. Neither ESSENCE nor the
-BioSense Platform surfaces, flags, or resolves this on their own; finding
-it takes looking at the underlying records directly.
+BioSense Platform surfaces, flags, or resolves this on their own; detecting
+it requires reviewing the underlying records directly.
 
 ## The Care Pathway Artifact Problem
 
@@ -254,13 +254,13 @@ episodes <- link_encounters(ed_clean, inpatient_clean)
 dplyr::glimpse(episodes)
 ```
 
-Every row above shows real `0`/`1` values for `has_been_e`/`has_been_admitted`,
-never `NA`, regardless of whether it came from a single pre-merge row or
-a merged pair: deriving `patient_class` from `HasBeen_` flags (the fallback
-used here, since this synthetic data has no `C_Patient_Class_List`) pivots
-those flag columns to build `patient_class`, but `link_encounters()` retains
-the true original values underneath so they survive into the output
-unchanged.
+Every row above shows real `0`/`1` values for `has_been_e`/`has_been_admitted`/
+`has_been_i`, never `NA`, regardless of whether it came from a single
+pre-merge row or a merged pair: deriving `patient_class` from `HasBeen_`
+flags (the fallback used here, since this synthetic data has no
+`C_Patient_Class_List`) pivots those flag columns to build `patient_class`,
+but `link_encounters()` retains the true original values underneath so
+they survive into the output unchanged.
 
 `nrow(episodes)` is already the true unduplicated encounter count, smaller
 than the naive combined denominator, since some admission-pull rows merged

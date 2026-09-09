@@ -354,6 +354,11 @@ continuity_break_admits <- continuity_break_ed_rows |>
     C_BioSense_ID     = paste0(make_biosense_id(Date, Hospital, C_Unique_Patient_ID), "R"),
     HasBeenE          = 0L,
     HasBeenAdmitted   = 1L,
+    # Inherited from continuity_break_ed_rows' ED-context HasBeenI = 0L;
+    # overridden here to 1L since this row now represents the genuine
+    # admission continuation, and HasBeenI should mirror HasBeenAdmitted
+    # for a real admission, not the stale pre-mutation ED-context value ----
+    HasBeenI          = 1L,
     C_Patient_Class   = "I",
     C_Visit_Date_Time = C_Visit_Date_Time + sample(1800:5400, 2L, replace = TRUE),
     Arrived_Date_Time = Arrived_Date_Time + sample(1800:5400, 2L, replace = TRUE)
@@ -370,6 +375,7 @@ direct_admits <- tibble::tibble(
                                n_direct_admit, replace = TRUE),
   HasBeenE            = 0L,
   HasBeenAdmitted     = 1L,
+  HasBeenI            = 1L,
   Sex                 = sample(c("M", "F", "U"), n_direct_admit, replace = TRUE, prob = c(0.48, 0.48, 0.04)),
   C_Patient_Age       = sample(18:85, n_direct_admit, replace = TRUE)
 ) |>
@@ -399,7 +405,7 @@ essence_inp_raw <- dplyr::bind_rows(continuity_break_admits, direct_admits) |>
     HospitalName, Hospital, FacilityType, HospitalRegion, HospitalZip,
     Visit_ID, C_BioSense_ID, C_Unique_Patient_ID,
     Date, C_Visit_Date_Time, Arrived_Date_Time,
-    HasBeenE, HasBeenAdmitted, C_Patient_Class,
+    HasBeenE, HasBeenAdmitted, HasBeenI, C_Patient_Class,
     Region, ZipCode, Sex, C_Patient_Age
   )
 
