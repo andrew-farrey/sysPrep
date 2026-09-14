@@ -14,7 +14,7 @@ quality issues in a specific pull.
 ``` r
 classify_duplicates(
   data,
-  facility_col = HospitalName,
+  facility_col = NULL,
   visit_col = Visit_ID,
   return_format = c("list", "tibble"),
   verbose = TRUE
@@ -30,8 +30,12 @@ classify_duplicates(
 - facility_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
-  Unquoted column name identifying the facility. Defaults to
-  `HospitalName`. Accepts both raw ESSENCE names and
+  Unquoted column name identifying the facility. When not supplied,
+  prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
+  present; see
+  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+  "Facility identifier preference" section for the full rationale.
+  Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -229,13 +233,13 @@ essence_raw |> classify_duplicates()
 #> ── By Facility ──
 #> 
 #> # A tibble: 5 × 7
-#>   hospital_name   patient_class_change pid_change type_unknown visit_date_change
-#>   <chr>                          <int>      <int>        <int>             <int>
-#> 1 Central Medica…                    1          2            2                 1
-#> 2 Metro Health S…                    0          0            3                 0
-#> 3 North County H…                    0          0            0                 1
-#> 4 Lakeside Commu…                    1          0            0                 0
-#> 5 River Valley M…                    0          0            0                 1
+#>   hospital patient_class_change pid_change type_unknown visit_date_change
+#>      <int>                <int>      <int>        <int>             <int>
+#> 1     1001                    1          2            2                 1
+#> 2     1005                    0          0            3                 0
+#> 3     1002                    0          0            0                 1
+#> 4     1003                    0          0            0                 1
+#> 5     1004                    1          0            0                 0
 #> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
 #> #   n_duplicated_total <dbl>
 #> ── Duplicated Visit IDs ──
@@ -251,20 +255,22 @@ essence_raw |>
   classify_duplicates(return_format = "tibble") |>
   dplyr::filter(dup_type == "visit_date_change")
 #> # A tibble: 3 × 8
-#>   hospital_name   visit_id n_rows n_biosense_ids n_dates n_pid n_patient_classes
-#>   <chr>           <chr>     <int>          <int>   <int> <int>             <int>
-#> 1 Central Medica… V482877…      2              2       2     1                 1
-#> 2 North County H… V285888…      2              2       2     1                 1
-#> 3 River Valley M… V865610…      2              2       2     1                 1
+#>   hospital visit_id  n_rows n_biosense_ids n_dates n_pid n_patient_classes
+#>      <int> <chr>      <int>          <int>   <int> <int>             <int>
+#> 1     1001 V48287737      2              2       2     1                 1
+#> 2     1002 V28588848      2              2       2     1                 1
+#> 3     1003 V86561004      2              2       2     1                 1
 #> # ℹ 1 more variable: dup_type <chr>
 
 # Join classifications back to raw data for row-level inspection
-# (clean first so join keys match the snake_case output of classify_duplicates)
+# (clean first so join keys match the snake_case output of
+# classify_duplicates; essence_raw has Hospital, so that's the
+# preferred join key here, not hospital_name -- see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::left_join(
     classify_duplicates(essence_raw, return_format = "tibble"),
-    by = c("hospital_name", "visit_id")
+    by = c("hospital", "visit_id")
   )
 #> # A tibble: 193 × 24
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id

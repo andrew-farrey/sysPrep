@@ -263,9 +263,9 @@ ed_clean <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time) |>
   filter_care_setting()
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
-#>   - Medical Specialty
 #>   - Urgent Care
 #>   - Primary Care
+#>   - Medical Specialty
 
 # Default: new region_facility/zip_code_facility columns for all visits;
 # region/zip_code themselves are never touched

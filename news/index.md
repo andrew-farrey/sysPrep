@@ -2,6 +2,39 @@
 
 ## sysPrep 0.1.0
 
+- **Behavior change:**
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
+  [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md),
+  [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md),
+  [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md),
+  and
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  now prefer `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` as
+  the default `facility_col`, whenever `Hospital` is present in the
+  data, falling back to `HospitalName` only if it isn’t. `Hospital` is a
+  stable numeric identifier; `HospitalName` is a display string that
+  changes on a facility rename or rebrand, so grouping by name can
+  silently split one facility’s rows into two across a rename, or merge
+  two different facilities that briefly share a display name. An
+  explicitly supplied `facility_col` always overrides this preference
+  exactly as given.
+  [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md)‘s
+  `facility_col` is deliberately unchanged, since it matches against
+  `fix_facility_type_vector`’s exact facility *name* strings; that
+  function already exposes a separate, ID-preferring
+  `facility_id_col`/`fix_facility_id_vector` for the same durability
+  benefit. **If you have code that assumes
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+  (or the other affected functions) group by
+  `HospitalName`/`hospital_name` by default, and your data includes
+  `Hospital`, update it to reference `hospital`/`Hospital` instead, or
+  pass `facility_col = HospitalName` explicitly to keep the old
+  behavior.** The five affected functions’ `facility_col` argument now
+  defaults to `NULL` (was a fixed column name) so that
+  [`args()`](https://rdrr.io/r/base/args.html)/the Usage line accurately
+  reflect that the real default is resolved at runtime rather than
+  printing a fixed default that’s no longer accurate; this matches how
+  `order_by`/`date_col` already behave elsewhere in the package.
 - **Bug fix** in
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md):
   when deriving `patient_class` from `HasBeen_` flags (the fallback path

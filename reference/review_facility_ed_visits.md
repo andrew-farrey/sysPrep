@@ -13,7 +13,7 @@ misconfiguration.
 ``` r
 review_facility_ed_visits(
   data,
-  facility_col = HospitalName,
+  facility_col = NULL,
   facility_type_col = FacilityType,
   date_col = NULL,
   method = c("percentile", "iqr", "both"),
@@ -39,8 +39,11 @@ review_facility_ed_visits(
 - facility_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
-  Unquoted column name identifying the facility. Defaults to
-  `HospitalName`.
+  Unquoted column name identifying the facility. When not supplied,
+  prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
+  present; see
+  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+  "Facility identifier preference" section for the full rationale.
 
 - facility_type_col:
 
@@ -171,10 +174,10 @@ essence_clean |> review_facility_ed_visits()
 #> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
 #> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.
 #> # A tibble: 2 × 8
-#>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
-#>   <chr>          <chr>            <int> <lgl>        <lgl>         <lgl>        
-#> 1 Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         
-#> 2 Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         
+#>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
+#>      <int> <chr>             <int> <lgl>        <lgl>         <lgl>        
+#> 1     1006 Emergency Care        8 TRUE         FALSE         TRUE         
+#> 2     1001 Emergency Care       38 FALSE        TRUE          TRUE         
 #> # ℹ 2 more variables: .outlier_direction <chr>, .outlier_method <chr>
 
 # All facilities with flags
@@ -183,16 +186,16 @@ essence_clean |> review_facility_ed_visits(return_format = "all")
 #> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
 #> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.
 #> # A tibble: 8 × 8
-#>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
-#>   <chr>          <chr>            <int> <lgl>        <lgl>         <lgl>        
-#> 1 Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         
-#> 2 Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         
-#> 3 Downtown Emer… Emergency Ca…       13 FALSE        FALSE         FALSE        
-#> 4 River Valley … Emergency Ca…       15 FALSE        FALSE         FALSE        
-#> 5 Hillside FSED  Emergency Ca…       18 FALSE        FALSE         FALSE        
-#> 6 North County … Emergency Ca…       19 FALSE        FALSE         FALSE        
-#> 7 Lakeside Comm… Emergency Ca…       21 FALSE        FALSE         FALSE        
-#> 8 Metro Health … Emergency Ca…       28 FALSE        FALSE         FALSE        
+#>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
+#>      <int> <chr>             <int> <lgl>        <lgl>         <lgl>        
+#> 1     1006 Emergency Care        8 TRUE         FALSE         TRUE         
+#> 2     1001 Emergency Care       38 FALSE        TRUE          TRUE         
+#> 3     1008 Emergency Care       13 FALSE        FALSE         FALSE        
+#> 4     1003 Emergency Care       15 FALSE        FALSE         FALSE        
+#> 5     1007 Emergency Care       18 FALSE        FALSE         FALSE        
+#> 6     1002 Emergency Care       19 FALSE        FALSE         FALSE        
+#> 7     1004 Emergency Care       21 FALSE        FALSE         FALSE        
+#> 8     1005 Emergency Care       28 FALSE        FALSE         FALSE        
 #> # ℹ 2 more variables: .outlier_direction <chr>, .outlier_method <chr>
 
 # IQR method with time normalization for dropout detection
@@ -204,7 +207,7 @@ essence_clean |>
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
 #> 0 of 8 facilities flagged as outliers (0%) using method = 'iqr'.
 #> # A tibble: 0 × 10
-#> # ℹ 10 variables: hospital_name <chr>, facility_type <chr>, n_visits <int>,
+#> # ℹ 10 variables: hospital <int>, facility_type <chr>, n_visits <int>,
 #> #   n_days <int>, visits_per_day <dbl>, .outlier_low <lgl>,
 #> #   .outlier_high <lgl>, .outlier_flag <lgl>, .outlier_direction <chr>,
 #> #   .outlier_method <chr>
@@ -220,15 +223,15 @@ essence_clean |>
 #> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
 #> 2 of 8 facilities flagged as outliers (25%) using method = 'both' within FacilityType groups.
 #> # A tibble: 8 × 8
-#>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag
-#>   <chr>          <chr>            <int> <lgl>        <lgl>         <lgl>        
-#> 1 Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         
-#> 2 Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         
-#> 3 Downtown Emer… Emergency Ca…       13 FALSE        FALSE         FALSE        
-#> 4 River Valley … Emergency Ca…       15 FALSE        FALSE         FALSE        
-#> 5 Hillside FSED  Emergency Ca…       18 FALSE        FALSE         FALSE        
-#> 6 North County … Emergency Ca…       19 FALSE        FALSE         FALSE        
-#> 7 Lakeside Comm… Emergency Ca…       21 FALSE        FALSE         FALSE        
-#> 8 Metro Health … Emergency Ca…       28 FALSE        FALSE         FALSE        
+#>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
+#>      <int> <chr>             <int> <lgl>        <lgl>         <lgl>        
+#> 1     1006 Emergency Care        8 TRUE         FALSE         TRUE         
+#> 2     1001 Emergency Care       38 FALSE        TRUE          TRUE         
+#> 3     1008 Emergency Care       13 FALSE        FALSE         FALSE        
+#> 4     1003 Emergency Care       15 FALSE        FALSE         FALSE        
+#> 5     1007 Emergency Care       18 FALSE        FALSE         FALSE        
+#> 6     1002 Emergency Care       19 FALSE        FALSE         FALSE        
+#> 7     1004 Emergency Care       21 FALSE        FALSE         FALSE        
+#> 8     1005 Emergency Care       28 FALSE        FALSE         FALSE        
 #> # ℹ 2 more variables: .outlier_direction <chr>, .outlier_method <chr>
 ```

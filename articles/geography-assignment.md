@@ -214,8 +214,8 @@ geo_all <- essence_raw |>
   assign_treating_geography() |>
   assign_facility_geography()
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
-#>   - Medical Specialty
 #>   - Primary Care
+#>   - Medical Specialty
 #> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
 #> Facility geography applied to all 160 visits in `region_facility`/`zip_code_facility`.
 
@@ -273,8 +273,8 @@ ed_clean <- essence_raw |>
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
-#>   - Medical Specialty
 #>   - Primary Care
+#>   - Medical Specialty
 
 # Selective reassignment: only out-of-state and OTHER_REGION rows get a
 # reassigned value in region_hybrid; region itself is never touched
@@ -304,18 +304,18 @@ treating_geo |>
   dplyr::select(hospital_name, region, region_hybrid) |>
   head(10)
 #> # A tibble: 10 × 3
-#>    hospital_name               region       region_hybrid
-#>    <chr>                       <chr>        <chr>        
-#>  1 Central Medical Center      TN_Davidson  KY_Jefferson 
-#>  2 Central Medical Center      OH_Hamilton  KY_Jefferson 
-#>  3 Central Medical Center      OH_Franklin  KY_Jefferson 
-#>  4 Central Medical Center      NA           KY_Jefferson 
-#>  5 Central Medical Center      OTHER_REGION KY_Jefferson 
-#>  6 Central Medical Center      TN_Shelby    KY_Jefferson 
-#>  7 Central Medical Center      OH_Hamilton  KY_Jefferson 
-#>  8 Downtown Emergency Services NA           KY_Fayette   
-#>  9 Hillside FSED               NA           KY_Jefferson 
-#> 10 Hillside FSED               OTHER_REGION KY_Jefferson
+#>    hospital_name          region       region_hybrid
+#>    <chr>                  <chr>        <chr>        
+#>  1 Central Medical Center TN_Davidson  KY_Jefferson 
+#>  2 Central Medical Center OH_Hamilton  KY_Jefferson 
+#>  3 Central Medical Center OH_Franklin  KY_Jefferson 
+#>  4 Central Medical Center NA           KY_Jefferson 
+#>  5 Central Medical Center OTHER_REGION KY_Jefferson 
+#>  6 Central Medical Center TN_Shelby    KY_Jefferson 
+#>  7 Central Medical Center OH_Hamilton  KY_Jefferson 
+#>  8 North County Hospital  TN_Shelby    KY_Kenton    
+#>  9 North County Hospital  WV_Cabell    KY_Kenton    
+#> 10 North County Hospital  NA           KY_Kenton
 ```
 
 The `.out_of_state` column (logical) marks every row where
@@ -348,18 +348,18 @@ treating_overwrite |>
   dplyr::select(hospital_name, original_region, region) |>
   head(10)
 #> # A tibble: 10 × 3
-#>    hospital_name               original_region region      
-#>    <chr>                       <chr>           <chr>       
-#>  1 Central Medical Center      TN_Davidson     KY_Jefferson
-#>  2 Central Medical Center      OH_Hamilton     KY_Jefferson
-#>  3 Central Medical Center      OH_Franklin     KY_Jefferson
-#>  4 Central Medical Center      NA              KY_Jefferson
-#>  5 Central Medical Center      OTHER_REGION    KY_Jefferson
-#>  6 Central Medical Center      TN_Shelby       KY_Jefferson
-#>  7 Central Medical Center      OH_Hamilton     KY_Jefferson
-#>  8 Downtown Emergency Services NA              KY_Fayette  
-#>  9 Hillside FSED               NA              KY_Jefferson
-#> 10 Hillside FSED               OTHER_REGION    KY_Jefferson
+#>    hospital_name          original_region region      
+#>    <chr>                  <chr>           <chr>       
+#>  1 Central Medical Center TN_Davidson     KY_Jefferson
+#>  2 Central Medical Center OH_Hamilton     KY_Jefferson
+#>  3 Central Medical Center OH_Franklin     KY_Jefferson
+#>  4 Central Medical Center NA              KY_Jefferson
+#>  5 Central Medical Center OTHER_REGION    KY_Jefferson
+#>  6 Central Medical Center TN_Shelby       KY_Jefferson
+#>  7 Central Medical Center OH_Hamilton     KY_Jefferson
+#>  8 North County Hospital  TN_Shelby       KY_Kenton   
+#>  9 North County Hospital  WV_Cabell       KY_Kenton   
+#> 10 North County Hospital  NA              KY_Kenton
 ```
 
 `preserve_original_geographies` only has an effect in this

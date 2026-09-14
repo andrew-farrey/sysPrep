@@ -59,7 +59,7 @@ misconfiguration.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">review_facility_ed_visits</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
-<span>  facility_col <span class="op">=</span> <span class="va">HospitalName</span>,</span>
+<span>  facility_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  facility_type_col <span class="op">=</span> <span class="va">FacilityType</span>,</span>
 <span>  date_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"percentile"</span>, <span class="st">"iqr"</span>, <span class="st">"both"</span><span class="op">)</span>,</span>
@@ -84,7 +84,10 @@ misconfiguration.</p>
 
 <dt id="arg-facility-col">facility_col<a class="anchor" aria-label="anchor" href="#arg-facility-col"></a></dt>
 <dd><p>&lt;<code><a href="https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html" class="external-link">tidy-select</a></code>&gt; Unquoted
-column name identifying the facility. Defaults to <code>HospitalName</code>.</p></dd>
+column name identifying the facility. When not supplied, prefers
+<code>Hospital</code>/<code>C_BioSense_Facility_ID</code> over <code>HospitalName</code> if present;
+see <code><a href="dedupe.html">?dedupe</a></code>'s "Facility identifier preference" section for the full
+rationale.</p></dd>
 
 
 <dt id="arg-facility-type-col">facility_type_col<a class="anchor" aria-label="anchor" href="#arg-facility-type-col"></a></dt>
@@ -228,10 +231,10 @@ from inflating thresholds that mask low counts at smaller facilities.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2 × 8</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     <span style="text-decoration: underline;">1</span>006 Emergency Care        8 TRUE         FALSE         TRUE         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     <span style="text-decoration: underline;">1</span>001 Emergency Care       38 FALSE        TRUE          TRUE         </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 2 more variables: .outlier_direction &lt;chr&gt;, .outlier_method &lt;chr&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># All facilities with flags</span></span></span>
@@ -240,16 +243,16 @@ from inflating thresholds that mask low counts at smaller facilities.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 8</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Downtown Emer… Emergency Ca…       13 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> River Valley … Emergency Ca…       15 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Hillside FSED  Emergency Ca…       18 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> North County … Emergency Ca…       19 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> Lakeside Comm… Emergency Ca…       21 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> Metro Health … Emergency Ca…       28 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     <span style="text-decoration: underline;">1</span>006 Emergency Care        8 TRUE         FALSE         TRUE         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     <span style="text-decoration: underline;">1</span>001 Emergency Care       38 FALSE        TRUE          TRUE         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span>     <span style="text-decoration: underline;">1</span>008 Emergency Care       13 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span>     <span style="text-decoration: underline;">1</span>003 Emergency Care       15 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>     <span style="text-decoration: underline;">1</span>007 Emergency Care       18 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>     <span style="text-decoration: underline;">1</span>002 Emergency Care       19 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span>     <span style="text-decoration: underline;">1</span>004 Emergency Care       21 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span>     <span style="text-decoration: underline;">1</span>005 Emergency Care       28 FALSE        FALSE         FALSE        </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 2 more variables: .outlier_direction &lt;chr&gt;, .outlier_method &lt;chr&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># IQR method with time normalization for dropout detection</span></span></span>
@@ -261,7 +264,7 @@ from inflating thresholds that mask low counts at smaller facilities.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 0 of 8 facilities flagged as outliers (0%) using method = 'iqr'.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 0 × 10</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 variables: hospital_name &lt;chr&gt;, facility_type &lt;chr&gt;, n_visits &lt;int&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 variables: hospital &lt;int&gt;, facility_type &lt;chr&gt;, n_visits &lt;int&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   n_days &lt;int&gt;, visits_per_day &lt;dbl&gt;, .outlier_low &lt;lgl&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .outlier_high &lt;lgl&gt;, .outlier_flag &lt;lgl&gt;, .outlier_direction &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .outlier_method &lt;chr&gt;</span></span>
@@ -277,16 +280,16 @@ from inflating thresholds that mask low counts at smaller facilities.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 2 of 8 facilities flagged as outliers (25%) using method = 'both' within FacilityType groups.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 8</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital_name  facility_type n_visits .outlier_low .outlier_high .outlier_flag</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Rural Health … Emergency Ca…        8 TRUE         FALSE         TRUE         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Central Medic… Emergency Ca…       38 FALSE        TRUE          TRUE         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Downtown Emer… Emergency Ca…       13 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> River Valley … Emergency Ca…       15 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Hillside FSED  Emergency Ca…       18 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> North County … Emergency Ca…       19 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> Lakeside Comm… Emergency Ca…       21 FALSE        FALSE         FALSE        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> Metro Health … Emergency Ca…       28 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     <span style="text-decoration: underline;">1</span>006 Emergency Care        8 TRUE         FALSE         TRUE         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     <span style="text-decoration: underline;">1</span>001 Emergency Care       38 FALSE        TRUE          TRUE         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span>     <span style="text-decoration: underline;">1</span>008 Emergency Care       13 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span>     <span style="text-decoration: underline;">1</span>003 Emergency Care       15 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>     <span style="text-decoration: underline;">1</span>007 Emergency Care       18 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>     <span style="text-decoration: underline;">1</span>002 Emergency Care       19 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span>     <span style="text-decoration: underline;">1</span>004 Emergency Care       21 FALSE        FALSE         FALSE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span>     <span style="text-decoration: underline;">1</span>005 Emergency Care       28 FALSE        FALSE         FALSE        </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 2 more variables: .outlier_direction &lt;chr&gt;, .outlier_method &lt;chr&gt;</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

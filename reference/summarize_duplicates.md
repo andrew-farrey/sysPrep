@@ -11,7 +11,7 @@ on raw or minimally processed ESSENCE data before
 ## Usage
 
 ``` r
-summarize_duplicates(data, facility_col = HospitalName, visit_col = Visit_ID)
+summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
 ```
 
 ## Arguments
@@ -23,8 +23,12 @@ summarize_duplicates(data, facility_col = HospitalName, visit_col = Visit_ID)
 - facility_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
-  Unquoted column name identifying the facility. Defaults to
-  `HospitalName`. Accepts both raw ESSENCE names and
+  Unquoted column name identifying the facility. When not supplied,
+  prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
+  present; see
+  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+  "Facility identifier preference" section for the full rationale.
+  Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -93,13 +97,13 @@ essence_raw |> summarize_duplicates()
 #> ── By Facility (most duplicated first) ──
 #> 
 #> # A tibble: 5 × 5
-#>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
-#>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      6             6           15.8
-#> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       19                      2             2           10.5
-#> 4 Lakeside Communi…       21                      1             1            4.8
-#> 5 River Valley Med…       15                      1             1            6.7
+#>   hospital n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
+#>      <int>    <int>                  <int>         <int>          <dbl>
+#> 1     1001       38                      6             6           15.8
+#> 2     1005       28                      3             3           10.7
+#> 3     1002       19                      2             2           10.5
+#> 4     1003       15                      1             1            6.7
+#> 5     1004       21                      1             1            4.8
 #> ── Duplicated Visit IDs ──
 #> 
 #> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
@@ -114,38 +118,40 @@ dups$overall
 #> # ℹ 1 more variable: pct_duplicated <dbl>
 dups$by_facility
 #> # A tibble: 5 × 5
-#>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
-#>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      6             6           15.8
-#> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       19                      2             2           10.5
-#> 4 Lakeside Communi…       21                      1             1            4.8
-#> 5 River Valley Med…       15                      1             1            6.7
+#>   hospital n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
+#>      <int>    <int>                  <int>         <int>          <dbl>
+#> 1     1001       38                      6             6           15.8
+#> 2     1005       28                      3             3           10.7
+#> 3     1002       19                      2             2           10.5
+#> 4     1003       15                      1             1            6.7
+#> 5     1004       21                      1             1            4.8
 dups$duplicate_ids
 #> # A tibble: 13 × 2
-#>    hospital_name               visit_id 
-#>    <chr>                       <chr>    
-#>  1 Central Medical Center      V10085501
-#>  2 Central Medical Center      V14709603
-#>  3 Central Medical Center      V37919657
-#>  4 Central Medical Center      V48287737
-#>  5 Central Medical Center      V60047491
-#>  6 Central Medical Center      V89270420
-#>  7 Lakeside Community Hospital V71515667
-#>  8 Metro Health System East    V38278064
-#>  9 Metro Health System East    V82754314
-#> 10 Metro Health System East    V85359976
-#> 11 North County Hospital       V28588848
-#> 12 North County Hospital       V64229194
-#> 13 River Valley Medical        V86561004
+#>    hospital visit_id 
+#>       <int> <chr>    
+#>  1     1001 V10085501
+#>  2     1001 V14709603
+#>  3     1001 V37919657
+#>  4     1001 V48287737
+#>  5     1001 V60047491
+#>  6     1001 V89270420
+#>  7     1002 V28588848
+#>  8     1002 V64229194
+#>  9     1003 V86561004
+#> 10     1004 V71515667
+#> 11     1005 V38278064
+#> 12     1005 V82754314
+#> 13     1005 V85359976
 
 # Filter raw data to duplicated visits for manual review
-# (clean first so join keys match snake_case output of $duplicate_ids)
+# (clean first so join keys match snake_case output of $duplicate_ids;
+# essence_raw has Hospital, so that's the preferred join key here,
+# not hospital_name -- see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::semi_join(
     summarize_duplicates(essence_raw)$duplicate_ids,
-    by = c("hospital_name", "visit_id")
+    by = c("hospital", "visit_id")
   )
 #> # A tibble: 26 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id

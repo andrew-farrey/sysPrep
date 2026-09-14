@@ -13,7 +13,7 @@ information present on only one source row isn't discarded.
 link_encounters(
   ed_data,
   inpatient_admission_data = NULL,
-  facility_col = HospitalName,
+  facility_col = NULL,
   visit_col = Visit_ID,
   merge_fields = c(CCDD = "union_ccdd", CCDDParsed = "union_ccdd", CCDDCategory_flat =
     "union_delimited", C_Death = "prefer_yes", Discharge_Disposition =
@@ -45,8 +45,12 @@ link_encounters(
 - facility_col:
 
   \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
-  Unquoted column name identifying the facility. Defaults to
-  `HospitalName`. Accepts both raw ESSENCE names and
+  Unquoted column name identifying the facility. When not supplied,
+  prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
+  present in `ed_data`; see
+  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+  "Facility identifier preference" section for the full rationale.
+  Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -246,7 +250,11 @@ pull separately, then pass both to `link_encounters()`.
 ### Linking key and its limitation
 
 Records are linked by `facility_col` \\\times\\ `visit_col`
-(`HospitalName` \\\times\\ `Visit_ID` by default).
+(`Hospital`/`C_BioSense_Facility_ID` \\\times\\ `Visit_ID` by default
+when `Hospital` is present, else `HospitalName` \\\times\\ `Visit_ID`;
+see
+[`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+"Facility identifier preference" section).
 
 **Limitation:** if a facility's HL7 feed assigns a genuinely different
 `Visit_ID` to the inpatient leg of a care episode, `link_encounters()`

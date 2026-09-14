@@ -437,8 +437,8 @@ essence_raw |>
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
-#>   - Medical Specialty
 #>   - Primary Care
+#>   - Medical Specialty
 #> # A tibble: 160 × 18
 #>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
 #>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   

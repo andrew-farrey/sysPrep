@@ -152,13 +152,13 @@ dups
 #> ── By Facility (most duplicated first) ──
 #> 
 #> # A tibble: 5 × 5
-#>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
-#>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      6             6           15.8
-#> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       19                      2             2           10.5
-#> 4 Lakeside Communi…       21                      1             1            4.8
-#> 5 River Valley Med…       15                      1             1            6.7
+#>   hospital n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
+#>      <int>    <int>                  <int>         <int>          <dbl>
+#> 1     1001       38                      6             6           15.8
+#> 2     1005       28                      3             3           10.7
+#> 3     1002       19                      2             2           10.5
+#> 4     1003       15                      1             1            6.7
+#> 5     1004       21                      1             1            4.8
 #> ── Duplicated Visit IDs ──
 #> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 ```
@@ -180,13 +180,13 @@ dups$overall
 # Per-facility counts (facilities with duplicates only)
 dups$by_facility
 #> # A tibble: 5 × 5
-#>   hospital_name     n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
-#>   <chr>                <int>                  <int>         <int>          <dbl>
-#> 1 Central Medical …       38                      6             6           15.8
-#> 2 Metro Health Sys…       28                      3             3           10.7
-#> 3 North County Hos…       19                      2             2           10.5
-#> 4 Lakeside Communi…       21                      1             1            4.8
-#> 5 River Valley Med…       15                      1             1            6.7
+#>   hospital n_visits n_duplicated_visit_ids n_excess_rows pct_duplicated
+#>      <int>    <int>                  <int>         <int>          <dbl>
+#> 1     1001       38                      6             6           15.8
+#> 2     1005       28                      3             3           10.7
+#> 3     1002       19                      2             2           10.5
+#> 4     1003       15                      1             1            6.7
+#> 5     1004       21                      1             1            4.8
 ```
 
 `$overall` gives the total number of duplicated `facility × Visit_ID`
@@ -230,13 +230,13 @@ classified
 #>  visit_date_change+pid_change 1    7.7%
 #> ── By Facility ──
 #> # A tibble: 5 × 7
-#>   hospital_name   patient_class_change pid_change type_unknown visit_date_change
-#>   <chr>                          <int>      <int>        <int>             <int>
-#> 1 Central Medica…                    1          2            2                 1
-#> 2 Metro Health S…                    0          0            3                 0
-#> 3 North County H…                    0          0            0                 1
-#> 4 Lakeside Commu…                    1          0            0                 0
-#> 5 River Valley M…                    0          0            0                 1
+#>   hospital patient_class_change pid_change type_unknown visit_date_change
+#>      <int>                <int>      <int>        <int>             <int>
+#> 1     1001                    1          2            2                 1
+#> 2     1005                    0          0            3                 0
+#> 3     1002                    0          0            0                 1
+#> 4     1003                    0          0            0                 1
+#> 5     1004                    1          0            0                 0
 #> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
 #> #   n_duplicated_total <dbl>
 #> ── Duplicated Visit IDs ──
@@ -264,13 +264,13 @@ classified$overall
 # Per-facility breakdown by type (wide format)
 classified$by_facility
 #> # A tibble: 5 × 7
-#>   hospital_name   patient_class_change pid_change type_unknown visit_date_change
-#>   <chr>                          <int>      <int>        <int>             <int>
-#> 1 Central Medica…                    1          2            2                 1
-#> 2 Metro Health S…                    0          0            3                 0
-#> 3 North County H…                    0          0            0                 1
-#> 4 Lakeside Commu…                    1          0            0                 0
-#> 5 River Valley M…                    0          0            0                 1
+#>   hospital patient_class_change pid_change type_unknown visit_date_change
+#>      <int>                <int>      <int>        <int>             <int>
+#> 1     1001                    1          2            2                 1
+#> 2     1005                    0          0            3                 0
+#> 3     1002                    0          0            0                 1
+#> 4     1003                    0          0            0                 1
+#> 5     1004                    1          0            0                 0
 #> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
 #> #   n_duplicated_total <dbl>
 ```
@@ -300,13 +300,14 @@ classifications back to the original data:
 ``` r
 
 # Join mechanism type back to raw data for row-level inspection.
-# classify_duplicates() returns cleaned (snake_case) column names,
-# so clean essence_raw first to align join keys.
+# classify_duplicates() returns cleaned (snake_case) column names, so
+# clean essence_raw first to align join keys. essence_raw has Hospital,
+# so that's the preferred join key here, not hospital_name (see ?dedupe).
 typed <- essence_raw |>
   janitor::clean_names() |>
   dplyr::left_join(
     classify_duplicates(essence_raw, return_format = "tibble"),
-    by = c("hospital_name", "visit_id")
+    by = c("hospital", "visit_id")
   )
 
 dplyr::count(typed, dup_type)
