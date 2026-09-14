@@ -208,6 +208,24 @@ with an informative message if any are absent.</p>
 </div>
 
 <div class="section">
+<h3 id="missing-key-values-are-never-classified-as-duplicates">Missing key values are never classified as duplicates<a class="anchor" aria-label="anchor" href="#missing-key-values-are-never-classified-as-duplicates"></a></h3>
+
+
+<p>A row with a missing <code>facility_col</code> or <code>visit_col</code> value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. <code>classify_duplicates()</code> never groups two such rows together,
+even when they share the same facility and both have a missing
+<code>visit_col</code>: each gets its own <code>$visit_groups</code> row with <code>dup_type = "no_duplication"</code>. This differs from grouping directly on the raw
+columns (e.g. <code><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">dplyr::group_by()</a></code>), which follows SQL's <code>GROUP BY</code>
+convention of treating every <code>NA</code> as equal to every other <code>NA</code> and
+would otherwise classify genuinely distinct visits as duplicated just
+because their identifier happened to be missing. <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>
+(gated by <code>verbose</code>) reports how many rows were affected whenever this
+occurs. See <code><a href="dedupe.html">dedupe()</a></code>'s "Missing key values" section for the same
+behavior there.</p>
+</div>
+
+<div class="section">
 <h3 id="optional-patient-class-detection">Optional patient class detection<a class="anchor" aria-label="anchor" href="#optional-patient-class-detection"></a></h3>
 
 
@@ -305,8 +323,8 @@ further analysis.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   hospital visit_id  n_rows n_biosense_ids n_dates n_pid n_patient_classes</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     <span style="text-decoration: underline;">1</span>001 V48287737      2              2       2     1                 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     <span style="text-decoration: underline;">1</span>002 V28588848      2              2       2     1                 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     <span style="text-decoration: underline;">1</span>002 V28588848      2              2       2     1                 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     <span style="text-decoration: underline;">1</span>001 V48287737      2              2       2     1                 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span>     <span style="text-decoration: underline;">1</span>003 V86561004      2              2       2     1                 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: dup_type &lt;chr&gt;</span></span>
 <span class="r-in"><span></span></span>

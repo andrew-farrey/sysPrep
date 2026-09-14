@@ -163,6 +163,26 @@ All classification types require `facility_col`, `visit_col`,
 `date`), and `C_Unique_Patient_ID` (or `c_unique_patient_id`). The
 function aborts with an informative message if any are absent.
 
+### Missing key values are never classified as duplicates
+
+A row with a missing `facility_col` or `visit_col` value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. `classify_duplicates()` never groups two such rows together, even
+when they share the same facility and both have a missing `visit_col`:
+each gets its own `$visit_groups` row with
+`dup_type = "no_duplication"`. This differs from grouping directly on
+the raw columns (e.g.
+[`dplyr::group_by()`](https://dplyr.tidyverse.org/reference/group_by.html)),
+which follows SQL's `GROUP BY` convention of treating every `NA` as
+equal to every other `NA` and would otherwise classify genuinely
+distinct visits as duplicated just because their identifier happened to
+be missing.
+[`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html) (gated
+by `verbose`) reports how many rows were affected whenever this occurs.
+See
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+"Missing key values" section for the same behavior there.
+
 ### Optional patient class detection
 
 Detection of `patient_class_change` requires `c_patient_class` in the
@@ -257,8 +277,8 @@ essence_raw |>
 #> # A tibble: 3 × 8
 #>   hospital visit_id  n_rows n_biosense_ids n_dates n_pid n_patient_classes
 #>      <int> <chr>      <int>          <int>   <int> <int>             <int>
-#> 1     1001 V48287737      2              2       2     1                 1
-#> 2     1002 V28588848      2              2       2     1                 1
+#> 1     1002 V28588848      2              2       2     1                 1
+#> 2     1001 V48287737      2              2       2     1                 1
 #> 3     1003 V86561004      2              2       2     1                 1
 #> # ℹ 1 more variable: dup_type <chr>
 

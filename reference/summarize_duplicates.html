@@ -99,6 +99,24 @@ Duplicate detection is therefore always scoped to <code>facility x visit_col</co
 </div>
 
 <div class="section">
+<h3 id="missing-key-values-are-never-counted-as-duplicates">Missing key values are never counted as duplicates<a class="anchor" aria-label="anchor" href="#missing-key-values-are-never-counted-as-duplicates"></a></h3>
+
+
+<p>A row with a missing <code>facility_col</code> or <code>visit_col</code> value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. <code>summarize_duplicates()</code> never groups two such rows together,
+even when they share the same facility and both have a missing
+<code>visit_col</code>: each counts as its own distinct visit in <code>$overall</code> and
+<code>$by_facility</code>. This differs from grouping directly on the raw columns
+(e.g. <code><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">dplyr::group_by()</a></code>), which follows SQL's <code>GROUP BY</code> convention
+of treating every <code>NA</code> as equal to every other <code>NA</code> and would otherwise
+report genuinely distinct visits as duplicated just because their
+identifier happened to be missing. <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code> reports how many
+rows were affected whenever this occurs. See <code><a href="dedupe.html">dedupe()</a></code>'s "Missing key
+values" section for the same behavior there.</p>
+</div>
+
+<div class="section">
 <h3 id="return-value-components">Return value components<a class="anchor" aria-label="anchor" href="#return-value-components"></a></h3>
 
 
@@ -174,19 +192,19 @@ proportions.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 13 × 2</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital visit_id </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span>     <span style="text-decoration: underline;">1</span>001 V10085501</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span>     <span style="text-decoration: underline;">1</span>001 V14709603</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span>     <span style="text-decoration: underline;">1</span>001 V89270420</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span>     <span style="text-decoration: underline;">1</span>005 V85359976</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span>     <span style="text-decoration: underline;">1</span>001 V37919657</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span>     <span style="text-decoration: underline;">1</span>001 V48287737</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span>     <span style="text-decoration: underline;">1</span>001 V60047491</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span>     <span style="text-decoration: underline;">1</span>001 V89270420</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span>     <span style="text-decoration: underline;">1</span>002 V28588848</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span>     <span style="text-decoration: underline;">1</span>002 V64229194</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     <span style="text-decoration: underline;">1</span>003 V86561004</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>     <span style="text-decoration: underline;">1</span>004 V71515667</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span>     <span style="text-decoration: underline;">1</span>005 V38278064</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span>     <span style="text-decoration: underline;">1</span>005 V82754314</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">13</span>     <span style="text-decoration: underline;">1</span>005 V85359976</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span>     <span style="text-decoration: underline;">1</span>002 V64229194</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span>     <span style="text-decoration: underline;">1</span>002 V28588848</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span>     <span style="text-decoration: underline;">1</span>001 V10085501</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span>     <span style="text-decoration: underline;">1</span>005 V38278064</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span>     <span style="text-decoration: underline;">1</span>001 V48287737</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     <span style="text-decoration: underline;">1</span>001 V60047491</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>     <span style="text-decoration: underline;">1</span>005 V82754314</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span>     <span style="text-decoration: underline;">1</span>003 V86561004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span>     <span style="text-decoration: underline;">1</span>004 V71515667</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">13</span>     <span style="text-decoration: underline;">1</span>001 V14709603</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Filter raw data to duplicated visits for manual review</span></span></span>
 <span class="r-in"><span><span class="co"># (clean first so join keys match snake_case output of $duplicate_ids;</span></span></span>

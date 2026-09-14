@@ -376,7 +376,11 @@ describe the episode the collapsed row was built from (e.g.
 <code>.episode_n_rows = 2</code> on a collapsed row means two original records were
 merged into it).</p><dl><dt><code>.episode_id</code></dt>
 <dd><p>A character key combining <code>facility_col</code> and
-<code>visit_col</code>, shared across all rows belonging to the same care episode.</p></dd>
+<code>visit_col</code>, shared across all rows belonging to the same care
+episode. A row with a missing <code>facility_col</code> or <code>visit_col</code> value
+has an unknown identity, not one confirmed to match every other row
+with a missing value, so its <code>.episode_id</code> gets a unique numeric
+suffix instead of being shared with any other row – see Details.</p></dd>
 
 <dt><code>.patient_class_sequence</code></dt>
 <dd><p>All patient classes for the episode

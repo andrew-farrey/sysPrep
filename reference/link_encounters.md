@@ -349,7 +349,11 @@ merged into it).
 - `.episode_id`:
 
   A character key combining `facility_col` and `visit_col`, shared
-  across all rows belonging to the same care episode.
+  across all rows belonging to the same care episode. A row with a
+  missing `facility_col` or `visit_col` value has an unknown identity,
+  not one confirmed to match every other row with a missing value, so
+  its `.episode_id` gets a unique numeric suffix instead of being shared
+  with any other row – see Details.
 
 - `.patient_class_sequence`:
 

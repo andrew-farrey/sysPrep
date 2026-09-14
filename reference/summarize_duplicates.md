@@ -55,6 +55,25 @@ not constitute a duplicate: `Visit_ID` is unique only within a facility.
 Duplicate detection is therefore always scoped to
 `facility x visit_col`.
 
+### Missing key values are never counted as duplicates
+
+A row with a missing `facility_col` or `visit_col` value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. `summarize_duplicates()` never groups two such rows together,
+even when they share the same facility and both have a missing
+`visit_col`: each counts as its own distinct visit in `$overall` and
+`$by_facility`. This differs from grouping directly on the raw columns
+(e.g.
+[`dplyr::group_by()`](https://dplyr.tidyverse.org/reference/group_by.html)),
+which follows SQL's `GROUP BY` convention of treating every `NA` as
+equal to every other `NA` and would otherwise report genuinely distinct
+visits as duplicated just because their identifier happened to be
+missing.
+[`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html)
+reports how many rows were affected whenever this occurs. See
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+"Missing key values" section for the same behavior there.
+
 ### Return value components
 
 - `$duplicate_ids`:
@@ -129,19 +148,19 @@ dups$duplicate_ids
 #> # A tibble: 13 × 2
 #>    hospital visit_id 
 #>       <int> <chr>    
-#>  1     1001 V10085501
-#>  2     1001 V14709603
+#>  1     1001 V89270420
+#>  2     1005 V85359976
 #>  3     1001 V37919657
-#>  4     1001 V48287737
-#>  5     1001 V60047491
-#>  6     1001 V89270420
-#>  7     1002 V28588848
-#>  8     1002 V64229194
-#>  9     1003 V86561004
-#> 10     1004 V71515667
-#> 11     1005 V38278064
-#> 12     1005 V82754314
-#> 13     1005 V85359976
+#>  4     1002 V64229194
+#>  5     1002 V28588848
+#>  6     1001 V10085501
+#>  7     1005 V38278064
+#>  8     1001 V48287737
+#>  9     1001 V60047491
+#> 10     1005 V82754314
+#> 11     1003 V86561004
+#> 12     1004 V71515667
+#> 13     1001 V14709603
 
 # Filter raw data to duplicated visits for manual review
 # (clean first so join keys match snake_case output of $duplicate_ids;

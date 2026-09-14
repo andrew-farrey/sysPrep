@@ -137,6 +137,22 @@ facilities represents two distinct encounters and is not collapsed.</p>
 </div>
 
 <div class="section">
+<h3 id="missing-key-values-are-never-treated-as-duplicates">Missing key values are never treated as duplicates<a class="anchor" aria-label="anchor" href="#missing-key-values-are-never-treated-as-duplicates"></a></h3>
+
+
+<p>A row with a missing <code>facility_col</code> or <code>visit_col</code> value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. <code>dedupe()</code> never groups two such rows together, even when they
+share the same facility and both have a missing <code>visit_col</code>: each is
+retained as its own distinct row. This differs from grouping directly
+on the raw columns (e.g. <code><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">dplyr::group_by()</a></code>), which follows SQL's
+<code>GROUP BY</code> convention of treating every <code>NA</code> as equal to every other
+<code>NA</code> and would otherwise silently discard genuinely distinct visits
+whose identifier happened to be missing. <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code> reports how
+many rows were affected whenever this occurs.</p>
+</div>
+
+<div class="section">
 <h3 id="facility-identifier-preference">Facility identifier preference<a class="anchor" aria-label="anchor" href="#facility-identifier-preference"></a></h3>
 
 
@@ -202,16 +218,16 @@ the actual column names present in the data.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 180 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V121981…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V147096…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V154413…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V164608…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V176732…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V179024…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V892704…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Metro Health Sy…     <span style="text-decoration: underline;">1</span>005 Emergency Ca… KY_Fayette      40507        V853599…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Hillside FSED        <span style="text-decoration: underline;">1</span>007 Urgent Care   KY_Jefferson    40202        V787824…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V229451…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V285888…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Rural Health Ce…     <span style="text-decoration: underline;">1</span>006 Emergency Ca… KY_Madison      40390        V511888…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 170 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
@@ -265,16 +281,16 @@ the actual column names present in the data.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 180 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V121981…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V147096…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V154413…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V164608…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V176732…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V179024…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V892704…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Metro Health Sy…     <span style="text-decoration: underline;">1</span>005 Emergency Ca… KY_Fayette      40507        V853599…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Hillside FSED        <span style="text-decoration: underline;">1</span>007 Urgent Care   KY_Jefferson    40202        V787824…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V229451…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V285888…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Rural Health Ce…     <span style="text-decoration: underline;">1</span>006 Emergency Ca… KY_Madison      40390        V511888…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 170 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
@@ -286,16 +302,16 @@ the actual column names present in the data.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 180 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V100855…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V121981…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V147096…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V154413…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V164608…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V176732…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V179024…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V892704…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Metro Health Sy…     <span style="text-decoration: underline;">1</span>005 Emergency Ca… KY_Fayette      40507        V853599…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Hillside FSED        <span style="text-decoration: underline;">1</span>007 Urgent Care   KY_Jefferson    40202        V787824…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V229451…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V285888…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Rural Health Ce…     <span style="text-decoration: underline;">1</span>006 Emergency Ca… KY_Madison      40390        V511888…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 170 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
@@ -307,16 +323,16 @@ the actual column names present in the data.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 183 × 18</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V198982…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V871324…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V529450…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V188198…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V872685…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V147096…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V336911…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V447417…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V571062…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V892704…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Metro Health Sy…     <span style="text-decoration: underline;">1</span>005 Emergency Ca… KY_Fayette      40507        V853599…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Hillside FSED        <span style="text-decoration: underline;">1</span>007 Urgent Care   KY_Jefferson    40202        V787824…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V229451…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V285888…</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Rural Health Ce…     <span style="text-decoration: underline;">1</span>006 Emergency Ca… KY_Madison      40390        V511888…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 173 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
