@@ -53,6 +53,36 @@ resolve_col_str <- function(data, col_sym) {
   rlang::as_string(resolve_col(data, col_sym))
 }
 
+# resolve_facility_col() ----
+# Shared by every exported function taking a `facility_col` argument. When
+# the caller didn't explicitly supply `facility_col` (the caller checks this
+# via missing() before evaluating the argument at all, and passes the result
+# in as `facility_col_missing`), prefers the stable numeric
+# `Hospital`/`C_BioSense_Facility_ID` identifier over the mutable
+# `HospitalName` display string: a facility rename or rebrand changes
+# `HospitalName` but not `Hospital`, so grouping or joining by `HospitalName`
+# can silently split what should be one facility's rows across a rename (or
+# merge two different facilities that briefly share a display name). An
+# explicitly supplied `facility_col` is always honored exactly as given, with
+# no substitution.
+resolve_facility_col <- function(data, facility_col_sym, facility_col_missing) {
+  if (facility_col_missing) {
+    hospital_id_sym <- resolve_col_optional(data, rlang::sym("Hospital"))
+    if (!is.null(hospital_id_sym)) {
+      return(hospital_id_sym)
+    }
+    return(resolve_col(data, rlang::sym("HospitalName")))
+  }
+  resolve_col(data, facility_col_sym)
+}
+
+# resolve_facility_col_str() ----
+# Convenience wrapper around resolve_facility_col() for the common case
+# where the resolved column is needed as a string.
+resolve_facility_col_str <- function(data, facility_col_sym, facility_col_missing) {
+  rlang::as_string(resolve_facility_col(data, facility_col_sym, facility_col_missing))
+}
+
 # clean_names_safe() ----
 # Like janitor::clean_names() but preserves leading-dot prefixes on column
 # names. janitor::clean_names() strips leading dots (e.g. `.index_encounter`

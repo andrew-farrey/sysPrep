@@ -6,7 +6,7 @@
 \usage{
 review_facility_ed_visits(
   data,
-  facility_col = HospitalName,
+  facility_col = NULL,
   facility_type_col = FacilityType,
   date_col = NULL,
   method = c("percentile", "iqr", "both"),
@@ -24,7 +24,10 @@ review_facility_ed_visits(
 \code{\link[=dedupe]{dedupe()}} and optionally \code{\link[=filter_care_setting]{filter_care_setting()}}.}
 
 \item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the facility. Defaults to \code{HospitalName}.}
+column name identifying the facility. When not supplied, prefers
+\code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
+see \code{?dedupe}'s "Facility identifier preference" section for the full
+rationale.}
 
 \item{facility_type_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
 Unquoted column name identifying the facility type. Defaults to

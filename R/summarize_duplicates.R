@@ -29,9 +29,11 @@
 #'
 #' @param data A data frame of raw ESSENCE visit-level records.
 #' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. Defaults to `HospitalName`.
-#'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
-#'   equivalents.
+#'   column name identifying the facility. When not supplied, prefers
+#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
+#'   see `?dedupe`'s "Facility identifier preference" section for the full
+#'   rationale. Accepts both raw ESSENCE names and
+#'   post-[janitor::clean_names()] equivalents.
 #' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
 #'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
@@ -50,24 +52,39 @@
 #' dups$duplicate_ids
 #'
 #' # Filter raw data to duplicated visits for manual review
-#' # (clean first so join keys match snake_case output of $duplicate_ids)
+#' # (clean first so join keys match snake_case output of $duplicate_ids;
+#' # essence_raw has Hospital, so that's the preferred join key here,
+#' # not hospital_name -- see Details in ?dedupe)
 #' essence_raw |>
 #'   janitor::clean_names() |>
 #'   dplyr::semi_join(
 #'     summarize_duplicates(essence_raw)$duplicate_ids,
-#'     by = c("hospital_name", "visit_id")
+#'     by = c("hospital", "visit_id")
 #'   )
 #'
 #' @seealso [classify_duplicates()] for mechanism-level classification;
 #'   [dedupe()] to remove duplicates after review.
 #' @export
 summarize_duplicates <- function(data,
-                                 facility_col = HospitalName,
+                                 facility_col = NULL,
                                  visit_col    = Visit_ID) {
+
+  # facility_col defaults to NULL (rather than a fixed column) so the
+  # printed signature/Usage line doesn't misrepresent the smart default
+  # below as a plain HospitalName default ----
+  facility_col_quo     <- rlang::enquo(facility_col)
+  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
+  facility_col_sym     <- if (facility_col_missing) {
+    NULL
+  } else {
+    rlang::sym(rlang::as_name(facility_col_quo))
+  }
 
   # Resolve column names ----
   data_clean    <- clean_names_safe(data)
-  fac_col_str   <- resolve_col_str(data_clean, rlang::ensym(facility_col))
+  fac_col_str   <- resolve_facility_col_str(
+    data_clean, facility_col_sym, facility_col_missing
+  )
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Identify duplicate groups (facility x visit_col with n > 1) ----

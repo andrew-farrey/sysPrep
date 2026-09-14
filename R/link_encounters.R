@@ -136,7 +136,9 @@
 #' ## Linking key and its limitation
 #'
 #' Records are linked by `facility_col` \eqn{\times} `visit_col`
-#' (`HospitalName` \eqn{\times} `Visit_ID` by default).
+#' (`Hospital`/`C_BioSense_Facility_ID` \eqn{\times} `Visit_ID` by
+#' default when `Hospital` is present, else `HospitalName` \eqn{\times}
+#' `Visit_ID`; see `?dedupe`'s "Facility identifier preference" section).
 #'
 #' **Limitation:** if a facility's HL7 feed assigns a genuinely different
 #' `Visit_ID` to the inpatient leg of a care episode, `link_encounters()`
@@ -243,9 +245,11 @@
 #'   rows for the same underlying record. `link_encounters()` aborts if this
 #'   is `NULL`; see Details.
 #' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. Defaults to `HospitalName`.
-#'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
-#'   equivalents.
+#'   column name identifying the facility. When not supplied, prefers
+#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present in
+#'   `ed_data`; see `?dedupe`'s "Facility identifier preference" section
+#'   for the full rationale. Accepts both raw ESSENCE names and
+#'   post-[janitor::clean_names()] equivalents.
 #' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
 #'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
@@ -319,7 +323,7 @@
 #' @export
 link_encounters <- function(ed_data,
                             inpatient_admission_data = NULL,
-                            facility_col             = HospitalName,
+                            facility_col             = NULL,
                             visit_col                = Visit_ID,
                             merge_fields             = c(
                               CCDD                   = "union_ccdd",
@@ -333,6 +337,17 @@ link_encounters <- function(ed_data,
                             return_format            = c("collapsed", "long"),
                             clean_names              = TRUE,
                             verbose                  = TRUE) {
+
+  # facility_col defaults to NULL (rather than a fixed column) so the
+  # printed signature/Usage line doesn't misrepresent the smart default
+  # below as a plain HospitalName default ----
+  facility_col_quo     <- rlang::enquo(facility_col)
+  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
+  facility_col_sym     <- if (facility_col_missing) {
+    NULL
+  } else {
+    rlang::sym(rlang::as_name(facility_col_quo))
+  }
 
   if (is.null(inpatient_admission_data)) {
     rlang::abort(
@@ -370,7 +385,9 @@ link_encounters <- function(ed_data,
 
   # Normalize ed_data ----
   ed_data      <- clean_names_safe(ed_data)
-  facility_col <- resolve_col(ed_data, rlang::ensym(facility_col))
+  facility_col <- resolve_facility_col(
+    ed_data, facility_col_sym, facility_col_missing
+  )
   visit_col    <- resolve_col(ed_data, rlang::ensym(visit_col))
 
   fac_col_str   <- rlang::as_string(facility_col)

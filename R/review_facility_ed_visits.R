@@ -54,7 +54,10 @@
 #' @param data A data frame of ESSENCE visit-level records, typically after
 #'   [dedupe()] and optionally [filter_care_setting()].
 #' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. Defaults to `HospitalName`.
+#'   column name identifying the facility. When not supplied, prefers
+#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
+#'   see `?dedupe`'s "Facility identifier preference" section for the full
+#'   rationale.
 #' @param facility_type_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
 #'   Unquoted column name identifying the facility type. Defaults to
 #'   `FacilityType`.
@@ -112,7 +115,7 @@
 #' @seealso [filter_care_setting()] for removing non-ED facilities before review.
 #' @export
 review_facility_ed_visits <- function(data,
-                                      facility_col      = HospitalName,
+                                      facility_col      = NULL,
                                       facility_type_col = FacilityType,
                                       date_col          = NULL,
                                       method            = c("percentile", "iqr", "both"),
@@ -124,13 +127,26 @@ review_facility_ed_visits <- function(data,
                                       clean_names       = TRUE,
                                       verbose           = TRUE) {
 
+  # facility_col defaults to NULL (rather than a fixed column) so the
+  # printed signature/Usage line doesn't misrepresent the smart default
+  # below as a plain HospitalName default ----
+  facility_col_quo     <- rlang::enquo(facility_col)
+  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
+  facility_col_sym     <- if (facility_col_missing) {
+    NULL
+  } else {
+    rlang::sym(rlang::as_name(facility_col_quo))
+  }
+
   method        <- match.arg(method)
   return_format <- match.arg(return_format)
 
   # Normalize names ----
   data <- clean_names_safe(data)
 
-  fac_col_str  <- resolve_col_str(data, rlang::ensym(facility_col))
+  fac_col_str  <- resolve_facility_col_str(
+    data, facility_col_sym, facility_col_missing
+  )
   type_col_str <- resolve_col_str(data, rlang::ensym(facility_type_col))
 
   # Resolve optional date column ----

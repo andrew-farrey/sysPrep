@@ -20,6 +20,14 @@ test_that("link_encounters() returns long-format data with patient_class", {
   expect_true("patient_class" %in% names(result))
 })
 
+test_that("link_encounters() honors an explicitly supplied facility_col over the Hospital preference", {
+  data <- make_essence_data(n = 5L)
+  result <- suppressMessages(
+    link_encounters(data, data[0L, ], facility_col = HospitalName)
+  )
+  expect_true(any(startsWith(result$.episode_id, data$HospitalName[1])))
+})
+
 test_that("link_encounters() adds episode metadata columns", {
   data <- make_essence_data(n = 5L)
   result <- link_encounters(data, data[0L, ])

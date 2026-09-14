@@ -4,15 +4,17 @@
 \alias{summarize_duplicates}
 \title{Summarize duplicate records in an ESSENCE data pull}
 \usage{
-summarize_duplicates(data, facility_col = HospitalName, visit_col = Visit_ID)
+summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
 }
 \arguments{
 \item{data}{A data frame of raw ESSENCE visit-level records.}
 
 \item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the facility. Defaults to \code{HospitalName}.
-Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
-equivalents.}
+column name identifying the facility. When not supplied, prefers
+\code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
+see \code{?dedupe}'s "Facility identifier preference" section for the full
+rationale. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
@@ -63,12 +65,14 @@ dups$by_facility
 dups$duplicate_ids
 
 # Filter raw data to duplicated visits for manual review
-# (clean first so join keys match snake_case output of $duplicate_ids)
+# (clean first so join keys match snake_case output of $duplicate_ids;
+# essence_raw has Hospital, so that's the preferred join key here,
+# not hospital_name -- see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::semi_join(
     summarize_duplicates(essence_raw)$duplicate_ids,
-    by = c("hospital_name", "visit_id")
+    by = c("hospital", "visit_id")
   )
 
 }

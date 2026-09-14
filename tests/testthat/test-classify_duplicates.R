@@ -7,6 +7,12 @@ test_that("classify_duplicates() returns list with required components", {
   expect_named(result, c("duplicate_ids", "visit_groups", "by_facility", "overall"))
 })
 
+test_that("classify_duplicates() honors an explicitly supplied facility_col over the Hospital preference", {
+  data <- make_data_with_dups()
+  result <- classify_duplicates(data, facility_col = HospitalName, return_format = "tibble")
+  expect_true("hospital_name" %in% names(result))
+})
+
 test_that("classify_duplicates() identifies visit_date_change correctly", {
   data <- make_data_with_dups()
   result <- classify_duplicates(data, return_format = "tibble")
@@ -80,8 +86,10 @@ test_that("classify_duplicates() $by_facility is wide with facility column and n
   data   <- make_data_with_dups()
   result <- classify_duplicates(data)
   expect_true("n_duplicated_total" %in% names(result$by_facility))
-  # Wide format: facility column must be present
-  expect_true("hospital_name" %in% names(result$by_facility))
+  # Wide format: facility column must be present (Hospital is preferred
+  # over HospitalName when present -- see ?dedupe's "Facility identifier
+  # preference" section)
+  expect_true("hospital" %in% names(result$by_facility))
 })
 
 test_that("classify_duplicates() result has class essence_dup_classified", {

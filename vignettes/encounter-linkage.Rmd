@@ -319,8 +319,10 @@ all, structurally invisible to a `HasBeenE = 1` query and only captured
 because a second pull was queried. `"ED->Direct Admit"` visits are the
 continuity-break artifact itself: an ED visit and its mis-submitted
 direct-admit continuation, reported under two different `C_BioSense_ID`
-values sharing one `HospitalName x Visit_ID`, correctly merged into a
-single encounter instead of being counted twice.
+values sharing one `Hospital x Visit_ID` (the linking key `essence_ed_raw`/
+`essence_inp_raw` resolve to by default, since both carry `Hospital`; see
+`?dedupe`'s "Facility identifier preference" section), correctly merged
+into a single encounter instead of being counted twice.
 
 ```{r direct-admits}
 dplyr::filter(episodes, patient_class == "Direct Admit") |>

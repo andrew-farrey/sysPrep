@@ -1,5 +1,29 @@
 # sysPrep 0.1.0
 
+* **Behavior change:** `dedupe()`, `summarize_duplicates()`,
+  `classify_duplicates()`, `review_facility_ed_visits()`, and
+  `link_encounters()` now prefer `Hospital`/`C_BioSense_Facility_ID` over
+  `HospitalName` as the default `facility_col`, whenever `Hospital` is
+  present in the data, falling back to `HospitalName` only if it isn't.
+  `Hospital` is a stable numeric identifier; `HospitalName` is a display
+  string that changes on a facility rename or rebrand, so grouping by name
+  can silently split one facility's rows into two across a rename, or
+  merge two different facilities that briefly share a display name. An
+  explicitly supplied `facility_col` always overrides this preference
+  exactly as given. `filter_care_setting()`'s `facility_col` is
+  deliberately unchanged, since it matches against `fix_facility_type_vector`'s
+  exact facility *name* strings; that function already exposes a separate,
+  ID-preferring `facility_id_col`/`fix_facility_id_vector` for the same
+  durability benefit. **If you have code that assumes `dedupe()` (or the
+  other affected functions) group by `HospitalName`/`hospital_name` by
+  default, and your data includes `Hospital`, update it to reference
+  `hospital`/`Hospital` instead, or pass `facility_col = HospitalName`
+  explicitly to keep the old behavior.** The five affected functions'
+  `facility_col` argument now defaults to `NULL` (was a fixed column
+  name) so that `args()`/the Usage line accurately reflect that the real
+  default is resolved at runtime rather than printing a fixed default
+  that's no longer accurate; this matches how `order_by`/`date_col`
+  already behave elsewhere in the package.
 * **Bug fix** in `link_encounters()`: when deriving `patient_class` from
   `HasBeen_` flags (the fallback path used when `C_Patient_Class_List` is
   absent), the `has_been_e`/`has_been_admitted`/etc. columns were silently

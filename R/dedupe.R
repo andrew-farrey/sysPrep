@@ -23,6 +23,17 @@
 #' unique within a facility in ESSENCE; the same Visit_ID at two different
 #' facilities represents two distinct encounters and is not collapsed.
 #'
+#' ## Facility identifier preference
+#' When `facility_col` is not explicitly supplied, `dedupe()` prefers
+#' `Hospital`/`C_BioSense_Facility_ID` (a stable numeric facility
+#' identifier) over `HospitalName` whenever it's present in the data,
+#' falling back to `HospitalName` only if `Hospital` isn't available. A
+#' facility rename or rebrand changes `HospitalName` but not `Hospital`;
+#' deduplicating by name can silently split what should be one facility's
+#' rows across a rename, or merge two different facilities that briefly
+#' share a display name. Explicitly passing `facility_col` (either
+#' column) always overrides this preference exactly as given.
+#'
 #' ## keep strategies
 #' \describe{
 #'   \item{`"first"` (default)}{Retains the first row as received. When
@@ -48,10 +59,10 @@
 #'
 #' @param data A data frame of raw ESSENCE visit-level records.
 #' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. Defaults to `HospitalName`.
-#'   Use `Hospital` when working with `C_BioSense_Facility_ID`-based pulls.
-#'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
-#'   equivalents.
+#'   column name identifying the facility. When not supplied, prefers
+#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
+#'   see Details. Accepts both raw ESSENCE names and
+#'   post-[janitor::clean_names()] equivalents.
 #' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Common
 #'   alternatives include `MedicalRecordNumber`, `MRN`, `VisitNumber`, and
@@ -74,7 +85,8 @@
 #'   `visit_col` combination.
 #'
 #' @examples
-#' # Default: one row per HospitalName x Visit_ID, first row as received
+#' # Default: one row per Hospital x Visit_ID (Hospital is preferred over
+#' # HospitalName since essence_raw has it), first row as received
 #' essence_raw |> dedupe()
 #'
 #' # Retain earliest record by visit date
@@ -107,18 +119,31 @@
 #'   [classify_duplicates()] to understand duplication mechanisms.
 #' @export
 dedupe <- function(data,
-                   facility_col = HospitalName,
+                   facility_col = NULL,
                    visit_col    = Visit_ID,
                    order_by     = NULL,
                    keep         = "first",
                    clean_names  = TRUE) {
+
+  # facility_col defaults to NULL (rather than a fixed column) so the
+  # printed signature/Usage line doesn't misrepresent the smart default
+  # below as a plain HospitalName default ----
+  facility_col_quo     <- rlang::enquo(facility_col)
+  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
+  facility_col_sym     <- if (facility_col_missing) {
+    NULL
+  } else {
+    rlang::sym(rlang::as_name(facility_col_quo))
+  }
 
   keep <- match.arg(keep, choices = c("first", "last", "most_complete"))
 
   # Normalize names upfront ----
   original_names <- names(data)
   data           <- clean_names_safe(data)
-  facility_col   <- resolve_col(data, rlang::ensym(facility_col))
+  facility_col   <- resolve_facility_col(
+    data, facility_col_sym, facility_col_missing
+  )
   visit_col      <- resolve_col(data, rlang::ensym(visit_col))
 
   # Resolve optional order_by ----

@@ -19,7 +19,7 @@ test_that("summarize_duplicates() duplicate_ids contains correct pairs", {
   data <- make_data_with_dups()
   result <- summarize_duplicates(data)
   expect_equal(nrow(result$duplicate_ids), 3L)
-  expect_true(all(c("hospital_name", "visit_id") %in% names(result$duplicate_ids)))
+  expect_true(all(c("hospital", "visit_id") %in% names(result$duplicate_ids)))
 })
 
 test_that("summarize_duplicates() by_facility is sorted by n_excess_rows desc", {
@@ -47,4 +47,10 @@ test_that("summarize_duplicates() works with no duplicates", {
   result <- summarize_duplicates(data)
   expect_equal(result$overall$n_duplicated_visit_ids, 0L)
   expect_equal(nrow(result$duplicate_ids), 0L)
+})
+
+test_that("summarize_duplicates() honors an explicitly supplied facility_col over the Hospital preference", {
+  data <- make_data_with_dups()
+  result <- summarize_duplicates(data, facility_col = HospitalName)
+  expect_true(all(c("hospital_name", "visit_id") %in% names(result$duplicate_ids)))
 })

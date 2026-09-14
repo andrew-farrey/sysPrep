@@ -7,7 +7,7 @@
 link_encounters(
   ed_data,
   inpatient_admission_data = NULL,
-  facility_col = HospitalName,
+  facility_col = NULL,
   visit_col = Visit_ID,
   merge_fields = c(CCDD = "union_ccdd", CCDDParsed = "union_ccdd", CCDDCategory_flat =
     "union_delimited", C_Death = "prefer_yes", Discharge_Disposition =
@@ -31,9 +31,11 @@ rows for the same underlying record. \code{link_encounters()} aborts if this
 is \code{NULL}; see Details.}
 
 \item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the facility. Defaults to \code{HospitalName}.
-Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
-equivalents.}
+column name identifying the facility. When not supplied, prefers
+\code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present in
+\code{ed_data}; see \code{?dedupe}'s "Facility identifier preference" section
+for the full rationale. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
@@ -210,7 +212,9 @@ pull separately, then pass both to \code{link_encounters()}.
 \subsection{Linking key and its limitation}{
 
 Records are linked by \code{facility_col} \eqn{\times} \code{visit_col}
-(\code{HospitalName} \eqn{\times} \code{Visit_ID} by default).
+(\code{Hospital}/\code{C_BioSense_Facility_ID} \eqn{\times} \code{Visit_ID} by
+default when \code{Hospital} is present, else \code{HospitalName} \eqn{\times}
+\code{Visit_ID}; see \code{?dedupe}'s "Facility identifier preference" section).
 
 \strong{Limitation:} if a facility's HL7 feed assigns a genuinely different
 \code{Visit_ID} to the inpatient leg of a care episode, \code{link_encounters()}

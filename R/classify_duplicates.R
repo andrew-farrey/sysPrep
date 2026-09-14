@@ -109,9 +109,11 @@
 #'
 #' @param data A data frame of raw ESSENCE visit-level records.
 #' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. Defaults to `HospitalName`.
-#'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
-#'   equivalents.
+#'   column name identifying the facility. When not supplied, prefers
+#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
+#'   see `?dedupe`'s "Facility identifier preference" section for the full
+#'   rationale. Accepts both raw ESSENCE names and
+#'   post-[janitor::clean_names()] equivalents.
 #' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
 #'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
@@ -145,28 +147,43 @@
 #'   dplyr::filter(dup_type == "visit_date_change")
 #'
 #' # Join classifications back to raw data for row-level inspection
-#' # (clean first so join keys match the snake_case output of classify_duplicates)
+#' # (clean first so join keys match the snake_case output of
+#' # classify_duplicates; essence_raw has Hospital, so that's the
+#' # preferred join key here, not hospital_name -- see Details in ?dedupe)
 #' essence_raw |>
 #'   janitor::clean_names() |>
 #'   dplyr::left_join(
 #'     classify_duplicates(essence_raw, return_format = "tibble"),
-#'     by = c("hospital_name", "visit_id")
+#'     by = c("hospital", "visit_id")
 #'   )
 #'
 #' @seealso [summarize_duplicates()] for counts without mechanism detail;
 #'   [dedupe()] to remove duplicates after review.
 #' @export
 classify_duplicates <- function(data,
-                                facility_col  = HospitalName,
+                                facility_col  = NULL,
                                 visit_col     = Visit_ID,
                                 return_format = c("list", "tibble"),
                                 verbose       = TRUE) {
+
+  # facility_col defaults to NULL (rather than a fixed column) so the
+  # printed signature/Usage line doesn't misrepresent the smart default
+  # below as a plain HospitalName default ----
+  facility_col_quo     <- rlang::enquo(facility_col)
+  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
+  facility_col_sym     <- if (facility_col_missing) {
+    NULL
+  } else {
+    rlang::sym(rlang::as_name(facility_col_quo))
+  }
 
   return_format <- match.arg(return_format)
 
   # Normalize names upfront ----
   data_clean    <- clean_names_safe(data)
-  fac_col_str   <- resolve_col_str(data_clean, rlang::ensym(facility_col))
+  fac_col_str   <- resolve_facility_col_str(
+    data_clean, facility_col_sym, facility_col_missing
+  )
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Resolve required columns: accept raw ESSENCE names, clean_names() output, or variants ----

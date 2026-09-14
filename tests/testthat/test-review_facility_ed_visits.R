@@ -7,6 +7,16 @@ test_that("review_facility_ed_visits() returns a tibble", {
   expect_s3_class(result, "data.frame")
 })
 
+test_that("review_facility_ed_visits() honors an explicitly supplied facility_col over the Hospital preference", {
+  data <- make_essence_data(n = 20L)
+  result <- suppressMessages(
+    review_facility_ed_visits(
+      data, facility_col = HospitalName, return_format = "all"
+    )
+  )
+  expect_true("hospital_name" %in% names(result))
+})
+
 test_that("review_facility_ed_visits() outlier flag columns are present", {
   data <- make_essence_data(n = 20L)
   result <- suppressMessages(
@@ -51,7 +61,7 @@ test_that("review_facility_ed_visits() .outlier_direction = 'low' for low outlie
   result <- suppressMessages(
     review_facility_ed_visits(data, method = "iqr", return_format = "all")
   )
-  small_row <- dplyr::filter(result, hospital_name == "Small_1")
+  small_row <- dplyr::filter(result, hospital == 2005L)
   expect_true(small_row$.outlier_low)
   expect_equal(small_row$.outlier_direction, "low")
 })
@@ -67,7 +77,7 @@ test_that("review_facility_ed_visits() method = 'iqr' flags IQR-based outlier", 
   result <- suppressMessages(
     review_facility_ed_visits(data, method = "iqr", return_format = "all")
   )
-  small_row <- dplyr::filter(result, hospital_name == "Small_1")
+  small_row <- dplyr::filter(result, hospital == 2005L)
   expect_true(small_row$.outlier_flag)
 })
 
@@ -82,7 +92,7 @@ test_that("review_facility_ed_visits() method = 'both' flags union of methods", 
   result <- suppressMessages(
     review_facility_ed_visits(data, method = "both", return_format = "all")
   )
-  small_row <- dplyr::filter(result, hospital_name == "Small_1")
+  small_row <- dplyr::filter(result, hospital == 2005L)
   expect_true(small_row$.outlier_flag)
 })
 

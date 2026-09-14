@@ -209,13 +209,14 @@ back to the original data:
 
 ```{r classify-tibble}
 # Join mechanism type back to raw data for row-level inspection.
-# classify_duplicates() returns cleaned (snake_case) column names,
-# so clean essence_raw first to align join keys.
+# classify_duplicates() returns cleaned (snake_case) column names, so
+# clean essence_raw first to align join keys. essence_raw has Hospital,
+# so that's the preferred join key here, not hospital_name (see ?dedupe).
 typed <- essence_raw |>
   janitor::clean_names() |>
   dplyr::left_join(
     classify_duplicates(essence_raw, return_format = "tibble"),
-    by = c("hospital_name", "visit_id")
+    by = c("hospital", "visit_id")
   )
 
 dplyr::count(typed, dup_type)

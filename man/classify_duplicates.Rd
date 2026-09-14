@@ -6,7 +6,7 @@
 \usage{
 classify_duplicates(
   data,
-  facility_col = HospitalName,
+  facility_col = NULL,
   visit_col = Visit_ID,
   return_format = c("list", "tibble"),
   verbose = TRUE
@@ -16,9 +16,11 @@ classify_duplicates(
 \item{data}{A data frame of raw ESSENCE visit-level records.}
 
 \item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the facility. Defaults to \code{HospitalName}.
-Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
-equivalents.}
+column name identifying the facility. When not supplied, prefers
+\code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
+see \code{?dedupe}'s "Facility identifier preference" section for the full
+rationale. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
@@ -174,12 +176,14 @@ essence_raw |>
   dplyr::filter(dup_type == "visit_date_change")
 
 # Join classifications back to raw data for row-level inspection
-# (clean first so join keys match the snake_case output of classify_duplicates)
+# (clean first so join keys match the snake_case output of
+# classify_duplicates; essence_raw has Hospital, so that's the
+# preferred join key here, not hospital_name -- see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::left_join(
     classify_duplicates(essence_raw, return_format = "tibble"),
-    by = c("hospital_name", "visit_id")
+    by = c("hospital", "visit_id")
   )
 
 }

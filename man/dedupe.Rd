@@ -6,7 +6,7 @@
 \usage{
 dedupe(
   data,
-  facility_col = HospitalName,
+  facility_col = NULL,
   visit_col = Visit_ID,
   order_by = NULL,
   keep = "first",
@@ -17,10 +17,10 @@ dedupe(
 \item{data}{A data frame of raw ESSENCE visit-level records.}
 
 \item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the facility. Defaults to \code{HospitalName}.
-Use \code{Hospital} when working with \code{C_BioSense_Facility_ID}-based pulls.
-Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
-equivalents.}
+column name identifying the facility. When not supplied, prefers
+\code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
+see Details. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Common
@@ -73,6 +73,19 @@ unique within a facility in ESSENCE; the same Visit_ID at two different
 facilities represents two distinct encounters and is not collapsed.
 }
 
+\subsection{Facility identifier preference}{
+
+When \code{facility_col} is not explicitly supplied, \code{dedupe()} prefers
+\code{Hospital}/\code{C_BioSense_Facility_ID} (a stable numeric facility
+identifier) over \code{HospitalName} whenever it's present in the data,
+falling back to \code{HospitalName} only if \code{Hospital} isn't available. A
+facility rename or rebrand changes \code{HospitalName} but not \code{Hospital};
+deduplicating by name can silently split what should be one facility's
+rows across a rename, or merge two different facilities that briefly
+share a display name. Explicitly passing \code{facility_col} (either
+column) always overrides this preference exactly as given.
+}
+
 \subsection{keep strategies}{
 
 \describe{
@@ -101,7 +114,8 @@ the actual column names present in the data.
 }
 }
 \examples{
-# Default: one row per HospitalName x Visit_ID, first row as received
+# Default: one row per Hospital x Visit_ID (Hospital is preferred over
+# HospitalName since essence_raw has it), first row as received
 essence_raw |> dedupe()
 
 # Retain earliest record by visit date
