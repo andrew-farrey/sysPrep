@@ -1,5 +1,10 @@
 # sysPrep 0.1.0
 
+* **Bug fix:** `classify_duplicates()` no longer emits a spurious base R
+  warning ("replacement element 1 has 1 row to replace 0 rows") on a
+  genuinely clean pull with zero duplicates. `janitor::adorn_pct_formatting()`
+  errors on a 0-row tabyl; `$overall` is now built directly as an empty
+  tibble in that case instead of being routed through it.
 * **Bug fix:** `dedupe()`, `summarize_duplicates()`, `classify_duplicates()`,
   and `link_encounters()` no longer collapse rows that share a missing
   `facility_col` or `visit_col` value into a single group.
