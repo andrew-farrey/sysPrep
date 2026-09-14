@@ -151,3 +151,17 @@ test_that("classify_duplicates() aborts on missing required columns regardless o
   data <- make_essence_data(include_biosense = FALSE)
   expect_error(classify_duplicates(data, verbose = FALSE), "required columns are missing")
 })
+
+test_that("classify_duplicates() does not warn when the pull has zero duplicates", {
+  # make_essence_data() with default args has unique Visit_ID, C_BioSense_ID,
+  # and Date per row -- no duplicate groups at all
+  data <- make_essence_data()
+  expect_no_warning(suppressMessages(classify_duplicates(data)))
+})
+
+test_that("classify_duplicates() $overall is an empty tibble with n and percent columns when zero duplicates", {
+  data   <- make_essence_data()
+  result <- suppressMessages(classify_duplicates(data))
+  expect_equal(nrow(result$overall), 0L)
+  expect_true(all(c("dup_type", "n", "percent") %in% names(result$overall)))
+})

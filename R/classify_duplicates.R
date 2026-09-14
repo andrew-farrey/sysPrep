@@ -340,10 +340,21 @@ classify_duplicates <- function(data,
     dplyr::arrange(dplyr::desc(n_duplicated_total))
 
   # Component: overall tabyl-style summary ----
-  overall <- dup_rows |>
-    janitor::tabyl(dup_type) |>
-    janitor::adorn_pct_formatting(digits = 1) |>
-    dplyr::arrange(dplyr::desc(n))
+  # janitor::adorn_pct_formatting() errors on a 0-row tabyl (it tries to
+  # write a "%" string into a 0-row percent column), so build the empty
+  # tibble directly rather than routing a clean pull through tabyl() ----
+  overall <- if (nrow(dup_rows) == 0L) {
+    tibble::tibble(
+      dup_type = character(0L),
+      n        = integer(0L),
+      percent  = character(0L)
+    )
+  } else {
+    dup_rows |>
+      janitor::tabyl(dup_type) |>
+      janitor::adorn_pct_formatting(digits = 1) |>
+      dplyr::arrange(dplyr::desc(n))
+  }
 
   # Assemble and return list ----
   structure(
