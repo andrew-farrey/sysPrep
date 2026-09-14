@@ -3,6 +3,14 @@
 ## sysPrep 0.1.0
 
 - **Bug fix:**
+  [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+  no longer emits a spurious base R warning (“replacement element 1 has
+  1 row to replace 0 rows”) on a genuinely clean pull with zero
+  duplicates.
+  [`janitor::adorn_pct_formatting()`](https://sfirke.github.io/janitor/reference/adorn_pct_formatting.html)
+  errors on a 0-row tabyl; `$overall` is now built directly as an empty
+  tibble in that case instead of being routed through it.
+- **Bug fix:**
   [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
   [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md),
   [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md),
