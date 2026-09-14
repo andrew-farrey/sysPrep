@@ -41,6 +41,22 @@ not constitute a duplicate: \code{Visit_ID} is unique only within a facility.
 Duplicate detection is therefore always scoped to \verb{facility x visit_col}.
 }
 
+\subsection{Missing key values are never counted as duplicates}{
+
+A row with a missing \code{facility_col} or \code{visit_col} value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. \code{summarize_duplicates()} never groups two such rows together,
+even when they share the same facility and both have a missing
+\code{visit_col}: each counts as its own distinct visit in \verb{$overall} and
+\verb{$by_facility}. This differs from grouping directly on the raw columns
+(e.g. \code{dplyr::group_by()}), which follows SQL's \verb{GROUP BY} convention
+of treating every \code{NA} as equal to every other \code{NA} and would otherwise
+report genuinely distinct visits as duplicated just because their
+identifier happened to be missing. \code{rlang::inform()} reports how many
+rows were affected whenever this occurs. See \code{\link[=dedupe]{dedupe()}}'s "Missing key
+values" section for the same behavior there.
+}
+
 \subsection{Return value components}{
 
 \describe{

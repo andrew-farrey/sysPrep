@@ -27,7 +27,7 @@ utils::globalVariables(c(
   "n_duplicated_visit_ids", "n_visits", "n_excess_rows",
   "n_duplicated_total", "n_days",
   # Internal dot-prefixed columns created with mutate()
-  ".n_complete", ".pair_key", ".episode_id", ".out_of_state",
+  ".n_complete", ".group_id", ".episode_id", ".out_of_state",
   ".original_facility_type", ".date_change", ".pid_change", ".class_change",
   ".q1", ".q3", ".iqr", ".outlier_low", ".outlier_high",
   ".outlier_flag", ".outlier_direction", ".class_time",

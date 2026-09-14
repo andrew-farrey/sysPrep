@@ -23,6 +23,18 @@
 #' unique within a facility in ESSENCE; the same Visit_ID at two different
 #' facilities represents two distinct encounters and is not collapsed.
 #'
+#' ## Missing key values are never treated as duplicates
+#' A row with a missing `facility_col` or `visit_col` value has an unknown
+#' identity, not one confirmed to match every other row with a missing
+#' value. `dedupe()` never groups two such rows together, even when they
+#' share the same facility and both have a missing `visit_col`: each is
+#' retained as its own distinct row. This differs from grouping directly
+#' on the raw columns (e.g. `dplyr::group_by()`), which follows SQL's
+#' `GROUP BY` convention of treating every `NA` as equal to every other
+#' `NA` and would otherwise silently discard genuinely distinct visits
+#' whose identifier happened to be missing. `rlang::inform()` reports how
+#' many rows were affected whenever this occurs.
+#'
 #' ## Facility identifier preference
 #' When `facility_col` is not explicitly supplied, `dedupe()` prefers
 #' `Hospital`/`C_BioSense_Facility_ID` (a stable numeric facility
@@ -172,7 +184,19 @@ dedupe <- function(data,
   }
 
   # Group and apply keep strategy ----
-  grouped <- dplyr::group_by(data, !!facility_col, !!visit_col)
+  # Grouping directly on facility_col/visit_col would follow dplyr's SQL-
+  # style convention of treating every NA as equal to every other NA,
+  # silently collapsing rows with a missing identifier into a single
+  # "duplicate" even though a missing value means the row's true identity
+  # is unknown, not confirmed to match. na_safe_group_id() groups normally
+  # but gives each NA-key row its own singleton group instead ----
+  fac_col_str   <- rlang::as_string(facility_col)
+  visit_col_str <- rlang::as_string(visit_col)
+  n_na_key      <- sum(key_has_na_mask(data, c(fac_col_str, visit_col_str)))
+  inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, rlang::inform)
+
+  data$.group_id <- na_safe_group_id(data, c(fac_col_str, visit_col_str))
+  grouped        <- dplyr::group_by(data, .group_id)
 
   deduped <- switch(
     keep,
@@ -183,6 +207,10 @@ dedupe <- function(data,
       dplyr::slice(grouped, dplyr::n())
     },
     "most_complete" = {
+      # pick(everything()) already excludes .group_id here: dplyr::pick()
+      # never includes the active grouping variable(s) in its selectable
+      # set, so no explicit -.group_id exclusion is needed (or possible --
+      # pick() errors if asked to exclude a column it never included) ----
       grouped |>
         dplyr::mutate(
           .n_complete = rowSums(!is.na(dplyr::pick(dplyr::everything())))
@@ -192,7 +220,7 @@ dedupe <- function(data,
     }
   )
 
-  deduped <- dplyr::ungroup(deduped)
+  deduped <- dplyr::ungroup(deduped) |> dplyr::select(-.group_id)
 
   if (clean_names) {
     clean_names_safe(deduped)

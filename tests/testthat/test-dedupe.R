@@ -78,6 +78,30 @@ test_that("dedupe() errors informatively for missing column", {
   )
 })
 
+test_that("dedupe() never collapses rows that share a missing visit_id", {
+  # Regression test: dplyr::group_by() treats every NA as equal to every
+  # other NA (SQL's GROUP BY convention), so three rows with no Visit_ID
+  # used to be silently collapsed into one, discarding genuinely distinct
+  # visits whose identity happened to be unknown rather than confirmed
+  # duplicates.
+  data <- tibble::tibble(
+    Hospital = c(1001L, 1001L, 1001L, 1001L),
+    Visit_ID = c(NA, NA, "V1", NA)
+  )
+  expect_message(dedupe(data), "missing")
+  result <- suppressMessages(dedupe(data))
+  expect_equal(nrow(result), 4L)
+})
+
+test_that("dedupe() still collapses true duplicates when some other rows share a missing key", {
+  data <- tibble::tibble(
+    Hospital = c(1001L, 1001L, 1001L),
+    Visit_ID = c("V1", "V1", NA)
+  )
+  result <- suppressMessages(dedupe(data))
+  expect_equal(nrow(result), 2L)
+})
+
 test_that("dedupe() is pipeable", {
   data <- make_data_with_dups()
   expect_no_error(

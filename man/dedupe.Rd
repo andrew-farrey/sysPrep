@@ -73,6 +73,20 @@ unique within a facility in ESSENCE; the same Visit_ID at two different
 facilities represents two distinct encounters and is not collapsed.
 }
 
+\subsection{Missing key values are never treated as duplicates}{
+
+A row with a missing \code{facility_col} or \code{visit_col} value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. \code{dedupe()} never groups two such rows together, even when they
+share the same facility and both have a missing \code{visit_col}: each is
+retained as its own distinct row. This differs from grouping directly
+on the raw columns (e.g. \code{dplyr::group_by()}), which follows SQL's
+\verb{GROUP BY} convention of treating every \code{NA} as equal to every other
+\code{NA} and would otherwise silently discard genuinely distinct visits
+whose identifier happened to be missing. \code{rlang::inform()} reports how
+many rows were affected whenever this occurs.
+}
+
 \subsection{Facility identifier preference}{
 
 When \code{facility_col} is not explicitly supplied, \code{dedupe()} prefers

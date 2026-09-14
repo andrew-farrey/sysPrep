@@ -1,5 +1,23 @@
 # sysPrep 0.1.0
 
+* **Bug fix:** `dedupe()`, `summarize_duplicates()`, `classify_duplicates()`,
+  and `link_encounters()` no longer collapse rows that share a missing
+  `facility_col` or `visit_col` value into a single group.
+  `dplyr::group_by()` (and `.by =`) follow SQL's `GROUP BY` convention of
+  treating every `NA` as equal to every other `NA` for grouping purposes,
+  even though `NA == NA` evaluates to `NA` everywhere else in R. A missing
+  identifier means a row's true identity is unknown, not confirmed to
+  match every other row with a missing identifier. Previously, several
+  rows sharing a missing `Visit_ID` at the same facility were silently
+  treated as one duplicated visit: `dedupe()` discarded all but one of
+  them, `summarize_duplicates()`/`classify_duplicates()` reported them as
+  duplicated when they weren't, and `link_encounters()` ran its
+  episode-reconciliation logic (`has_been_` flag `max()`, field merging)
+  across genuinely unrelated visits sharing one synthesized
+  `.episode_id`. Each of these functions now treats a row with a missing
+  key as its own distinct record and emits an informational message
+  (`rlang::inform()`, suppressible via `verbose = FALSE` where that
+  argument exists) reporting how many rows were affected.
 * **Behavior change:** `dedupe()`, `summarize_duplicates()`,
   `classify_duplicates()`, `review_facility_ed_visits()`, and
   `link_encounters()` now prefer `Hospital`/`C_BioSense_Facility_ID` over

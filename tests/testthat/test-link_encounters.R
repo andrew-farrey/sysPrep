@@ -65,6 +65,26 @@ test_that("link_encounters() removes HasBeenE=1 rows from inpatient_admission_da
   )
 })
 
+test_that("link_encounters() never merges episodes that share a missing visit_id into one", {
+  # Regression test: `.episode_id` used to be built as paste(fac, visit,
+  # sep = "_") with no NA handling, so rows sharing a missing Visit_ID
+  # collapsed to the identical string "1001_NA" and were merged into one
+  # episode by the downstream `.by = .episode_id` reconciliation -- even
+  # though a missing value means the row's true identity is unknown, not
+  # confirmed to match another row with a missing value.
+  data <- tibble::tibble(
+    Hospital        = c(1001L, 1001L, 1001L),
+    Visit_ID        = c(NA, NA, "V1"),
+    HasBeenE        = c(1L, 1L, 1L),
+    HasBeenAdmitted = c(0L, 0L, 0L)
+  )
+  result <- suppressWarnings(suppressMessages(
+    link_encounters(data, data[0L, ])
+  ))
+  expect_equal(nrow(result), 3L)
+  expect_equal(dplyr::n_distinct(result$.episode_id), 3L)
+})
+
 test_that("link_encounters() produces one ED row per visit when HasBeenAdmitted = 0", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenAdmitted = 0L)

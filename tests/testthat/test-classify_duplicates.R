@@ -13,6 +13,30 @@ test_that("classify_duplicates() honors an explicitly supplied facility_col over
   expect_true("hospital_name" %in% names(result))
 })
 
+test_that("classify_duplicates() never classifies rows sharing a missing visit_id as duplicates of each other", {
+  # Regression test: grouping directly on facility_col/visit_col follows
+  # dplyr's SQL-style GROUP BY convention, treating every NA as equal to
+  # every other NA, so rows with no Visit_ID used to be classified as
+  # duplicates of each other (n_rows > 1) purely because of the shared
+  # missing key.
+  data <- tibble::tibble(
+    Hospital            = c(1001L, 1001L, 1001L),
+    Visit_ID            = c(NA, NA, "V1"),
+    C_BioSense_ID       = c("B1", "B2", "B3"),
+    Date                = as.Date(c("2023-01-01", "2023-01-02", "2023-01-03")),
+    C_Unique_Patient_ID = c("P1", "P2", "P3")
+  )
+  expect_message(
+    classify_duplicates(data, return_format = "tibble"),
+    "missing"
+  )
+  result <- suppressMessages(
+    classify_duplicates(data, return_format = "tibble")
+  )
+  expect_equal(nrow(result), 3L)
+  expect_true(all(result$dup_type == "no_duplication"))
+})
+
 test_that("classify_duplicates() identifies visit_date_change correctly", {
   data <- make_data_with_dups()
   result <- classify_duplicates(data, return_format = "tibble")

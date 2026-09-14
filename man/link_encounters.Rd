@@ -308,7 +308,11 @@ describe the episode the collapsed row was built from (e.g.
 merged into it).
 \describe{
 \item{\code{.episode_id}}{A character key combining \code{facility_col} and
-\code{visit_col}, shared across all rows belonging to the same care episode.}
+\code{visit_col}, shared across all rows belonging to the same care
+episode. A row with a missing \code{facility_col} or \code{visit_col} value
+has an unknown identity, not one confirmed to match every other row
+with a missing value, so its \code{.episode_id} gets a unique numeric
+suffix instead of being shared with any other row -- see Details.}
 \item{\code{.patient_class_sequence}}{All patient classes for the episode
 in chronological order and collapsed, e.g., \code{"Direct Admit->ED"}
 when the direct admit occurred first; see Details.}

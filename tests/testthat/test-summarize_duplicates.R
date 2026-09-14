@@ -49,6 +49,23 @@ test_that("summarize_duplicates() works with no duplicates", {
   expect_equal(nrow(result$duplicate_ids), 0L)
 })
 
+test_that("summarize_duplicates() never counts rows sharing a missing visit_id as duplicates of each other", {
+  # Regression test: grouping directly on facility_col/visit_col follows
+  # dplyr's SQL-style GROUP BY convention, treating every NA as equal to
+  # every other NA, so three rows with no Visit_ID used to be reported as
+  # 2 unique visits / 1 duplicated pair instead of 4 genuinely distinct
+  # (if unidentified) visits.
+  data <- tibble::tibble(
+    Hospital = c(1001L, 1001L, 1001L, 1001L),
+    Visit_ID = c(NA, NA, "V1", NA)
+  )
+  expect_message(summarize_duplicates(data), "missing")
+  result <- suppressMessages(summarize_duplicates(data))
+  expect_equal(result$overall$n_unique_visits, 4L)
+  expect_equal(result$overall$n_duplicated_visit_ids, 0L)
+  expect_equal(nrow(result$duplicate_ids), 0L)
+})
+
 test_that("summarize_duplicates() honors an explicitly supplied facility_col over the Hospital preference", {
   data <- make_data_with_dups()
   result <- summarize_duplicates(data, facility_col = HospitalName)

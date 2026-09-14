@@ -73,6 +73,21 @@
 #' `C_Unique_Patient_ID` (or `c_unique_patient_id`). The function aborts
 #' with an informative message if any are absent.
 #'
+#' ## Missing key values are never classified as duplicates
+#' A row with a missing `facility_col` or `visit_col` value has an unknown
+#' identity, not one confirmed to match every other row with a missing
+#' value. `classify_duplicates()` never groups two such rows together,
+#' even when they share the same facility and both have a missing
+#' `visit_col`: each gets its own `$visit_groups` row with `dup_type =
+#' "no_duplication"`. This differs from grouping directly on the raw
+#' columns (e.g. `dplyr::group_by()`), which follows SQL's `GROUP BY`
+#' convention of treating every `NA` as equal to every other `NA` and
+#' would otherwise classify genuinely distinct visits as duplicated just
+#' because their identifier happened to be missing. `rlang::inform()`
+#' (gated by `verbose`) reports how many rows were affected whenever this
+#' occurs. See [dedupe()]'s "Missing key values" section for the same
+#' behavior there.
+#'
 #' ## Optional patient class detection
 #' Detection of `patient_class_change` requires `c_patient_class` in the
 #' data, available via the standard ESSENCE API as a pull field. When absent,
@@ -230,12 +245,30 @@ classify_duplicates <- function(data,
   }
 
   # Build visit-group summary ----
+  # A missing facility_col or visit_col value means that row's true
+  # identity is unknown, not confirmed to match every other row with a
+  # missing value -- grouping on the raw columns directly would follow
+  # dplyr's SQL-style convention of treating every NA as equal to every
+  # other NA, silently classifying unrelated visits as "duplicated" just
+  # because they share a missing key. na_safe_group_id() groups normally
+  # but gives each NA-key row its own singleton group instead; see
+  # ?dedupe's "Facility identifier preference" section for the same
+  # category of silent-merge bug ----
+  n_na_key <- sum(key_has_na_mask(data_clean, c(fac_col_str, visit_col_str)))
+  inform_na_key_rows(
+    n_na_key, fac_col_str, visit_col_str,
+    function(...) inform_if(verbose, ...)
+  )
+
+  data_clean$.group_id <- na_safe_group_id(
+    data_clean, c(fac_col_str, visit_col_str)
+  )
+
   visit_groups <- data_clean |>
-    dplyr::group_by(
-      .data[[fac_col_str]],
-      .data[[visit_col_str]]
-    ) |>
+    dplyr::group_by(.group_id) |>
     dplyr::summarise(
+      "{fac_col_str}"   := dplyr::first(.data[[fac_col_str]]),
+      "{visit_col_str}" := dplyr::first(.data[[visit_col_str]]),
       n_rows         = dplyr::n(),
       n_biosense_ids = dplyr::n_distinct(.data[[biosense_col_str]], na.rm = TRUE),
       n_dates        = dplyr::n_distinct(.data[[date_col_str]],     na.rm = TRUE),
@@ -246,7 +279,8 @@ classify_duplicates <- function(data,
         1L
       },
       .groups = "drop"
-    )
+    ) |>
+    dplyr::select(-.group_id)
 
   # Classify duplication type ----
   visit_groups <- visit_groups |>

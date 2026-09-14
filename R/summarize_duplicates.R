@@ -16,6 +16,20 @@
 #' not constitute a duplicate: `Visit_ID` is unique only within a facility.
 #' Duplicate detection is therefore always scoped to `facility x visit_col`.
 #'
+#' ## Missing key values are never counted as duplicates
+#' A row with a missing `facility_col` or `visit_col` value has an unknown
+#' identity, not one confirmed to match every other row with a missing
+#' value. `summarize_duplicates()` never groups two such rows together,
+#' even when they share the same facility and both have a missing
+#' `visit_col`: each counts as its own distinct visit in `$overall` and
+#' `$by_facility`. This differs from grouping directly on the raw columns
+#' (e.g. `dplyr::group_by()`), which follows SQL's `GROUP BY` convention
+#' of treating every `NA` as equal to every other `NA` and would otherwise
+#' report genuinely distinct visits as duplicated just because their
+#' identifier happened to be missing. `rlang::inform()` reports how many
+#' rows were affected whenever this occurs. See [dedupe()]'s "Missing key
+#' values" section for the same behavior there.
+#'
 #' ## Return value components
 #' \describe{
 #'   \item{`$duplicate_ids`}{A tibble of `facility_col x visit_col` pairs
@@ -88,14 +102,29 @@ summarize_duplicates <- function(data,
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Identify duplicate groups (facility x visit_col with n > 1) ----
+  # A missing facility_col or visit_col value means that row's true
+  # identity is unknown, not confirmed to match every other row with a
+  # missing value -- grouping on the raw columns directly would follow
+  # dplyr's SQL-style convention of treating every NA as equal to every
+  # other NA, silently reporting unrelated visits as "duplicated" just
+  # because they share a missing key. na_safe_group_id() groups normally
+  # but gives each NA-key row its own singleton group instead; see
+  # ?dedupe's "Facility identifier preference" section for the same
+  # category of silent-merge bug ----
+  n_na_key <- sum(key_has_na_mask(data_clean, c(fac_col_str, visit_col_str)))
+  inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, rlang::inform)
+
+  data_clean$.group_id <- na_safe_group_id(
+    data_clean, c(fac_col_str, visit_col_str)
+  )
+
   group_counts <- data_clean |>
-    dplyr::group_by(
-      .data[[fac_col_str]],
-      .data[[visit_col_str]]
-    ) |>
+    dplyr::group_by(.group_id) |>
     dplyr::summarise(
-      n_rows  = dplyr::n(),
-      .groups = "drop"
+      "{fac_col_str}"   := dplyr::first(.data[[fac_col_str]]),
+      "{visit_col_str}" := dplyr::first(.data[[visit_col_str]]),
+      n_rows            = dplyr::n(),
+      .groups           = "drop"
     )
 
   dup_groups <- dplyr::filter(group_counts, n_rows > 1L)
@@ -107,23 +136,20 @@ summarize_duplicates <- function(data,
   )
 
   # Component 2: facility-level summary ----
-  # group_counts already has one row per distinct facility x visit_col pair.
+  # group_counts already has one row per distinct facility x visit_col pair
+  # (each NA-key row counted as its own visit).
   n_total_visits <- nrow(group_counts)
 
-  # Build a lookup of duplicated facility x visit pairs for matching
-  dup_pair_key <- paste(dup_groups[[fac_col_str]], dup_groups[[visit_col_str]])
+  dup_group_ids <- dup_groups$.group_id
 
   by_facility <- data_clean |>
-    dplyr::mutate(
-      .pair_key = paste(.data[[fac_col_str]], .data[[visit_col_str]])
-    ) |>
     dplyr::group_by(.data[[fac_col_str]]) |>
     dplyr::summarise(
-      n_visits               = dplyr::n_distinct(.data[[visit_col_str]]),
+      n_visits               = dplyr::n_distinct(.group_id),
       n_duplicated_visit_ids = dplyr::n_distinct(
-        .data[[visit_col_str]][.pair_key %in% dup_pair_key]
+        .group_id[.group_id %in% dup_group_ids]
       ),
-      n_excess_rows          = sum(.pair_key %in% dup_pair_key) -
+      n_excess_rows          = sum(.group_id %in% dup_group_ids) -
         n_duplicated_visit_ids,
       pct_duplicated         = round(
         n_duplicated_visit_ids / n_visits * 100,

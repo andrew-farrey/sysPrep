@@ -169,6 +169,63 @@ apply_type_correction <- function(data, type_col_str, mask, fix_to) {
   )
 }
 
+# key_has_na_mask() ----
+# Shared by na_safe_group_id() and its callers: a logical vector marking
+# rows where ANY of `cols` is NA in `data`.
+key_has_na_mask <- function(data, cols) {
+  Reduce(`|`, lapply(data[cols], is.na))
+}
+
+# na_safe_group_id() ----
+# Shared by dedupe(), summarize_duplicates(), classify_duplicates(), and
+# link_encounters(): returns an integer group id vector for the columns
+# named in `cols`, with one deliberate difference from
+# dplyr::group_by()/`.by =`. Those follow SQL's GROUP BY convention, where
+# every NA is treated as equal to every other NA for grouping purposes --
+# even though `NA == NA` evaluates to NA everywhere else in R. For a
+# facility_col x visit_col deduplication key, a missing value means that
+# row's true identity is unknown, not confirmed to match every other row
+# with a missing value; grouping NAs together silently merges genuinely
+# distinct visits (e.g. several rows with no Visit_ID collapse into one
+# during dedupe(), or read as artificially "duplicated" in
+# summarize_duplicates()/classify_duplicates()). Rows with no NA in `cols`
+# are grouped normally, exactly as dplyr::group_by() would group them; a
+# row with any NA in `cols` is instead placed in a singleton group all its
+# own, never shared with any other row.
+na_safe_group_id <- function(data, cols) {
+  key_is_na <- key_has_na_mask(data, cols)
+
+  group_key <- do.call(paste, c(data[cols], list(sep = "")))
+  group_id  <- match(group_key, unique(group_key))
+
+  if (any(key_is_na)) {
+    group_id[key_is_na] <- max(group_id) + seq_len(sum(key_is_na))
+  }
+
+  group_id
+}
+
+# inform_na_key_rows() ----
+# Shared by dedupe(), summarize_duplicates(), classify_duplicates(), and
+# link_encounters(): emits the standard informational message when
+# na_safe_group_id() above exempted one or more rows from matching by key
+# because facility_col or visit_col was missing. `inform_fn` is either
+# rlang::inform (dedupe()/summarize_duplicates(), which have no `verbose`
+# argument to gate messages) or a closure over inform_if(verbose, ...)
+# (classify_duplicates()/link_encounters(), which do).
+inform_na_key_rows <- function(n_na_key, fac_col_str, visit_col_str,
+                               inform_fn) {
+  if (n_na_key == 0L) return(invisible())
+  inform_fn(
+    paste0(
+      n_na_key, " row(s) have a missing `", fac_col_str, "` or `",
+      visit_col_str, "` value and cannot be matched to any other row; ",
+      "each is treated as its own distinct visit rather than being ",
+      "merged with other rows sharing the same missing value."
+    )
+  )
+}
+
 # cli_duplicate_ids_footer() ----
 # Shared by print.essence_dup_summary() and print.essence_dup_classified():
 # renders the identical "$duplicate_ids" access footer for both.

@@ -224,7 +224,11 @@
 #' merged into it).
 #' \describe{
 #'   \item{`.episode_id`}{A character key combining `facility_col` and
-#'     `visit_col`, shared across all rows belonging to the same care episode.}
+#'     `visit_col`, shared across all rows belonging to the same care
+#'     episode. A row with a missing `facility_col` or `visit_col` value
+#'     has an unknown identity, not one confirmed to match every other row
+#'     with a missing value, so its `.episode_id` gets a unique numeric
+#'     suffix instead of being shared with any other row -- see Details.}
 #'   \item{`.patient_class_sequence`}{All patient classes for the episode
 #'     in chronological order and collapsed, e.g., `"Direct Admit->ED"`
 #'     when the direct admit occurred first; see Details.}
@@ -734,15 +738,36 @@ link_encounters <- function(ed_data,
   }
 
   # Build episode metadata ----
+  # A missing facility_col or visit_col value means that row's true
+  # identity is unknown, not confirmed to match every other row with the
+  # same missing value -- grouping by the raw columns directly (whether
+  # via group_by() or `.by =`) follows dplyr's SQL-style GROUP BY
+  # convention instead, where every NA is treated as equal to every other
+  # NA, silently merging unrelated visits into one episode. Disambiguating
+  # only the NA-key rows' `.episode_id` with na_safe_group_id() keeps the
+  # normal "{facility}_{visit}" format for every other row unchanged; see
+  # ?dedupe's "Facility identifier preference" section for the same
+  # category of silent-merge bug ----
+  key_has_na <- is.na(ed_long[[fac_col_str]]) | is.na(ed_long[[visit_col_str]])
+  n_na_key   <- sum(key_has_na)
+  inform_na_key_rows(
+    n_na_key, fac_col_str, visit_col_str,
+    function(...) inform_if(verbose, ...)
+  )
+  group_id <- na_safe_group_id(ed_long, c(fac_col_str, visit_col_str))
+
   # `.by =` groups only for the duration of this one mutate() call, without
   # materializing a separate grouped-tibble object the way group_by() +
   # ungroup() does; cheaper to keep alive across a year of rows ----
   result <- ed_long |>
     dplyr::mutate(
-      .episode_id = paste(
-        .data[[fac_col_str]],
-        .data[[visit_col_str]],
-        sep = "_"
+      .episode_id = dplyr::if_else(
+        key_has_na,
+        paste(
+          .data[[fac_col_str]], .data[[visit_col_str]], group_id,
+          sep = "_"
+        ),
+        paste(.data[[fac_col_str]], .data[[visit_col_str]], sep = "_")
       )
     ) |>
     dplyr::mutate(
@@ -752,7 +777,7 @@ link_encounters <- function(ed_data,
       .episode_n_rows  = dplyr::n(),
       .index_encounter = patient_class == "ED" |
         (patient_class != "ED" & dplyr::n() == 1L),
-      .by = c(dplyr::all_of(fac_col_str), dplyr::all_of(visit_col_str))
+      .by = .episode_id
     ) |>
     dplyr::select(-.class_time)
 

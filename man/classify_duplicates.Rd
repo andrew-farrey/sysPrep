@@ -126,6 +126,22 @@ All classification types require \code{facility_col}, \code{visit_col},
 with an informative message if any are absent.
 }
 
+\subsection{Missing key values are never classified as duplicates}{
+
+A row with a missing \code{facility_col} or \code{visit_col} value has an unknown
+identity, not one confirmed to match every other row with a missing
+value. \code{classify_duplicates()} never groups two such rows together,
+even when they share the same facility and both have a missing
+\code{visit_col}: each gets its own \verb{$visit_groups} row with \code{dup_type = "no_duplication"}. This differs from grouping directly on the raw
+columns (e.g. \code{dplyr::group_by()}), which follows SQL's \verb{GROUP BY}
+convention of treating every \code{NA} as equal to every other \code{NA} and
+would otherwise classify genuinely distinct visits as duplicated just
+because their identifier happened to be missing. \code{rlang::inform()}
+(gated by \code{verbose}) reports how many rows were affected whenever this
+occurs. See \code{\link[=dedupe]{dedupe()}}'s "Missing key values" section for the same
+behavior there.
+}
+
 \subsection{Optional patient class detection}{
 
 Detection of \code{patient_class_change} requires \code{c_patient_class} in the
