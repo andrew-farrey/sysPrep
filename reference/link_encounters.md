@@ -15,6 +15,7 @@ link_encounters(
   inpatient_admission_data = NULL,
   facility_col = NULL,
   visit_col = Visit_ID,
+  fallback_visit_col = NULL,
   merge_fields = c(CCDD = "union_ccdd", CCDDParsed = "union_ccdd", CCDDCategory_flat =
     "union_delimited", C_Death = "prefer_yes", Discharge_Disposition =
     "prefer_admission", DispositionCategory = "prefer_admission"),
@@ -61,6 +62,15 @@ link_encounters(
   Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
+
+- fallback_visit_col:
+
+  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
+  Optional. Unquoted column name of a secondary identifier (e.g.
+  `C_BioSense_ID`) used to match two rows into one episode when
+  `visit_col` is missing on the row being matched. Defaults to `NULL`,
+  which preserves the default behavior of never merging rows solely
+  because they share a missing `visit_col`; see Details.
 
 - merge_fields:
 
@@ -339,6 +349,30 @@ falls back to alphabetical order for every episode. Within a single
 episode, if only some classes have a usable timestamp, timed classes are
 ordered first and untimed classes are appended last.
 
+### Split episodes with a missing visit_col on both sides
+
+A missing `visit_col` value means that row's true identity is unknown,
+not confirmed to match every other row with a missing value (see
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
+"Missing key values" section) – so by default, `link_encounters()` never
+merges two rows into one episode solely because they share the same
+missing `visit_col`. This is the right default when nothing else ties
+the rows together. But an ED row and a direct-admit row that are
+genuinely the same real-world episode can both have a missing
+`visit_col`, and ESSENCE may still give them a matching secondary
+identifier: `C_BioSense_ID` is one field observed (in real production
+data) to be assigned identically to a real episode's ED and direct-admit
+rows even when `Visit_ID` is missing on both, which is exactly the case
+`visit_col` alone cannot resolve. `fallback_visit_col` lets you name
+that secondary identifier: whenever a row is missing `visit_col`,
+`link_encounters()` matches it to another row sharing the same
+`facility_col` and the same `fallback_visit_col` value instead of
+treating it as unmatchable. Rows with a non-missing `visit_col` are
+never affected, and a row missing both `visit_col` and
+`fallback_visit_col` (or missing `facility_col`) still gets its own
+unique episode, exactly as when `fallback_visit_col` isn't supplied at
+all – the default `NULL` preserves that original behavior precisely.
+
 ### Episode metadata columns
 
 Present regardless of `return_format`. In collapsed output, these
@@ -353,7 +387,8 @@ merged into it).
   missing `facility_col` or `visit_col` value has an unknown identity,
   not one confirmed to match every other row with a missing value, so
   its `.episode_id` gets a unique numeric suffix instead of being shared
-  with any other row – see Details.
+  with any other row – unless `fallback_visit_col` recovers the match;
+  see Details.
 
 - `.patient_class_sequence`:
 

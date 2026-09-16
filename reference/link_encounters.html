@@ -59,6 +59,7 @@ so information present on only one source row isn't discarded.</p>
 <span>  inpatient_admission_data <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  facility_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  visit_col <span class="op">=</span> <span class="va">Visit_ID</span>,</span>
+<span>  fallback_visit_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  merge_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>CCDD <span class="op">=</span> <span class="st">"union_ccdd"</span>, CCDDParsed <span class="op">=</span> <span class="st">"union_ccdd"</span>, CCDDCategory_flat <span class="op">=</span></span>
 <span>    <span class="st">"union_delimited"</span>, C_Death <span class="op">=</span> <span class="st">"prefer_yes"</span>, Discharge_Disposition <span class="op">=</span></span>
 <span>    <span class="st">"prefer_admission"</span>, DispositionCategory <span class="op">=</span> <span class="st">"prefer_admission"</span><span class="op">)</span>,</span>
@@ -101,6 +102,15 @@ post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html"
 <dd><p>&lt;<code><a href="https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html" class="external-link">tidy-select</a></code>&gt; Unquoted
 column name identifying the visit. Defaults to <code>Visit_ID</code>. Accepts
 both raw ESSENCE names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
+
+
+<dt id="arg-fallback-visit-col">fallback_visit_col<a class="anchor" aria-label="anchor" href="#arg-fallback-visit-col"></a></dt>
+<dd><p>&lt;<code><a href="https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html" class="external-link">tidy-select</a></code>&gt;
+Optional. Unquoted column name of a secondary identifier (e.g.
+<code>C_BioSense_ID</code>) used to match two rows into one episode when
+<code>visit_col</code> is missing on the row being matched. Defaults to <code>NULL</code>,
+which preserves the default behavior of never merging rows solely
+because they share a missing <code>visit_col</code>; see Details.</p></dd>
 
 
 <dt id="arg-merge-fields">merge_fields<a class="anchor" aria-label="anchor" href="#arg-merge-fields"></a></dt>
@@ -368,6 +378,33 @@ ordered first and untimed classes are appended last.</p>
 </div>
 
 <div class="section">
+<h3 id="split-episodes-with-a-missing-visit-col-on-both-sides">Split episodes with a missing visit_col on both sides<a class="anchor" aria-label="anchor" href="#split-episodes-with-a-missing-visit-col-on-both-sides"></a></h3>
+
+
+<p>A missing <code>visit_col</code> value means that row's true identity is unknown,
+not confirmed to match every other row with a missing value (see
+<code><a href="dedupe.html">dedupe()</a></code>'s "Missing key values" section) – so by default,
+<code>link_encounters()</code> never merges two rows into one episode solely
+because they share the same missing <code>visit_col</code>. This is the right
+default when nothing else ties the rows together. But an ED row and a
+direct-admit row that are genuinely the same real-world episode can
+both have a missing <code>visit_col</code>, and ESSENCE may still give them a
+matching secondary identifier: <code>C_BioSense_ID</code> is one field observed
+(in real production data) to be assigned identically to a real
+episode's ED and direct-admit rows even when <code>Visit_ID</code> is missing on
+both, which is exactly the case <code>visit_col</code> alone cannot resolve.
+<code>fallback_visit_col</code> lets you name that secondary identifier: whenever
+a row is missing <code>visit_col</code>, <code>link_encounters()</code> matches it to
+another row sharing the same <code>facility_col</code> and the same
+<code>fallback_visit_col</code> value instead of treating it as unmatchable.
+Rows with a non-missing <code>visit_col</code> are never affected, and a row
+missing both <code>visit_col</code> and <code>fallback_visit_col</code> (or missing
+<code>facility_col</code>) still gets its own unique episode, exactly as when
+<code>fallback_visit_col</code> isn't supplied at all – the default <code>NULL</code>
+preserves that original behavior precisely.</p>
+</div>
+
+<div class="section">
 <h3 id="episode-metadata-columns">Episode metadata columns<a class="anchor" aria-label="anchor" href="#episode-metadata-columns"></a></h3>
 
 
@@ -380,7 +417,8 @@ merged into it).</p><dl><dt><code>.episode_id</code></dt>
 episode. A row with a missing <code>facility_col</code> or <code>visit_col</code> value
 has an unknown identity, not one confirmed to match every other row
 with a missing value, so its <code>.episode_id</code> gets a unique numeric
-suffix instead of being shared with any other row – see Details.</p></dd>
+suffix instead of being shared with any other row – unless
+<code>fallback_visit_col</code> recovers the match; see Details.</p></dd>
 
 <dt><code>.patient_class_sequence</code></dt>
 <dd><p>All patient classes for the episode

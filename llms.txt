@@ -209,8 +209,7 @@ citation("sysPrep")
 ```
 
 Citation metadata is also available in
-[`CITATION.cff`](https://github.com/andrew-farrey/sysPrep/blob/master/CITATION.cff)
-(used by GitHub’s “Cite this repository” feature and by Zenodo).
+[`CITATION.cff`](https://github.com/andrew-farrey/sysPrep/blob/master/CITATION.cff).
 
 ## License
 
