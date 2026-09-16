@@ -6,6 +6,13 @@
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
+## Installation
+
+```r
+# install.packages("remotes")
+remotes::install_github("andrew-farrey/sysPrep")
+```
+
 ## Overview
 
 `sysPrep` is an R package that provides formalized preprocessing methods
@@ -66,13 +73,6 @@ inpatient admission records, so all exported functions apply to either:
 Column names and expected value formats (e.g., `{SITE}_{REGION}` region strings,
 `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data sources. Pulls
 from other ESSENCE data sources may require column renaming before use.
-
-## Installation
-
-```r
-# install.packages("remotes")
-remotes::install_github("andrew-farrey/sysPrep")
-```
 
 ## Quick Start
 
