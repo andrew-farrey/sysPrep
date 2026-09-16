@@ -16,17 +16,15 @@ records: a cause only visible in line-level data pulled via ESSENCE’s
 on pre-aggregated ESSENCE data pulled using the `tableBuilder` or
 `timeSeries` API endpoints.
 
-Applied continuously in a statewide overdose surveillance system, these
-steps make ESSENCE data more representative of true patient burden and
-close much of the gap that otherwise left ESSENCE-based surveillance
-less competitive than EMS-based sources (e.g., ODMAP, Biospatial) for
-applied overdose surveillance.
-
-Geographic reassignment closes a related gap: EMS-based systems report
-incidence at the location where care was rendered, not the patient’s
-jurisdiction of residence, and ESSENCE data defaults to the latter.
-[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)/[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
-bring ESSENCE into that same incidence-based frame.
+These steps originated in a statewide overdose surveillance system, but
+the value they add isn’t specific to overdose: `sysPrep`‘s methods
+broadly improve the quality of downstream ESSENCE data, particularly
+wherever ensuring accurate, distinct patient counts is an implicit part
+of the surveillance task. Results will vary by site: some sites’
+`Visit_ID` may not support reliable deduplication, and for overdose
+surveillance specifically, where a larger share of EMS-responded
+overdoses involve refused transport, those patients are never captured
+in ED data at all regardless of preprocessing.
 
 These methods are **not required** to perform case counting, cluster
 detection, or anomaly detection with ESSENCE data. Many surveillance
@@ -47,8 +45,7 @@ left unaddressed:
 | **Out-of-State and OTHER_REGION (unknown residence) Visits**: these visits’ `Region` doesn’t match any in-state value, so ordinary region-scoped rollups (maps, county summary tables) silently exclude them with no explicit filter required, understating burden at the location where care was actually delivered | [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md), [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md) |
 
 `sysPrep` synthesizes these methods into a reproducible, documented
-pipeline: a foundation other ESSENCE practitioners can adopt, evaluate,
-or adapt to their own data.
+pipeline.
 
 ### Validated Data Sources
 
