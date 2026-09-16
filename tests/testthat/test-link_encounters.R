@@ -85,6 +85,112 @@ test_that("link_encounters() never merges episodes that share a missing visit_id
   expect_equal(dplyr::n_distinct(result$.episode_id), 3L)
 })
 
+test_that("link_encounters() merges a split episode via fallback_visit_col when visit_id is missing on both sides", {
+  # Regression test for a real production case (essence-sql-etl, ~9 years
+  # of KY ED/direct-admit data): an ED row and a direct-admit row from the
+  # same real episode can both have a missing Visit_ID, but still share
+  # C_BioSense_ID. The NA-safety fix above is correct in general (two rows
+  # sharing a missing key are not necessarily the same visit), but here
+  # C_BioSense_ID is independent evidence that they ARE the same episode --
+  # without fallback_visit_col, link_encounters() has no way to use it and
+  # leaves both rows unmatched.
+  ed <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = "BS123",
+    HasBeenE        = 1L,
+    HasBeenAdmitted = 0L
+  )
+  inp <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = "BS123",
+    HasBeenE        = 0L,
+    HasBeenAdmitted = 1L
+  )
+  result <- suppressWarnings(suppressMessages(
+    link_encounters(ed, inp, fallback_visit_col = C_BioSense_ID)
+  ))
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$.episode_n_rows, 2L)
+})
+
+test_that("link_encounters() default (no fallback_visit_col) still leaves that same split episode unmatched", {
+  ed <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = "BS123",
+    HasBeenE        = 1L,
+    HasBeenAdmitted = 0L
+  )
+  inp <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = "BS123",
+    HasBeenE        = 0L,
+    HasBeenAdmitted = 1L
+  )
+  result <- suppressWarnings(suppressMessages(link_encounters(ed, inp)))
+  expect_equal(nrow(result), 2L)
+})
+
+test_that("link_encounters() fallback_visit_col does not match rows whose fallback value is also missing", {
+  ed <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = NA_character_,
+    HasBeenE        = 1L,
+    HasBeenAdmitted = 0L
+  )
+  inp <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = NA_character_,
+    HasBeenE        = 0L,
+    HasBeenAdmitted = 1L
+  )
+  result <- suppressWarnings(suppressMessages(
+    link_encounters(ed, inp, fallback_visit_col = C_BioSense_ID)
+  ))
+  expect_equal(nrow(result), 2L)
+})
+
+test_that("link_encounters() fallback_visit_col does not affect rows with a real visit_id", {
+  ed <- tibble::tibble(
+    Hospital        = c(1001L, 1001L),
+    Visit_ID        = c("V1", "V2"),
+    C_BioSense_ID   = c("BS_SAME", "BS_SAME"),
+    HasBeenE        = c(1L, 1L),
+    HasBeenAdmitted = c(0L, 0L)
+  )
+  result <- suppressWarnings(suppressMessages(
+    link_encounters(ed, ed[0L, ], fallback_visit_col = C_BioSense_ID)
+  ))
+  expect_equal(nrow(result), 2L)
+  expect_equal(dplyr::n_distinct(result$.episode_id), 2L)
+})
+
+test_that("link_encounters() informs when fallback_visit_col recovers a match", {
+  ed <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = "BS123",
+    HasBeenE        = 1L,
+    HasBeenAdmitted = 0L
+  )
+  inp <- tibble::tibble(
+    Hospital        = 1001L,
+    Visit_ID        = NA_character_,
+    C_BioSense_ID   = "BS123",
+    HasBeenE        = 0L,
+    HasBeenAdmitted = 1L
+  )
+  expect_message(
+    suppressWarnings(link_encounters(ed, inp, fallback_visit_col = C_BioSense_ID)),
+    "matched another row via"
+  )
+})
+
 test_that("link_encounters() produces one ED row per visit when HasBeenAdmitted = 0", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenAdmitted = 0L)

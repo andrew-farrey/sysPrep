@@ -1,5 +1,23 @@
 # sysPrep 0.1.0
 
+* **New feature:** `link_encounters()` gains an optional `fallback_visit_col`
+  argument. By default (`NULL`), a row missing `visit_col` is never merged
+  with another row solely because they share that same missing value (see
+  the NA-key bug fix below) -- correct in general, but it means a real
+  split episode (an ED row and a direct-admit row for the same visit) with
+  `Visit_ID` missing on both sides is left as two unmatched rows instead
+  of one linked episode, since `visit_col` alone can't confirm they match.
+  `fallback_visit_col` names a secondary identifier (e.g. `C_BioSense_ID`,
+  observed in real production data to be assigned identically to both
+  rows of such a split episode even when `Visit_ID` is missing on both) to
+  use for that specific case: a row missing `visit_col` is matched to
+  another row sharing `facility_col` and the same `fallback_visit_col`
+  value instead of being left unmatchable. Rows with a real `visit_col`
+  value are never affected, and omitting the argument preserves the
+  original NA-key behavior exactly. Reported against real production data
+  in a downstream ETL pipeline (149 real split episodes sharing a missing
+  `Visit_ID` and a matching `C_BioSense_ID`, confirmed via `distinct()`
+  after dropping the differing `HasBeen_`-derived field).
 * **Bug fix:** `classify_duplicates()` no longer emits a spurious base R
   warning ("replacement element 1 has 1 row to replace 0 rows") on a
   genuinely clean pull with zero duplicates. `janitor::adorn_pct_formatting()`

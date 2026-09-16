@@ -217,6 +217,29 @@
 #' episode, if only some classes have a usable timestamp, timed classes are
 #' ordered first and untimed classes are appended last.
 #'
+#' ## Split episodes with a missing visit_col on both sides
+#' A missing `visit_col` value means that row's true identity is unknown,
+#' not confirmed to match every other row with a missing value (see
+#' [dedupe()]'s "Missing key values" section) -- so by default,
+#' `link_encounters()` never merges two rows into one episode solely
+#' because they share the same missing `visit_col`. This is the right
+#' default when nothing else ties the rows together. But an ED row and a
+#' direct-admit row that are genuinely the same real-world episode can
+#' both have a missing `visit_col`, and ESSENCE may still give them a
+#' matching secondary identifier: `C_BioSense_ID` is one field observed
+#' (in real production data) to be assigned identically to a real
+#' episode's ED and direct-admit rows even when `Visit_ID` is missing on
+#' both, which is exactly the case `visit_col` alone cannot resolve.
+#' `fallback_visit_col` lets you name that secondary identifier: whenever
+#' a row is missing `visit_col`, `link_encounters()` matches it to
+#' another row sharing the same `facility_col` and the same
+#' `fallback_visit_col` value instead of treating it as unmatchable.
+#' Rows with a non-missing `visit_col` are never affected, and a row
+#' missing both `visit_col` and `fallback_visit_col` (or missing
+#' `facility_col`) still gets its own unique episode, exactly as when
+#' `fallback_visit_col` isn't supplied at all -- the default `NULL`
+#' preserves that original behavior precisely.
+#'
 #' ## Episode metadata columns
 #' Present regardless of `return_format`. In collapsed output, these
 #' describe the episode the collapsed row was built from (e.g.
@@ -228,7 +251,8 @@
 #'     episode. A row with a missing `facility_col` or `visit_col` value
 #'     has an unknown identity, not one confirmed to match every other row
 #'     with a missing value, so its `.episode_id` gets a unique numeric
-#'     suffix instead of being shared with any other row -- see Details.}
+#'     suffix instead of being shared with any other row -- unless
+#'     `fallback_visit_col` recovers the match; see Details.}
 #'   \item{`.patient_class_sequence`}{All patient classes for the episode
 #'     in chronological order and collapsed, e.g., `"Direct Admit->ED"`
 #'     when the direct admit occurred first; see Details.}
@@ -257,6 +281,12 @@
 #' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
 #'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
+#' @param fallback_visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
+#'   Optional. Unquoted column name of a secondary identifier (e.g.
+#'   `C_BioSense_ID`) used to match two rows into one episode when
+#'   `visit_col` is missing on the row being matched. Defaults to `NULL`,
+#'   which preserves the default behavior of never merging rows solely
+#'   because they share a missing `visit_col`; see Details.
 #' @param merge_fields Named character vector mapping column names (raw
 #'   ESSENCE names or post-[janitor::clean_names()] equivalents) to a merge
 #'   strategy: one of `"concat"`, `"union_delimited"`, `"union_ccdd"`,
@@ -329,6 +359,7 @@ link_encounters <- function(ed_data,
                             inpatient_admission_data = NULL,
                             facility_col             = NULL,
                             visit_col                = Visit_ID,
+                            fallback_visit_col       = NULL,
                             merge_fields             = c(
                               CCDD                   = "union_ccdd",
                               CCDDParsed             = "union_ccdd",
@@ -396,6 +427,18 @@ link_encounters <- function(ed_data,
 
   fac_col_str   <- rlang::as_string(facility_col)
   visit_col_str <- rlang::as_string(visit_col)
+
+  # fallback_visit_col defaults to NULL: a row missing visit_col is only
+  # ever matched via a secondary identifier when the caller explicitly
+  # names one; see Details' "Split episodes with a missing visit_col on
+  # both sides" section ----
+  fallback_visit_col_quo <- rlang::enquo(fallback_visit_col)
+  has_fallback           <- !rlang::quo_is_null(fallback_visit_col_quo)
+  fallback_col_str       <- if (has_fallback) {
+    resolve_col_str(ed_data, rlang::sym(rlang::as_name(fallback_visit_col_quo)))
+  } else {
+    NULL
+  }
 
   # Detect C_Patient_Class_List (optional, more granular derivation) ----
   pc_list_col <- resolve_col_optional(ed_data, rlang::sym("C_Patient_Class_List"))
@@ -747,29 +790,69 @@ link_encounters <- function(ed_data,
   # only the NA-key rows' `.episode_id` with na_safe_group_id() keeps the
   # normal "{facility}_{visit}" format for every other row unchanged; see
   # ?dedupe's "Facility identifier preference" section for the same
-  # category of silent-merge bug ----
+  # category of silent-merge bug. `fallback_visit_col` is the one
+  # deliberate exception: a row missing visit_col can still be confirmed
+  # to match another row via a secondary identifier (e.g. C_BioSense_ID,
+  # observed in real production data to be assigned identically to a real
+  # episode's ED and direct-admit rows even when Visit_ID is missing on
+  # both); see Details ----
   key_has_na <- is.na(ed_long[[fac_col_str]]) | is.na(ed_long[[visit_col_str]])
-  n_na_key   <- sum(key_has_na)
+
+  uses_fallback <- if (has_fallback) {
+    is.na(ed_long[[visit_col_str]]) &
+      !is.na(ed_long[[fac_col_str]]) &
+      !is.na(ed_long[[fallback_col_str]])
+  } else {
+    rep(FALSE, nrow(ed_long))
+  }
+
+  still_na_key <- key_has_na & !uses_fallback
+
   inform_na_key_rows(
-    n_na_key, fac_col_str, visit_col_str,
+    sum(still_na_key), fac_col_str, visit_col_str,
     function(...) inform_if(verbose, ...)
   )
+  if (any(uses_fallback)) {
+    inform_if(
+      verbose,
+      paste0(
+        sum(uses_fallback), " row(s) with a missing `", visit_col_str,
+        "` value matched another row via `", fallback_col_str,
+        "` and were treated as one episode."
+      )
+    )
+  }
+
   group_id <- na_safe_group_id(ed_long, c(fac_col_str, visit_col_str))
+
+  # Built as plain vectors (not inside a dplyr verb's tidy-eval) so the
+  # fallback branch's .data[[fallback_col_str]] lookup is never attempted
+  # at all when fallback_col_str is NULL (no fallback_visit_col supplied);
+  # dplyr::case_when() evaluates every RHS eagerly regardless of which
+  # rows the corresponding LHS matches, so that lookup would otherwise
+  # error even though uses_fallback is all-FALSE in that case ----
+  normal_episode_id  <- paste(
+    ed_long[[fac_col_str]], ed_long[[visit_col_str]], sep = "_"
+  )
+  na_key_episode_id  <- paste(
+    ed_long[[fac_col_str]], ed_long[[visit_col_str]], group_id, sep = "_"
+  )
+  fallback_episode_id <- if (has_fallback) {
+    paste(ed_long[[fac_col_str]], ed_long[[fallback_col_str]], "fb", sep = "_")
+  } else {
+    rep(NA_character_, nrow(ed_long))
+  }
+  episode_id_vec <- dplyr::case_when(
+    uses_fallback ~ fallback_episode_id,
+    still_na_key  ~ na_key_episode_id,
+    TRUE          ~ normal_episode_id
+  )
 
   # `.by =` groups only for the duration of this one mutate() call, without
   # materializing a separate grouped-tibble object the way group_by() +
   # ungroup() does; cheaper to keep alive across a year of rows ----
   result <- ed_long |>
-    dplyr::mutate(
-      .episode_id = dplyr::if_else(
-        key_has_na,
-        paste(
-          .data[[fac_col_str]], .data[[visit_col_str]], group_id,
-          sep = "_"
-        ),
-        paste(.data[[fac_col_str]], .data[[visit_col_str]], sep = "_")
-      )
-    ) |>
+    dplyr::mutate(.episode_id = episode_id_vec) |>
     dplyr::mutate(
       .patient_class_sequence = compute_patient_class_sequence(
         patient_class, .class_time

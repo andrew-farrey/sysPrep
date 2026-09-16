@@ -9,6 +9,7 @@ link_encounters(
   inpatient_admission_data = NULL,
   facility_col = NULL,
   visit_col = Visit_ID,
+  fallback_visit_col = NULL,
   merge_fields = c(CCDD = "union_ccdd", CCDDParsed = "union_ccdd", CCDDCategory_flat =
     "union_delimited", C_Death = "prefer_yes", Discharge_Disposition =
     "prefer_admission", DispositionCategory = "prefer_admission"),
@@ -40,6 +41,13 @@ post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 \item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
 both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+
+\item{fallback_visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
+Optional. Unquoted column name of a secondary identifier (e.g.
+\code{C_BioSense_ID}) used to match two rows into one episode when
+\code{visit_col} is missing on the row being matched. Defaults to \code{NULL},
+which preserves the default behavior of never merging rows solely
+because they share a missing \code{visit_col}; see Details.}
 
 \item{merge_fields}{Named character vector mapping column names (raw
 ESSENCE names or post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents) to a merge
@@ -300,6 +308,31 @@ episode, if only some classes have a usable timestamp, timed classes are
 ordered first and untimed classes are appended last.
 }
 
+\subsection{Split episodes with a missing visit_col on both sides}{
+
+A missing \code{visit_col} value means that row's true identity is unknown,
+not confirmed to match every other row with a missing value (see
+\code{\link[=dedupe]{dedupe()}}'s "Missing key values" section) -- so by default,
+\code{link_encounters()} never merges two rows into one episode solely
+because they share the same missing \code{visit_col}. This is the right
+default when nothing else ties the rows together. But an ED row and a
+direct-admit row that are genuinely the same real-world episode can
+both have a missing \code{visit_col}, and ESSENCE may still give them a
+matching secondary identifier: \code{C_BioSense_ID} is one field observed
+(in real production data) to be assigned identically to a real
+episode's ED and direct-admit rows even when \code{Visit_ID} is missing on
+both, which is exactly the case \code{visit_col} alone cannot resolve.
+\code{fallback_visit_col} lets you name that secondary identifier: whenever
+a row is missing \code{visit_col}, \code{link_encounters()} matches it to
+another row sharing the same \code{facility_col} and the same
+\code{fallback_visit_col} value instead of treating it as unmatchable.
+Rows with a non-missing \code{visit_col} are never affected, and a row
+missing both \code{visit_col} and \code{fallback_visit_col} (or missing
+\code{facility_col}) still gets its own unique episode, exactly as when
+\code{fallback_visit_col} isn't supplied at all -- the default \code{NULL}
+preserves that original behavior precisely.
+}
+
 \subsection{Episode metadata columns}{
 
 Present regardless of \code{return_format}. In collapsed output, these
@@ -312,7 +345,8 @@ merged into it).
 episode. A row with a missing \code{facility_col} or \code{visit_col} value
 has an unknown identity, not one confirmed to match every other row
 with a missing value, so its \code{.episode_id} gets a unique numeric
-suffix instead of being shared with any other row -- see Details.}
+suffix instead of being shared with any other row -- unless
+\code{fallback_visit_col} recovers the match; see Details.}
 \item{\code{.patient_class_sequence}}{All patient classes for the episode
 in chronological order and collapsed, e.g., \code{"Direct Admit->ED"}
 when the direct admit occurred first; see Details.}
