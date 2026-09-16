@@ -1,5 +1,13 @@
 # sysPrep
 
+## Installation
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("andrew-farrey/sysPrep")
+```
+
 ## Overview
 
 `sysPrep` is an R package that provides formalized preprocessing methods
@@ -62,14 +70,6 @@ Column names and expected value formats (e.g., `{SITE}_{REGION}` region
 strings, `HasBeenE`/`HasBeenAdmitted` flags) reflect these two data
 sources. Pulls from other ESSENCE data sources may require column
 renaming before use.
-
-## Installation
-
-``` r
-
-# install.packages("remotes")
-remotes::install_github("andrew-farrey/sysPrep")
-```
 
 ## Quick Start
 

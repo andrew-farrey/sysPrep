@@ -63,6 +63,13 @@
 <!-- badges: start -->
 
 <div class="section level2">
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h2>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"andrew-farrey/sysPrep"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p><code>sysPrep</code> is an R package that provides formalized preprocessing methods for syndromic surveillance data from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (<a href="https://www.cdc.gov/nssp/" class="external-link">ESSENCE</a>) API. Its methods focus on preparing ESSENCE data for real-world, applied public health surveillance.</p>
@@ -136,13 +143,6 @@
 </table>
 <p>Column names and expected value formats (e.g., <code>{SITE}_{REGION}</code> region strings, <code>HasBeenE</code>/<code>HasBeenAdmitted</code> flags) reflect these two data sources. Pulls from other ESSENCE data sources may require column renaming before use.</p>
 </div>
-</div>
-<div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h2>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"andrew-farrey/sysPrep"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
