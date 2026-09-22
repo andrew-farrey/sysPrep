@@ -22,7 +22,7 @@ abstract: >-
   out-of-state and non-residential visits. Methods were developed through
   applied drug overdose surveillance and cluster detection.
 version: 0.1.0
-date-released: '2026-09-02'
+date-released: '2026-09-22'
 license: MIT
 repository-code: 'https://github.com/andrew-farrey/sysPrep'
 url: 'https://andrew-farrey.github.io/sysPrep/'
