@@ -8,6 +8,7 @@
 ^CLAUDE\.md$
 ^tests/CLAUDE\.md$
 ^vignettes/CLAUDE\.md$
+^AGENTS\.md$
 ^cran-comments\.md$
 ^CITATION\.cff$
 ^revdep$
@@ -16,3 +17,4 @@
 ^\.claude$
 ^LICENSE\.md$
 ^\.superpowers$
+^AGENTS\.md$
