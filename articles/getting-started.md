@@ -149,9 +149,12 @@ clean <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   # Step 2: Filter to valid ED and inpatient providers; correct FSED types
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   ) |>
-  # Step 3: Assign treating facility geography to out-of-state and OTHER_REGION visits
+  # Step 3: Assign treating facility geography to out-of-state and
+  # OTHER_REGION visits
   assign_treating_geography()
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
@@ -200,7 +203,9 @@ quality issues are never silently hidden:
 clean_quiet <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services"),
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    ),
     verbose = FALSE
   ) |>
   assign_treating_geography(verbose = FALSE)
@@ -217,15 +222,17 @@ cat("Clean rows: ", nrow(clean), "\n")
 cat("\nRows removed at each step:\n")
 #> 
 #> Rows removed at each step:
-cat("  Duplicates removed:         ",
-    nrow(essence_raw) - nrow(dedupe(essence_raw, order_by = Arrived_Date_Time)), "\n")
+n_deduped <- nrow(dedupe(essence_raw, order_by = Arrived_Date_Time))
+cat("  Duplicates removed:         ", nrow(essence_raw) - n_deduped, "\n")
 #>   Duplicates removed:          13
 
 after_dedup <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last")
 after_filter <- after_dedup |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   )
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
@@ -236,7 +243,8 @@ cat("  Non-ED providers excluded:  ",
 cat("\nNew columns added by assign_treating_geography():\n")
 #> 
 #> New columns added by assign_treating_geography():
-cat(" ", paste(setdiff(names(clean), names(essence_raw)), collapse = ", "), "\n")
+new_cols <- setdiff(names(clean), names(essence_raw))
+cat(" ", paste(new_cols, collapse = ", "), "\n")
 #>   hospital_name, hospital, facility_type, hospital_region, hospital_zip, visit_id, c_bio_sense_id, c_unique_patient_id, date, c_visit_date_time, arrived_date_time, has_been_e, has_been_admitted, c_patient_class, region, zip_code, sex, c_patient_age, .out_of_state, region_hybrid, zip_code_hybrid
 ```
 

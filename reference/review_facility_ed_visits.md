@@ -38,22 +38,23 @@ review_facility_ed_visits(
 
 - facility_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility. When not supplied,
   prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
-  present; see
-  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
-  "Facility identifier preference" section for the full rationale.
+  present; see the "Facility identifier preference" section of
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md).
+  Accepts both raw ESSENCE names and
+  post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
+  equivalents.
 
 - facility_type_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility type. Defaults to
-  `FacilityType`.
+  `FacilityType`. Accepts both raw ESSENCE names and
+  post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
+  equivalents.
 
 - date_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Optional. Unquoted column name for the visit date. When supplied,
   outlier detection uses visits per day rather than raw counts. Accepts
   `Date`, `C_Visit_Date`, or
@@ -96,7 +97,7 @@ review_facility_ed_visits(
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names on output.
+  to standardize column names to snake_case on output.
 
 - verbose:
 
@@ -172,7 +173,7 @@ for removing non-ED facilities before review.
 essence_clean |> review_facility_ed_visits()
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
 #> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
-#> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.
+#> 2 of 8 facilities flagged as outliers (25%) using `method = "percentile"`.
 #> # A tibble: 2 × 8
 #>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
 #>      <int> <chr>             <int> <lgl>        <lgl>         <lgl>        
@@ -184,7 +185,7 @@ essence_clean |> review_facility_ed_visits()
 essence_clean |> review_facility_ed_visits(return_format = "all")
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
 #> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
-#> 2 of 8 facilities flagged as outliers (25%) using method = 'percentile'.
+#> 2 of 8 facilities flagged as outliers (25%) using `method = "percentile"`.
 #> # A tibble: 8 × 8
 #>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
 #>      <int> <chr>             <int> <lgl>        <lgl>         <lgl>        
@@ -205,7 +206,7 @@ essence_clean |>
     date_col = Date
   )
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> 0 of 8 facilities flagged as outliers (0%) using method = 'iqr'.
+#> 0 of 8 facilities flagged as outliers (0%) using `method = "iqr"`.
 #> # A tibble: 0 × 10
 #> # ℹ 10 variables: hospital <int>, facility_type <chr>, n_visits <int>,
 #> #   n_days <int>, visits_per_day <dbl>, .outlier_low <lgl>,
@@ -221,7 +222,7 @@ essence_clean |>
   )
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
 #> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
-#> 2 of 8 facilities flagged as outliers (25%) using method = 'both' within FacilityType groups.
+#> 2 of 8 facilities flagged as outliers (25%) using `method = "both"` within FacilityType groups.
 #> # A tibble: 8 × 8
 #>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
 #>      <int> <chr>             <int> <lgl>        <lgl>         <lgl>        

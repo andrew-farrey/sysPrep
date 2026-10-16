@@ -159,7 +159,9 @@ dups
 #> 3     1002       19                      2             2           10.5
 #> 4     1003       15                      1             1            6.7
 #> 5     1004       21                      1             1            4.8
+#> 
 #> ── Duplicated Visit IDs ──
+#> 
 #> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 ```
 
@@ -228,7 +230,9 @@ classified
 #>          patient_class_change 2   15.4%
 #>                    pid_change 2   15.4%
 #>  visit_date_change+pid_change 1    7.7%
+#> 
 #> ── By Facility ──
+#> 
 #> # A tibble: 5 × 7
 #>   hospital patient_class_change pid_change type_unknown visit_date_change
 #>      <int>                <int>      <int>        <int>             <int>
@@ -239,7 +243,9 @@ classified
 #> 5     1004                    1          0            0                 0
 #> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
 #> #   n_duplicated_total <dbl>
+#> 
 #> ── Duplicated Visit IDs ──
+#> 
 #> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
 #> 
 #> ── Visit Groups ──

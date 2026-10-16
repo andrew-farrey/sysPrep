@@ -12,6 +12,12 @@ on raw or minimally processed ESSENCE data before
 
 ``` r
 summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
+
+# S3 method for class 'essence_dup_summary'
+format(x, ...)
+
+# S3 method for class 'essence_dup_summary'
+print(x, ...)
 ```
 
 ## Arguments
@@ -22,28 +28,44 @@ summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
 
 - facility_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility. When not supplied,
   prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
-  present; see
-  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
-  "Facility identifier preference" section for the full rationale.
+  present; see the "Facility identifier preference" section of
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md).
   Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
 - visit_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
-  Accepts both raw ESSENCE names and
+  Common alternatives include `MedicalRecordNumber`, `MRN`,
+  `VisitNumber`, and `C_Unique_Patient_ID`. Accepts both raw ESSENCE
+  names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
+
+- x:
+
+  An `essence_dup_summary` object, as returned by
+  `summarize_duplicates()`.
+
+- ...:
+
+  Passed on to [`format()`](https://rdrr.io/r/base/format.html);
+  currently unused.
 
 ## Value
 
 A named list of class `essence_dup_summary` with components
 `$duplicate_ids`, `$by_facility`, and `$overall`.
+
+The [`format()`](https://rdrr.io/r/base/format.html) method returns the
+printed report as a character vector; the
+[`print()`](https://rdrr.io/r/base/print.html) method writes it to
+standard output with
+[`writeLines()`](https://rdrr.io/r/base/writeLines.html) and returns `x`
+invisibly.
 
 ## Details
 
@@ -123,6 +145,7 @@ essence_raw |> summarize_duplicates()
 #> 3     1002       19                      2             2           10.5
 #> 4     1003       15                      1             1            6.7
 #> 5     1004       21                      1             1            4.8
+#> 
 #> ── Duplicated Visit IDs ──
 #> 
 #> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
@@ -165,7 +188,7 @@ dups$duplicate_ids
 # Filter raw data to duplicated visits for manual review
 # (clean first so join keys match snake_case output of $duplicate_ids;
 # essence_raw has Hospital, so that's the preferred join key here,
-# not hospital_name -- see Details in ?dedupe)
+# not hospital_name; see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::semi_join(

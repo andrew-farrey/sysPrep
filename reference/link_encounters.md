@@ -12,7 +12,7 @@ information present on only one source row isn't discarded.
 ``` r
 link_encounters(
   ed_data,
-  inpatient_admission_data = NULL,
+  inpatient_admission_data,
   facility_col = NULL,
   visit_col = Visit_ID,
   fallback_visit_col = NULL,
@@ -45,7 +45,6 @@ link_encounters(
 
 - facility_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility. When not supplied,
   prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
   present in `ed_data`; see
@@ -57,7 +56,6 @@ link_encounters(
 
 - visit_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
   Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
@@ -65,7 +63,6 @@ link_encounters(
 
 - fallback_visit_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Optional. Unquoted column name of a secondary identifier (e.g.
   `C_BioSense_ID`) used to match two rows into one episode when
   `visit_col` is missing on the row being matched. Defaults to `NULL`,
@@ -354,7 +351,7 @@ ordered first and untimed classes are appended last.
 A missing `visit_col` value means that row's true identity is unknown,
 not confirmed to match every other row with a missing value (see
 [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
-"Missing key values" section) – so by default, `link_encounters()` never
+"Missing key values" section), so by default, `link_encounters()` never
 merges two rows into one episode solely because they share the same
 missing `visit_col`. This is the right default when nothing else ties
 the rows together. But an ED row and a direct-admit row that are
@@ -371,7 +368,7 @@ treating it as unmatchable. Rows with a non-missing `visit_col` are
 never affected, and a row missing both `visit_col` and
 `fallback_visit_col` (or missing `facility_col`) still gets its own
 unique episode, exactly as when `fallback_visit_col` isn't supplied at
-all – the default `NULL` preserves that original behavior precisely.
+all: the default `NULL` preserves that original behavior precisely.
 
 ### Episode metadata columns
 
@@ -387,7 +384,7 @@ merged into it).
   missing `facility_col` or `visit_col` value has an unknown identity,
   not one confirmed to match every other row with a missing value, so
   its `.episode_id` gets a unique numeric suffix instead of being shared
-  with any other row – unless `fallback_visit_col` recovers the match;
+  with any other row, unless `fallback_visit_col` recovers the match;
   see Details.
 
 - `.patient_class_sequence`:
@@ -424,7 +421,9 @@ for geography attribution.
 ed_clean <- essence_ed_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   )
 inpatient_clean <- dedupe(
   essence_inp_raw, order_by = Arrived_Date_Time, keep = "last"

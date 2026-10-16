@@ -39,25 +39,21 @@ assign_facility_geography(
 
 - region_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the patient region field. Defaults to
   `Region`.
 
 - hospital_region_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the hospital region field. Defaults to
   `HospitalRegion`. Required when `new_region_col` is not `NULL`.
 
 - zip_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the patient zip code field. Defaults to
   `ZipCode`. Required when `new_zip_col` is not `NULL`.
 
 - hospital_zip_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name for the hospital zip code field. Defaults to
   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
 
@@ -85,14 +81,14 @@ assign_facility_geography(
 - preserve_original_geographies:
 
   Logical. If `TRUE`, adds `original_region` and/or `original_zip_code`
-  columns before overwriting. Only has an effect when
-  `overwrite = TRUE`. Defaults to `FALSE`.
+  columns containing pre-overwrite values before reassignment. Only has
+  an effect when `overwrite = TRUE`. Defaults to `FALSE`.
 
 - clean_names:
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  on output.
+  to standardize column names to snake_case on output.
 
 - verbose:
 

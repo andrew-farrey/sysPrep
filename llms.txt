@@ -101,9 +101,12 @@ For encounter linkage with a separate inpatient pull:
 
 ``` r
 
-# Deduplicate both pulls
-ed_clean        <- essence_ed        |> dedupe(order_by = Arrived_Date_Time)
-inpatient_clean <- essence_inpatient |> dedupe(order_by = Arrived_Date_Time)
+# Deduplicate both pulls (essence_ed_raw and essence_inp_raw are the
+# package's paired example pulls: HasBeenE = 1 and HasBeenAdmitted = 1)
+ed_clean <- essence_ed_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last")
+inpatient_clean <- essence_inp_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last")
 
 # Link into care episodes (captures direct admissions);
 # one merged row per true encounter by default
@@ -146,14 +149,16 @@ Full documentation including function reference pages and methodological
 vignettes is available at:
 **<https://andrew-farrey.github.io/sysPrep/>**
 
-Vignettes: - [Getting
-Started](https://andrew-farrey.github.io/sysPrep/articles/getting-started.html) -
-[Understanding and Resolving Duplicate
-Records](https://andrew-farrey.github.io/sysPrep/articles/deduplication-and-classification.html) -
-[Linking ED and Inpatient
-Records](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.html) -
-[Geographic
-Attribution](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.html)
+Vignettes:
+
+- [Getting
+  Started](https://andrew-farrey.github.io/sysPrep/articles/getting-started.html)
+- [Understanding and Resolving Duplicate
+  Records](https://andrew-farrey.github.io/sysPrep/articles/deduplication-and-classification.html)
+- [Linking ED and Inpatient
+  Records](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.html)
+- [Geographic
+  Attribution](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.html)
 
 ## Related Packages
 
@@ -183,8 +188,11 @@ explicit credit:
   throughout.
 
 - **[`cli`](https://cli.r-lib.org/)** (Gábor Csárdi): the rich formatted
-  output for the `print.essence_dup_summary()` and
-  `print.essence_dup_classified()` S3 methods.
+  output for the
+  [`print.essence_dup_summary()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md)
+  and
+  [`print.essence_dup_classified()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+  S3 methods.
 
 - **[`Rnssp`](https://github.com/CDCgov/Rnssp)** (Gbedegnon Roseric
   Azondekon, Michael Sheppard, and the CDC BioSense team): the upstream
@@ -225,8 +233,12 @@ otherwise inflate case counts or create false-positive clusters.
 - [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
   : Remove duplicate records from an ESSENCE data pull
 - [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md)
+  [`format(`*`<essence_dup_summary>`*`)`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md)
+  [`print(`*`<essence_dup_summary>`*`)`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md)
   : Summarize duplicate records in an ESSENCE data pull
 - [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+  [`format(`*`<essence_dup_classified>`*`)`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+  [`print(`*`<essence_dup_classified>`*`)`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
   : Classify the mechanism of duplication in an ESSENCE data pull
 
 ## Care Setting Quality Assurance
@@ -234,12 +246,12 @@ otherwise inflate case counts or create false-positive clusters.
 The ESSENCE API returns all facilities that submitted matching records,
 including non-emergency providers (primary care clinics, specialty
 practices). Free-standing emergency departments (FSEDs) may be onboarded
-with a FacilityType of “Urgent Care” – one of two valid ESSENCE facility
-type assignments for FSEDs – which prevents front-end API filtering by
-facility type from correctly identifying them as emergency providers.
-These functions filter to valid care settings, correct known facility
-type assignments before filtering, and flag facilities with anomalous
-visit volumes.
+with a `FacilityType` of “Urgent Care” (one of two valid ESSENCE
+facility type assignments for FSEDs), which prevents front-end API
+filtering by facility type from correctly identifying them as emergency
+providers. These functions filter to valid care settings, correct known
+facility type assignments before filtering, and flag facilities with
+anomalous visit volumes.
 
 - [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md)
   : Filter ESSENCE data to valid emergency and inpatient care settings
@@ -248,11 +260,12 @@ visit volumes.
 
 ## Encounter Linkage
 
-A row showing HasBeenAdmitted = 1 and HasBeenE = 0 can mean either a
+A row showing `HasBeenAdmitted = 1` and `HasBeenE = 0` can mean either a
 genuine direct admission or a mis-submitted ED-to-inpatient continuity
-break reported as two unrelated records – nothing in a single row tells
-you which. The former is invisible to HasBeenE = 1 queries; the latter
-double-counts a single encounter if left unlinked. link_encounters()
+break reported as two unrelated records; nothing in a single row tells
+you which. The former is invisible to `HasBeenE = 1` queries; the latter
+double-counts a single encounter if left unlinked.
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
 links ED and inpatient records into unified care episodes, correcting
 both problems at once.
 
@@ -262,18 +275,20 @@ both problems at once.
 ## Geographic Attribution
 
 ESSENCE records include out-of-state residents and visits with unknown
-residential geography (OTHER_REGION). Discarding these visits
+residential geography (`OTHER_REGION`). Discarding these visits
 systematically understates burden at facilities serving cross-border
 populations and can exclude real visits from cluster/anomaly detection
-scoped to the treating facility’s county. assign_treating_geography()
-implements a hybrid approach – preserving residential geography for
-in-state patients while reassigning only out-of-state and OTHER_REGION
-visits to the treating facility’s county. assign_facility_geography()
+scoped to the treating facility’s county.
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+implements a hybrid approach: it preserves residential geography for
+in-state patients and reassigns only out-of-state and `OTHER_REGION`
+visits to the treating facility’s county.
+[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
 applies full incidence-at-location reassignment, attributing all visits
 to the treating facility’s geography regardless of patient origin. Both
-write to new columns by default (region_hybrid/region_facility), leaving
-the original Region/ZipCode untouched, so calling either – or both,
-chained – is always safe to try and safe to re-run.
+write to new columns by default (`region_hybrid`/`region_facility`),
+leaving the original `Region`/`ZipCode` untouched, so calling either, or
+both chained, is always safe to try and safe to re-run.
 
 - [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
   : Assign treating facility geography to out-of-state and OTHER_REGION
@@ -307,6 +322,9 @@ Core concepts and the recommended preprocessing pipeline
 - [Getting Started with
   sysPrep](https://andrew-farrey.github.io/sysPrep/articles/getting-started.md):
 
+  The four ESSENCE data quality problems that `sysPrep` addresses, and
+  the recommended pipeline from a raw pull to analysis-ready data.
+
 ### Deep Dives
 
 Detailed methodology for each preprocessing stage, including the
@@ -315,7 +333,26 @@ and real-world consequences observed when it was omitted.
 
 - [Understanding and Resolving Duplicate Records in ESSENCE
   Data](https://andrew-farrey.github.io/sysPrep/articles/deduplication-and-classification.md):
+
+  Why ESSENCE `dataDetails` pulls contain more than one row for a single
+  visit, how to quantify and classify those rows, and how to choose a
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+  strategy.
+
 - [Linking ED and Inpatient Records for Accurate Burden
   Estimation](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.md):
+
+  How one care episode can be split across separately queried ED and
+  inpatient pulls, and how
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  links the pieces for unduplicated burden counts.
+
 - [Geographic Attribution for Out-of-State and Unknown Residence
   Visits](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.md):
+
+  Why out-of-state and unknown-residence visits drop out of region-based
+  rollups, and how
+  [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+  and
+  [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
+  differ.

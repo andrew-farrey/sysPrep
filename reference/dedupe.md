@@ -14,7 +14,7 @@ dedupe(
   facility_col = NULL,
   visit_col = Visit_ID,
   order_by = NULL,
-  keep = "first",
+  keep = c("first", "last", "most_complete"),
   clean_names = TRUE
 )
 ```
@@ -27,16 +27,15 @@ dedupe(
 
 - facility_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility. When not supplied,
   prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
-  present; see Details. Accepts both raw ESSENCE names and
+  present; see the "Facility identifier preference" section of
+  `dedupe()`. Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
 - visit_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
   Common alternatives include `MedicalRecordNumber`, `MRN`,
   `VisitNumber`, and `C_Unique_Patient_ID`. Accepts both raw ESSENCE
@@ -46,7 +45,6 @@ dedupe(
 
 - order_by:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Optional. Unquoted column name to sort by within each facility x visit
   group before applying `keep`. Ignored when `keep = "most_complete"` (a
   warning is issued). Use `Arrived_Date_Time` to retain the most
@@ -57,14 +55,15 @@ dedupe(
 
 - keep:
 
-  Character string. Which row to retain per group. One of `"first"`
-  (default), `"last"`, or `"most_complete"`. See Details.
+  Character string. Which row to retain per group. One of `"first"` (the
+  default, when `keep` is not supplied), `"last"`, or `"most_complete"`.
+  See Details.
 
 - clean_names:
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names to snake_case after deduplication.
+  to standardize column names to snake_case on output.
 
 ## Value
 

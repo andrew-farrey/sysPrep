@@ -34,7 +34,6 @@ filter_care_setting(
 
 - facility_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility. Defaults to
   `HospitalName`. Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
@@ -42,7 +41,6 @@ filter_care_setting(
 
 - facility_type_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility type. Defaults to
   `FacilityType`. Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
@@ -50,7 +48,6 @@ filter_care_setting(
 
 - facility_id_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility's stable numeric ID.
   Defaults to `Hospital` (`C_BioSense_Facility_ID` in the NSSP Master
   Facility Table). Accepts both raw ESSENCE names and
@@ -299,7 +296,9 @@ essence_raw |> filter_care_setting(keep_types = "Emergency Care")
 # Preview what would be filtered before committing
 essence_raw |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services"),
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    ),
     dry_run = TRUE
   )
 #> # A tibble: 10 × 6
@@ -434,7 +433,9 @@ essence_raw |>
 essence_raw |>
   dedupe(order_by = Arrived_Date_Time) |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   )
 #> The following `FacilityType` values are not in `keep_types` and will be excluded:
 #>   - Primary Care

@@ -19,6 +19,12 @@ classify_duplicates(
   return_format = c("list", "tibble"),
   verbose = TRUE
 )
+
+# S3 method for class 'essence_dup_classified'
+format(x, ...)
+
+# S3 method for class 'essence_dup_classified'
+print(x, ...)
 ```
 
 ## Arguments
@@ -29,21 +35,20 @@ classify_duplicates(
 
 - facility_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the facility. When not supplied,
   prefers `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if
-  present; see
-  [`?dedupe`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)'s
-  "Facility identifier preference" section for the full rationale.
+  present; see the "Facility identifier preference" section of
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md).
   Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
 - visit_col:
 
-  \<[`tidy-select`](https://dplyr.tidyverse.org/reference/dplyr_tidy_select.html)\>
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
-  Accepts both raw ESSENCE names and
+  Common alternatives include `MedicalRecordNumber`, `MRN`,
+  `VisitNumber`, and `C_Unique_Patient_ID`. Accepts both raw ESSENCE
+  names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -57,6 +62,16 @@ classify_duplicates(
   Logical. If `FALSE`, suppresses informational messages
   ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
   warnings and errors are always shown regardless.
+
+- x:
+
+  An `essence_dup_classified` object, as returned by
+  `classify_duplicates()` with `return_format = "list"`.
+
+- ...:
+
+  Passed on to [`format()`](https://rdrr.io/r/base/format.html);
+  currently unused.
 
 ## Value
 
@@ -83,7 +98,13 @@ When `return_format = "list"`, a named list of class
   Dataset-level counts and proportions by `dup_type` via
   [`janitor::tabyl()`](https://sfirke.github.io/janitor/reference/tabyl.html).
 
-When `return_format = "tibble"`, the `$visit_groups` tibble only.
+The [`format()`](https://rdrr.io/r/base/format.html) method returns the
+printed report as a character vector; the
+[`print()`](https://rdrr.io/r/base/print.html) method writes it to
+standard output with
+[`writeLines()`](https://rdrr.io/r/base/writeLines.html) and returns `x`
+invisibly. When `return_format = "tibble"`, the `$visit_groups` tibble
+only.
 
 ## Details
 
@@ -250,6 +271,7 @@ essence_raw |> classify_duplicates()
 #>          patient_class_change 2   15.4%
 #>                    pid_change 2   15.4%
 #>  visit_date_change+pid_change 1    7.7%
+#> 
 #> ── By Facility ──
 #> 
 #> # A tibble: 5 × 7
@@ -262,6 +284,7 @@ essence_raw |> classify_duplicates()
 #> 5     1004                    1          0            0                 0
 #> # ℹ 2 more variables: `visit_date_change+pid_change` <int>,
 #> #   n_duplicated_total <dbl>
+#> 
 #> ── Duplicated Visit IDs ──
 #> 
 #> 13 facility × Visit_ID pair(s) with >1 row. Access via $duplicate_ids.
@@ -285,7 +308,7 @@ essence_raw |>
 # Join classifications back to raw data for row-level inspection
 # (clean first so join keys match the snake_case output of
 # classify_duplicates; essence_raw has Hospital, so that's the
-# preferred join key here, not hospital_name -- see Details in ?dedupe)
+# preferred join key here, not hospital_name; see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::left_join(
