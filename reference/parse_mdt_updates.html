@@ -44,6 +44,8 @@ patient classes and which row represents the episode.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">parse_mdt_updates</span><span class="op">(</span><span class="va">mdt_str</span>, <span class="va">n_classes</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">parse_mdt_segment</span><span class="op">(</span><span class="va">seg</span>, <span class="va">n_classes</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">safe_as_posixct</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">compute_patient_class_sequence</span><span class="op">(</span><span class="va">patient_class</span>, <span class="va">class_time</span><span class="op">)</span></span>
@@ -63,6 +65,11 @@ or empty).</p></dd>
 <dt id="arg-n-classes">n_classes<a class="anchor" aria-label="anchor" href="#arg-n-classes"></a></dt>
 <dd><p>Integer. The number of patient classes in the
 corresponding <code>C_Patient_Class_List</code> value.</p></dd>
+
+
+<dt id="arg-seg">seg<a class="anchor" aria-label="anchor" href="#arg-seg"></a></dt>
+<dd><p>A single trimmed, non-empty <code>C_Patient_Class_MDT_Updates</code>
+segment.</p></dd>
 
 
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
@@ -88,8 +95,10 @@ one per row.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>parse_mdt_updates()</code> returns a character vector of length
-<code>n_classes</code>. <code>safe_as_posixct()</code> returns a <code>POSIXct</code> vector the length of
-<code>x</code>. <code>compute_patient_class_sequence()</code> returns a single string, or
+<code>n_classes</code>. <code>parse_mdt_segment()</code> returns a list with <code>idx</code> (an integer
+position) and <code>time</code> (a string), or <code>NULL</code>. <code>safe_as_posixct()</code> returns
+a <code>POSIXct</code> vector the length of <code>x</code>.
+<code>compute_patient_class_sequence()</code> returns a single string, or
 <code>NA_character_</code> when there is no non-missing patient class.
 <code>pick_primary_row_index()</code> returns a single integer.</p>
     </div>
@@ -120,6 +129,10 @@ ED record's. It falls back to alphabetical order (matching legacy behavior)
 when no usable timestamp exists for the episode at all; classes with no
 timestamp sort after timed classes when some but not all classes in the
 episode have one.</p>
+<p><code>parse_mdt_segment()</code> parses one trimmed, non-empty <code>{position};timestamp;</code>
+segment into its position and timestamp string, or returns <code>NULL</code> when the
+segment does not match this encoding or its position is not between 1 and
+<code>n_classes</code>.</p>
 <p><code>pick_primary_row_index()</code> returns the index of the ED row in an episode
 if one exists, else <code>1</code> (the first row in original order). This matches
 the precedence <code><a href="link_encounters.html">link_encounters()</a></code> has always given the ED row via

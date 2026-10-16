@@ -14,6 +14,7 @@
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/check_inpatient_admission_data.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/reference/check_percentile_order.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/dedupe.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/essence_clean.html</loc></url>
@@ -28,8 +29,10 @@
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/link_encounters.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/merge_strategies.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/parse_mdt_updates.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/reference/resolve_classification_cols.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/resolve_col.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/reference/sort_for_dedupe.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/sysPrep-package.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/reference/validate_geography_cols.html</loc></url>

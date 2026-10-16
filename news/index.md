@@ -65,12 +65,26 @@
 - **Internal:** removed `collapse_episode()`, an unused earlier
   implementation of the episode-collapsing step in
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md),
-  and reorganized the helpers into thematic `R/utils-*.R` files.
+  and reorganized the helpers into thematic `R/utils-*.R` files. The
+  long exported functions are now short pipelines over documented stage
+  helpers, each group on one help page that lists the stages in order:
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-  itself is now a short pipeline over documented stage helpers
-  ([`?check_inpatient_admission_data`](https://andrew-farrey.github.io/sysPrep/reference/check_inpatient_admission_data.md)
-  lists them in order) instead of one 580-line function. No change to
-  any function’s output.
+  ([`?check_inpatient_admission_data`](https://andrew-farrey.github.io/sysPrep/reference/check_inpatient_admission_data.md)),
+  [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md)
+  ([`?check_percentile_order`](https://andrew-farrey.github.io/sysPrep/reference/check_percentile_order.md)),
+  [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md)
+  ([`?apply_type_correction`](https://andrew-farrey.github.io/sysPrep/reference/apply_type_correction.md)),
+  the two geography functions
+  ([`?validate_geography_cols`](https://andrew-farrey.github.io/sysPrep/reference/validate_geography_cols.md)),
+  [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+  ([`?resolve_classification_cols`](https://andrew-farrey.github.io/sysPrep/reference/resolve_classification_cols.md)),
+  and
+  [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)/[`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md)
+  ([`?sort_for_dedupe`](https://andrew-farrey.github.io/sysPrep/reference/sort_for_dedupe.md)).
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  went from 580 lines at cyclomatic complexity 49 to 97 lines at
+  complexity 6. No change to any function’s output, messages, or
+  warnings.
 - **Dependencies:** the minimum `dplyr` version is now 1.2.0, the
   release that added
   [`dplyr::recode_values()`](https://dplyr.tidyverse.org/reference/recode-and-replace-values.html),

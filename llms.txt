@@ -329,7 +329,7 @@ Core concepts and the recommended preprocessing pipeline
 
 Detailed methodology for each preprocessing stage, including the
 underlying data quality mechanisms, when each step is worth applying,
-and real-world consequences observed when it was omitted.
+and the operational consequences of omitting it.
 
 - [Understanding and Resolving Duplicate Records in ESSENCE
   Data](https://andrew-farrey.github.io/sysPrep/articles/deduplication-and-classification.md):

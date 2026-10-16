@@ -76,7 +76,42 @@ assign_facility_geography()."><meta property="og:image" content="https://andrew-
 <span>  <span class="va">zip_target_exists</span>,</span>
 <span>  <span class="va">preserve_original_geographies</span>,</span>
 <span>  <span class="va">mask</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">resolve_geography_sources</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">region_sym</span>,</span>
+<span>  <span class="va">hosp_region_sym</span>,</span>
+<span>  <span class="va">zip_sym</span>,</span>
+<span>  <span class="va">hosp_zip_sym</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">resolve_geography_outputs</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">flags</span>,</span>
+<span>  <span class="va">new_region_col</span>,</span>
+<span>  <span class="va">new_zip_col</span>,</span>
+<span>  <span class="va">overwrite</span>,</span>
+<span>  <span class="va">reserved_col</span>,</span>
+<span>  call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">reassign_geography</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">flags</span>,</span>
+<span>  <span class="va">sources</span>,</span>
+<span>  <span class="va">outputs</span>,</span>
+<span>  <span class="va">preserve_original_geographies</span>,</span>
+<span>  <span class="va">mask</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">warn_site_without_region_match</span><span class="op">(</span><span class="va">data</span>, <span class="va">region_col_str</span>, <span class="va">site</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">flag_out_of_state</span><span class="op">(</span><span class="va">data</span>, <span class="va">region_col_str</span>, <span class="va">site</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">inform_treating_result</span><span class="op">(</span><span class="va">data</span>, <span class="va">outputs</span>, <span class="va">verbose</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">inform_facility_result</span><span class="op">(</span><span class="va">data</span>, <span class="va">outputs</span>, <span class="va">verbose</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -147,13 +182,46 @@ column already existed in <code>data</code>.</p></dd>
 <dd><p>Logical vector, one element per row of <code>data</code>: which rows are
 reassigned.</p></dd>
 
+
+<dt id="arg-region-sym-hosp-region-sym-zip-sym-hosp-zip-sym">region_sym, hosp_region_sym, zip_sym, hosp_zip_sym<a class="anchor" aria-label="anchor" href="#arg-region-sym-hosp-region-sym-zip-sym-hosp-zip-sym"></a></dt>
+<dd><p>Symbols captured
+from the four source column arguments (raw ESSENCE or snake_case names).</p></dd>
+
+
+<dt id="arg-flags">flags<a class="anchor" aria-label="anchor" href="#arg-flags"></a></dt>
+<dd><p>The list returned by <code>validate_geography_cols()</code>, with
+<code>do_region</code> and <code>do_zip</code>.</p></dd>
+
+
+<dt id="arg-new-region-col-new-zip-col">new_region_col, new_zip_col<a class="anchor" aria-label="anchor" href="#arg-new-region-col-new-zip-col"></a></dt>
+<dd><p>The user-supplied output column names, or
+<code>NULL</code> to skip that geography type.</p></dd>
+
+
+<dt id="arg-sources">sources<a class="anchor" aria-label="anchor" href="#arg-sources"></a></dt>
+<dd><p>The list returned by <code>resolve_geography_sources()</code>.</p></dd>
+
+
+<dt id="arg-outputs">outputs<a class="anchor" aria-label="anchor" href="#arg-outputs"></a></dt>
+<dd><p>The list returned by <code>resolve_geography_outputs()</code>.</p></dd>
+
+
+<dt id="arg-site">site<a class="anchor" aria-label="anchor" href="#arg-site"></a></dt>
+<dd><p>The site prefix identifying in-state <code>Region</code> values.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>validate_geography_cols()</code> returns a list with <code>do_region</code> and
-<code>do_zip</code>. <code>resolve_geography_output_col()</code> returns the normalized output
-column name, or <code>NULL</code>. <code>assign_geography_reassignment()</code> returns <code>data</code>
-with the geography columns written.</p>
+<code>do_zip</code>. <code>resolve_geography_sources()</code> returns a list with <code>region</code>,
+<code>hosp_region</code>, <code>zip</code>, and <code>hosp_zip</code> (strings or <code>NULL</code>).
+<code>resolve_geography_outputs()</code> returns a list with <code>region</code> and <code>zip</code>
+(strings or <code>NULL</code>). <code>reassign_geography()</code> and <code>flag_out_of_state()</code>
+return the updated data frame. <code>warn_site_without_region_match()</code> and
+<code>inform_*_result()</code> are called for their conditions.
+<code>resolve_geography_output_col()</code> returns the normalized output column
+name, or <code>NULL</code>. <code>assign_geography_reassignment()</code> returns <code>data</code> with
+the geography columns written.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -177,6 +245,21 @@ comparison strips it from <code>reserved_col</code> too. It also aborts if the
 resolved name already exists in <code>data</code> unless <code>overwrite = TRUE</code>, which is
 what makes writing to a new column non-destructive by default and requires
 an explicit opt-in before any existing column can be clobbered.</p>
+<p>The remaining helpers are the stages the two exported functions share:
+<code>resolve_geography_sources()</code> resolves the four optional source columns
+to strings (or <code>NULL</code> when absent); <code>resolve_geography_outputs()</code> resolves
+both output column names with <code>resolve_geography_output_col()</code>;
+<code>reassign_geography()</code> works out which output columns already exist and
+calls <code>assign_geography_reassignment()</code>. Only <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>
+uses <code>warn_site_without_region_match()</code> (a <code>site</code> that matches no <code>Region</code>
+value, such as a typo, the wrong case, or another state's pull, would
+otherwise flag every visit as out-of-state without any sign that something
+is off) and <code>flag_out_of_state()</code>. <code>"{site}_UNKNOWN"</code> (for example
+<code>"KY_UNKNOWN"</code>) is ESSENCE's placeholder for a known-site record whose
+residential geography could not be determined; unlike <code>"OTHER_REGION"</code> it
+carries the site prefix, so it must be tested for explicitly or the prefix
+check would leave it classified as in-state. <code>inform_treating_result()</code>
+and <code>inform_facility_result()</code> report the outcome.</p>
 <p><code>assign_geography_reassignment()</code> applies the "preserve original values,
 then reassign from the hospital columns" logic common to both functions.
 <code>mask</code> marks which rows are reassigned: <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code>

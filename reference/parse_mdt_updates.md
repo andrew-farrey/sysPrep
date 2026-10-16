@@ -8,6 +8,8 @@ patient classes and which row represents the episode.
 ``` r
 parse_mdt_updates(mdt_str, n_classes)
 
+parse_mdt_segment(seg, n_classes)
+
 safe_as_posixct(x)
 
 compute_patient_class_sequence(patient_class, class_time)
@@ -25,6 +27,10 @@ pick_primary_row_index(patient_classes)
 
   Integer. The number of patient classes in the corresponding
   `C_Patient_Class_List` value.
+
+- seg:
+
+  A single trimmed, non-empty `C_Patient_Class_MDT_Updates` segment.
 
 - x:
 
@@ -49,10 +55,11 @@ pick_primary_row_index(patient_classes)
 ## Value
 
 `parse_mdt_updates()` returns a character vector of length `n_classes`.
-`safe_as_posixct()` returns a `POSIXct` vector the length of `x`.
-`compute_patient_class_sequence()` returns a single string, or
-`NA_character_` when there is no non-missing patient class.
-`pick_primary_row_index()` returns a single integer.
+`parse_mdt_segment()` returns a list with `idx` (an integer position)
+and `time` (a string), or `NULL`. `safe_as_posixct()` returns a
+`POSIXct` vector the length of `x`. `compute_patient_class_sequence()`
+returns a single string, or `NA_character_` when there is no non-missing
+patient class. `pick_primary_row_index()` returns a single integer.
 
 ## Details
 
@@ -86,6 +93,11 @@ the ED record's. It falls back to alphabetical order (matching legacy
 behavior) when no usable timestamp exists for the episode at all;
 classes with no timestamp sort after timed classes when some but not all
 classes in the episode have one.
+
+`parse_mdt_segment()` parses one trimmed, non-empty
+`{position};timestamp;` segment into its position and timestamp string,
+or returns `NULL` when the segment does not match this encoding or its
+position is not between 1 and `n_classes`.
 
 `pick_primary_row_index()` returns the index of the ED row in an episode
 if one exists, else `1` (the first row in original order). This matches

@@ -43,6 +43,41 @@ assign_geography_reassignment(
   preserve_original_geographies,
   mask
 )
+
+resolve_geography_sources(
+  data,
+  region_sym,
+  hosp_region_sym,
+  zip_sym,
+  hosp_zip_sym
+)
+
+resolve_geography_outputs(
+  data,
+  flags,
+  new_region_col,
+  new_zip_col,
+  overwrite,
+  reserved_col,
+  call = rlang::caller_env()
+)
+
+reassign_geography(
+  data,
+  flags,
+  sources,
+  outputs,
+  preserve_original_geographies,
+  mask
+)
+
+warn_site_without_region_match(data, region_col_str, site)
+
+flag_out_of_state(data, region_col_str, site)
+
+inform_treating_result(data, outputs, verbose)
+
+inform_facility_result(data, outputs, verbose)
 ```
 
 ## Arguments
@@ -109,12 +144,45 @@ assign_geography_reassignment(
   Logical vector, one element per row of `data`: which rows are
   reassigned.
 
+- region_sym, hosp_region_sym, zip_sym, hosp_zip_sym:
+
+  Symbols captured from the four source column arguments (raw ESSENCE or
+  snake_case names).
+
+- flags:
+
+  The list returned by `validate_geography_cols()`, with `do_region` and
+  `do_zip`.
+
+- new_region_col, new_zip_col:
+
+  The user-supplied output column names, or `NULL` to skip that
+  geography type.
+
+- sources:
+
+  The list returned by `resolve_geography_sources()`.
+
+- outputs:
+
+  The list returned by `resolve_geography_outputs()`.
+
+- site:
+
+  The site prefix identifying in-state `Region` values.
+
 ## Value
 
 `validate_geography_cols()` returns a list with `do_region` and
-`do_zip`. `resolve_geography_output_col()` returns the normalized output
-column name, or `NULL`. `assign_geography_reassignment()` returns `data`
-with the geography columns written.
+`do_zip`. `resolve_geography_sources()` returns a list with `region`,
+`hosp_region`, `zip`, and `hosp_zip` (strings or `NULL`).
+`resolve_geography_outputs()` returns a list with `region` and `zip`
+(strings or `NULL`). `reassign_geography()` and `flag_out_of_state()`
+return the updated data frame. `warn_site_without_region_match()` and
+`inform_*_result()` are called for their conditions.
+`resolve_geography_output_col()` returns the normalized output column
+name, or `NULL`. `assign_geography_reassignment()` returns `data` with
+the geography columns written.
 
 ## Details
 
@@ -144,6 +212,24 @@ always strips a leading dot, so the comparison strips it from
 in `data` unless `overwrite = TRUE`, which is what makes writing to a
 new column non-destructive by default and requires an explicit opt-in
 before any existing column can be clobbered.
+
+The remaining helpers are the stages the two exported functions share:
+`resolve_geography_sources()` resolves the four optional source columns
+to strings (or `NULL` when absent); `resolve_geography_outputs()`
+resolves both output column names with `resolve_geography_output_col()`;
+`reassign_geography()` works out which output columns already exist and
+calls `assign_geography_reassignment()`. Only
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+uses `warn_site_without_region_match()` (a `site` that matches no
+`Region` value, such as a typo, the wrong case, or another state's pull,
+would otherwise flag every visit as out-of-state without any sign that
+something is off) and `flag_out_of_state()`. `"{site}_UNKNOWN"` (for
+example `"KY_UNKNOWN"`) is ESSENCE's placeholder for a known-site record
+whose residential geography could not be determined; unlike
+`"OTHER_REGION"` it carries the site prefix, so it must be tested for
+explicitly or the prefix check would leave it classified as in-state.
+`inform_treating_result()` and `inform_facility_result()` report the
+outcome.
 
 `assign_geography_reassignment()` applies the "preserve original values,
 then reassign from the hospital columns" logic common to both functions.
