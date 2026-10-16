@@ -27,19 +27,17 @@ output of \code{\link[=dedupe]{dedupe()}} and \code{\link[=filter_care_setting]{
 visits. Defaults to \code{"KY"}. Visits whose \code{Region} does not begin with
 \code{paste0(site, "_")} are treated as out-of-state.}
 
-\item{region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{region_col}{Unquoted
 column name for the patient region field. Defaults to \code{Region}.}
 
-\item{hospital_region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name for the hospital region field. Defaults to
+\item{hospital_region_col}{Unquoted column name for the hospital region field. Defaults to
 \code{HospitalRegion}. Required when \code{new_region_col} is not \code{NULL}.}
 
-\item{zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{zip_col}{Unquoted
 column name for the patient zip code field. Defaults to \code{ZipCode}.
 Required when \code{new_zip_col} is not \code{NULL}.}
 
-\item{hospital_zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name for the hospital zip code field. Defaults to
+\item{hospital_zip_col}{Unquoted column name for the hospital zip code field. Defaults to
 \code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{new_region_col}{Character string or \code{NULL}. Name of the column to
@@ -65,7 +63,8 @@ pre-overwrite values before reassignment. Only has an effect when
 \code{overwrite = TRUE}. Defaults to \code{FALSE}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
-\code{\link[janitor:clean_names]{janitor::clean_names()}} on output.}
+\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
+output.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}
@@ -124,7 +123,8 @@ on the prefix mismatch below. For example, with \code{site = "KY"}:
 \itemize{
 \item \code{"KY_Jefferson"} -> in-state, unchanged
 \item \code{"TN_Davidson"} -> out-of-state, region assigned from \code{HospitalRegion}
-\item \code{"OTHER_REGION"} -> unknown residence, region assigned from \code{HospitalRegion}
+\item \code{"OTHER_REGION"} -> unknown residence, region assigned from
+\code{HospitalRegion}
 \item \code{"KY_UNKNOWN"} -> unknown residence, region assigned from \code{HospitalRegion}
 }
 }

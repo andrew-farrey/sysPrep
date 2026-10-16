@@ -1,5 +1,6 @@
 ---
 title: "Getting Started with sysPrep"
+description: "The four ESSENCE data quality problems that `sysPrep` addresses, and the recommended pipeline from a raw pull to analysis-ready data."
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Getting Started with sysPrep}
@@ -133,9 +134,12 @@ clean <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   # Step 2: Filter to valid ED and inpatient providers; correct FSED types
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   ) |>
-  # Step 3: Assign treating facility geography to out-of-state and OTHER_REGION visits
+  # Step 3: Assign treating facility geography to out-of-state and
+  # OTHER_REGION visits
   assign_treating_geography()
 ```
 
@@ -171,7 +175,9 @@ are never silently hidden:
 clean_quiet <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services"),
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    ),
     verbose = FALSE
   ) |>
   assign_treating_geography(verbose = FALSE)
@@ -183,19 +189,22 @@ clean_quiet <- essence_raw |>
 cat("Raw rows:   ", nrow(essence_raw), "\n")
 cat("Clean rows: ", nrow(clean), "\n")
 cat("\nRows removed at each step:\n")
-cat("  Duplicates removed:         ",
-    nrow(essence_raw) - nrow(dedupe(essence_raw, order_by = Arrived_Date_Time)), "\n")
+n_deduped <- nrow(dedupe(essence_raw, order_by = Arrived_Date_Time))
+cat("  Duplicates removed:         ", nrow(essence_raw) - n_deduped, "\n")
 
 after_dedup <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last")
 after_filter <- after_dedup |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   )
 cat("  Non-ED providers excluded:  ",
     nrow(after_dedup) - nrow(after_filter), "\n")
 cat("\nNew columns added by assign_treating_geography():\n")
-cat(" ", paste(setdiff(names(clean), names(essence_raw)), collapse = ", "), "\n")
+new_cols <- setdiff(names(clean), names(essence_raw))
+cat(" ", paste(new_cols, collapse = ", "), "\n")
 ```
 
 ```{r reassigned}

@@ -128,19 +128,9 @@
 #' original patient residential geography for every visit, enabling
 #' residential vs. treating geography comparisons in a single dataset.
 #'
-#' @param data A data frame of ESSENCE visit-level records, typically the
-#'   output of [dedupe()] and [filter_care_setting()].
-#' @param region_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name for the patient region field. Defaults to `Region`.
-#' @param hospital_region_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
-#'   Unquoted column name for the hospital region field. Defaults to
-#'   `HospitalRegion`. Required when `new_region_col` is not `NULL`.
-#' @param zip_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name for the patient zip code field. Defaults to `ZipCode`.
-#'   Required when `new_zip_col` is not `NULL`.
-#' @param hospital_zip_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
-#'   Unquoted column name for the hospital zip code field. Defaults to
-#'   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
+#' @inheritParams assign_treating_geography
+#' @inheritParams dedupe
+#' @inheritParams classify_duplicates
 #' @param new_region_col Character string or `NULL`. Name of the column to
 #'   write facility region values to. Defaults to `"region_facility"`: a
 #'   new column, leaving `region_col` untouched. Pass `NULL` to skip region
@@ -149,20 +139,6 @@
 #' @param new_zip_col Character string or `NULL`. Name of the column to
 #'   write facility zip code values to. Defaults to `"zip_code_facility"`.
 #'   Same behavior as `new_region_col`, independently, for zip.
-#' @param overwrite Logical. If `FALSE` (default), `new_region_col`/
-#'   `new_zip_col` naming a column that already exists in `data` aborts
-#'   rather than silently overwriting it. Set `TRUE` to allow it; this is
-#'   required to reproduce the original in-place-overwrite behavior. See
-#'   Details.
-#' @param preserve_original_geographies Logical. If `TRUE`, adds
-#'   `original_region` and/or `original_zip_code` columns before
-#'   overwriting. Only has an effect when `overwrite = TRUE`. Defaults to
-#'   `FALSE`.
-#' @param clean_names Logical. If `TRUE` (default), applies
-#'   [janitor::clean_names()] on output.
-#' @param verbose Logical. If `FALSE`, suppresses informational messages
-#'   (`rlang::inform()`); warnings and errors are always shown regardless.
-#'
 #' @return The input data frame with facility region and/or zip code values
 #'   written to `new_region_col`/`new_zip_col` (or to `region_col`/
 #'   `zip_col` in place, when `overwrite = TRUE`) for all rows. A
@@ -205,30 +181,38 @@
 #'   out-of-state visits only.
 #' @export
 assign_facility_geography <- function(data,
-                                      region_col                    = Region,
-                                      hospital_region_col           = HospitalRegion,
-                                      zip_col                       = ZipCode,
-                                      hospital_zip_col              = HospitalZip,
-                                      new_region_col                = "region_facility",
-                                      new_zip_col                   = "zip_code_facility",
-                                      overwrite                     = FALSE,
+                                      region_col = Region,
+                                      hospital_region_col = HospitalRegion,
+                                      zip_col = ZipCode,
+                                      hospital_zip_col = HospitalZip,
+                                      new_region_col = "region_facility",
+                                      new_zip_col = "zip_code_facility",
+                                      overwrite = FALSE,
                                       preserve_original_geographies = FALSE,
-                                      clean_names                   = TRUE,
-                                      verbose                       = TRUE) {
+                                      clean_names = TRUE,
+                                      verbose = TRUE) {
+
+  check_data_frame(data)
+  check_flag(overwrite)
+  check_flag(preserve_original_geographies)
+  check_flag(clean_names)
+  check_flag(verbose)
 
   # Normalize names ----
   data <- clean_names_safe(data)
 
   # Resolve source columns gracefully ----
   region_sym      <- resolve_col_optional(data, rlang::ensym(region_col))
-  hosp_region_sym <- resolve_col_optional(data, rlang::ensym(hospital_region_col))
+  hosp_region_sym <- resolve_col_optional(
+    data, rlang::ensym(hospital_region_col)
+  )
   zip_sym         <- resolve_col_optional(data, rlang::ensym(zip_col))
   hosp_zip_sym    <- resolve_col_optional(data, rlang::ensym(hospital_zip_col))
 
-  region_col_str      <- if (!is.null(region_sym))      rlang::as_string(region_sym)
-  hosp_region_col_str <- if (!is.null(hosp_region_sym)) rlang::as_string(hosp_region_sym)
-  zip_col_str         <- if (!is.null(zip_sym))         rlang::as_string(zip_sym)
-  hosp_zip_col_str    <- if (!is.null(hosp_zip_sym))    rlang::as_string(hosp_zip_sym)
+  region_col_str      <- as_string_or_null(region_sym)
+  hosp_region_col_str <- as_string_or_null(hosp_region_sym)
+  zip_col_str         <- as_string_or_null(zip_sym)
+  hosp_zip_col_str    <- as_string_or_null(hosp_zip_sym)
 
   # Which geography types to process is driven directly by new_region_col/
   # new_zip_col: NULL skips that type entirely ----
@@ -244,7 +228,9 @@ assign_facility_geography <- function(data,
   do_zip    <- geog_flags$do_zip
 
   if (!do_region && !do_zip) {
-    rlang::warn("No geography types could be processed. Returning data unchanged.")
+    rlang::warn(
+      "No geography types could be processed. Returning data unchanged."
+    )
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
@@ -289,7 +275,10 @@ assign_facility_geography <- function(data,
   output_cols <- c(region_output_col_str, zip_output_col_str)
 
   if (nrow(data) == 0L) {
-    inform_if(verbose, "No rows in data after processing. Returning empty data frame.")
+    inform_if(
+      verbose,
+      "No rows in data after processing. Returning empty data frame."
+    )
   } else {
     inform_if(
       verbose,

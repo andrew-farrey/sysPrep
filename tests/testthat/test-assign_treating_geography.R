@@ -29,7 +29,10 @@ test_that("assign_treating_geography() handles OTHER_REGION", {
       Region  = "OTHER_REGION",
       ZipCode = NA_character_
     )
-  result <- suppressMessages(assign_treating_geography(data, new_zip_col = NULL))
+  # every Region is OTHER_REGION by design here, which trips the site guard
+  result <- suppressWarnings(
+    suppressMessages(assign_treating_geography(data, new_zip_col = NULL))
+  )
   expect_true(all(result$.out_of_state))
   expect_false(any(result$region_hybrid == "OTHER_REGION", na.rm = TRUE))
   # source column is untouched by default
@@ -45,7 +48,10 @@ test_that("assign_treating_geography() handles site-prefixed unknown residence (
       Region  = "KY_UNKNOWN",
       ZipCode = NA_character_
     )
-  result <- suppressMessages(assign_treating_geography(data, new_zip_col = NULL))
+  # every Region is OTHER_REGION by design here, which trips the site guard
+  result <- suppressWarnings(
+    suppressMessages(assign_treating_geography(data, new_zip_col = NULL))
+  )
   expect_true(all(result$.out_of_state))
   expect_false(any(result$region_hybrid == "KY_UNKNOWN", na.rm = TRUE))
 })
@@ -102,14 +108,14 @@ test_that("assign_treating_geography() aborts when new_region_col collides with 
 test_that("assign_treating_geography() overwrite = TRUE allows overwriting region in place", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(Region = "OTHER_REGION")
-  result <- suppressMessages(
+  result <- suppressWarnings(suppressMessages(
     assign_treating_geography(
       data,
       new_region_col = "region",
       new_zip_col    = NULL,
       overwrite      = TRUE
     )
-  )
+  ))
   expect_false(any(result$region == "OTHER_REGION"))
 })
 
@@ -175,7 +181,7 @@ test_that("assign_treating_geography() warns when no geography can be processed"
 test_that("assign_treating_geography() preserve_original_geographies adds original_zip_code in overwrite mode", {
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(Region = "OTHER_REGION", ZipCode = "40202")
-  result <- suppressMessages(
+  result <- suppressWarnings(suppressMessages(
     assign_treating_geography(
       data,
       new_region_col                = "region",
@@ -183,7 +189,7 @@ test_that("assign_treating_geography() preserve_original_geographies adds origin
       overwrite                     = TRUE,
       preserve_original_geographies = TRUE
     )
-  )
+  ))
   expect_true("original_zip_code" %in% names(result))
 })
 

@@ -102,9 +102,12 @@ clean |> review_facility_ed_visits(method = "both", date_col = Date)
 For encounter linkage with a separate inpatient pull:
 
 ```r
-# Deduplicate both pulls
-ed_clean        <- essence_ed        |> dedupe(order_by = Arrived_Date_Time)
-inpatient_clean <- essence_inpatient |> dedupe(order_by = Arrived_Date_Time)
+# Deduplicate both pulls (essence_ed_raw and essence_inp_raw are the
+# package's paired example pulls: HasBeenE = 1 and HasBeenAdmitted = 1)
+ed_clean <- essence_ed_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last")
+inpatient_clean <- essence_inp_raw |>
+  dedupe(order_by = Arrived_Date_Time, keep = "last")
 
 # Link into care episodes (captures direct admissions);
 # one merged row per true encounter by default
@@ -144,6 +147,7 @@ Full documentation including function reference pages and methodological
 vignettes is available at: **https://andrew-farrey.github.io/sysPrep/**
 
 Vignettes:
+
 - [Getting Started](https://andrew-farrey.github.io/sysPrep/articles/getting-started.html)
 - [Understanding and Resolving Duplicate Records](https://andrew-farrey.github.io/sysPrep/articles/deduplication-and-classification.html)
 - [Linking ED and Inpatient Records](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.html)

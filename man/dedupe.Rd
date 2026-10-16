@@ -9,26 +9,27 @@ dedupe(
   facility_col = NULL,
   visit_col = Visit_ID,
   order_by = NULL,
-  keep = "first",
+  keep = c("first", "last", "most_complete"),
   clean_names = TRUE
 )
 }
 \arguments{
 \item{data}{A data frame of raw ESSENCE visit-level records.}
 
-\item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{facility_col}{Unquoted
 column name identifying the facility. When not supplied, prefers
 \code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
-see Details. Accepts both raw ESSENCE names and
-post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+see the "Facility identifier preference" section of \code{\link[=dedupe]{dedupe()}}.
+Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
+equivalents.}
 
-\item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{visit_col}{Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Common
 alternatives include \code{MedicalRecordNumber}, \code{MRN}, \code{VisitNumber}, and
 \code{C_Unique_Patient_ID}. Accepts both raw ESSENCE names and
 post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
-\item{order_by}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Optional.
+\item{order_by}{Optional.
 Unquoted column name to sort by within each facility x visit group
 before applying \code{keep}. Ignored when \code{keep = "most_complete"} (a warning
 is issued). Use \code{Arrived_Date_Time} to retain the most recently
@@ -37,11 +38,12 @@ Other useful options: \code{C_Visit_Date}, \code{C_Visit_Date_Time}, \code{Date}
 Defaults to \code{NULL} (row order as received).}
 
 \item{keep}{Character string. Which row to retain per group. One of
-\code{"first"} (default), \code{"last"}, or \code{"most_complete"}. See Details.}
+\code{"first"} (the default, when \code{keep} is not supplied), \code{"last"}, or
+\code{"most_complete"}. See Details.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
-\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case
-after deduplication.}
+\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
+output.}
 }
 \value{
 A deduplicated data frame with one row per \code{facility_col} x

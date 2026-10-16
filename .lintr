@@ -1,0 +1,7 @@
+linters: linters_with_defaults(line_length_linter(80L))
+exclusions: list(
+    "R/link_encounters.R" = 174L,
+    "data-raw",
+    "tests/testthat"
+  )
+encoding: "UTF-8"

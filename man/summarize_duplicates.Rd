@@ -2,27 +2,44 @@
 % Please edit documentation in R/summarize_duplicates.R
 \name{summarize_duplicates}
 \alias{summarize_duplicates}
+\alias{format.essence_dup_summary}
+\alias{print.essence_dup_summary}
 \title{Summarize duplicate records in an ESSENCE data pull}
 \usage{
 summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
+
+\method{format}{essence_dup_summary}(x, ...)
+
+\method{print}{essence_dup_summary}(x, ...)
 }
 \arguments{
 \item{data}{A data frame of raw ESSENCE visit-level records.}
 
-\item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{facility_col}{Unquoted
 column name identifying the facility. When not supplied, prefers
 \code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
-see \code{?dedupe}'s "Facility identifier preference" section for the full
-rationale. Accepts both raw ESSENCE names and
+see the "Facility identifier preference" section of \code{\link[=dedupe]{dedupe()}}.
+Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
+equivalents.}
+
+\item{visit_col}{Unquoted
+column name identifying the visit. Defaults to \code{Visit_ID}. Common
+alternatives include \code{MedicalRecordNumber}, \code{MRN}, \code{VisitNumber}, and
+\code{C_Unique_Patient_ID}. Accepts both raw ESSENCE names and
 post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
-\item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
-both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+\item{x}{An \code{essence_dup_summary} object, as returned by
+\code{summarize_duplicates()}.}
+
+\item{...}{Passed on to \code{format()}; currently unused.}
 }
 \value{
 A named list of class \code{essence_dup_summary} with components
 \verb{$duplicate_ids}, \verb{$by_facility}, and \verb{$overall}.
+
+The \code{format()} method returns the printed report as a character vector;
+the \code{print()} method writes it to standard output with \code{\link[=writeLines]{writeLines()}} and
+returns \code{x} invisibly.
 }
 \description{
 Identifies visits with more than one row per facility x Visit_ID combination
@@ -83,7 +100,7 @@ dups$duplicate_ids
 # Filter raw data to duplicated visits for manual review
 # (clean first so join keys match snake_case output of $duplicate_ids;
 # essence_raw has Hospital, so that's the preferred join key here,
-# not hospital_name -- see Details in ?dedupe)
+# not hospital_name; see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::semi_join(

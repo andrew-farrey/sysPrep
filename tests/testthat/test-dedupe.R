@@ -108,3 +108,21 @@ test_that("dedupe() is pipeable", {
     data |> dedupe() |> dplyr::filter(!is.na(visit_id))
   )
 })
+
+test_that("dedupe() groups by Hospital, not HospitalName, when a facility rename creates mismatched names for the same Hospital ID", {
+  # Regression test for the real production failure this preference exists
+  # to prevent: two rows sharing the same Hospital ID but differing in
+  # HospitalName (e.g. a mid-period facility rename/rebrand) used to
+  # survive a HospitalName-keyed dedupe as two "distinct" facilities,
+  # producing a duplicate (hospital, visit) pair downstream wherever
+  # Hospital is the real key (e.g. a database unique index).
+  data <- tibble::tibble(
+    HospitalName      = c("Old Facility Name", "New Facility Name"),
+    Hospital          = c(1001L, 1001L),
+    Visit_ID          = c("V00000001", "V00000001"),
+    Arrived_Date_Time = as.POSIXct(c("2023-01-01 08:00:00", "2023-01-01 09:00:00"))
+  )
+  result <- dedupe(data, order_by = Arrived_Date_Time, keep = "last")
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$hospital_name, "New Facility Name")
+})

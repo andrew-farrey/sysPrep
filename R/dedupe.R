@@ -70,17 +70,18 @@
 #' the actual column names present in the data.
 #'
 #' @param data A data frame of raw ESSENCE visit-level records.
-#' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#' @param facility_col Unquoted
 #'   column name identifying the facility. When not supplied, prefers
 #'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
-#'   see Details. Accepts both raw ESSENCE names and
-#'   post-[janitor::clean_names()] equivalents.
-#' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#'   see the "Facility identifier preference" section of [dedupe()].
+#'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
+#'   equivalents.
+#' @param visit_col Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Common
 #'   alternatives include `MedicalRecordNumber`, `MRN`, `VisitNumber`, and
 #'   `C_Unique_Patient_ID`. Accepts both raw ESSENCE names and
 #'   post-[janitor::clean_names()] equivalents.
-#' @param order_by <[`tidy-select`][dplyr::dplyr_tidy_select]> Optional.
+#' @param order_by Optional.
 #'   Unquoted column name to sort by within each facility x visit group
 #'   before applying `keep`. Ignored when `keep = "most_complete"` (a warning
 #'   is issued). Use `Arrived_Date_Time` to retain the most recently
@@ -88,11 +89,11 @@
 #'   Other useful options: `C_Visit_Date`, `C_Visit_Date_Time`, `Date`.
 #'   Defaults to `NULL` (row order as received).
 #' @param keep Character string. Which row to retain per group. One of
-#'   `"first"` (default), `"last"`, or `"most_complete"`. See Details.
+#'   `"first"` (the default, when `keep` is not supplied), `"last"`, or
+#'   `"most_complete"`. See Details.
 #' @param clean_names Logical. If `TRUE` (default), applies
-#'   [janitor::clean_names()] to standardize column names to snake_case
-#'   after deduplication.
-#'
+#'   [janitor::clean_names()] to standardize column names to snake_case on
+#'   output.
 #' @return A deduplicated data frame with one row per `facility_col` x
 #'   `visit_col` combination.
 #'
@@ -134,8 +135,11 @@ dedupe <- function(data,
                    facility_col = NULL,
                    visit_col    = Visit_ID,
                    order_by     = NULL,
-                   keep         = "first",
+                   keep         = c("first", "last", "most_complete"),
                    clean_names  = TRUE) {
+
+  check_data_frame(data)
+  check_flag(clean_names)
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
@@ -148,7 +152,7 @@ dedupe <- function(data,
     rlang::sym(rlang::as_name(facility_col_quo))
   }
 
-  keep <- match.arg(keep, choices = c("first", "last", "most_complete"))
+  keep <- rlang::arg_match(keep)
 
   # Normalize names upfront ----
   original_names <- names(data)

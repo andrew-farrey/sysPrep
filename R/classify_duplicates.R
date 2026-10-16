@@ -69,7 +69,8 @@
 #'
 #' ## Required columns
 #' All classification types require `facility_col`, `visit_col`,
-#' `C_BioSense_ID` (or `c_biosense_id` / `c_bio_sense_id`), `Date` (or `date`), and
+#' `C_BioSense_ID` (or `c_biosense_id` / `c_bio_sense_id`), `Date` (or
+#' `date`), and
 #' `C_Unique_Patient_ID` (or `c_unique_patient_id`). The function aborts
 #' with an informative message if any are absent.
 #'
@@ -122,16 +123,7 @@
 #'     further analysis.}
 #' }
 #'
-#' @param data A data frame of raw ESSENCE visit-level records.
-#' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. When not supplied, prefers
-#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
-#'   see `?dedupe`'s "Facility identifier preference" section for the full
-#'   rationale. Accepts both raw ESSENCE names and
-#'   post-[janitor::clean_names()] equivalents.
-#' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
-#'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
+#' @inheritParams dedupe
 #' @param return_format Character string. One of `"list"` (default) or
 #'   `"tibble"`. See Details.
 #' @param verbose Logical. If `FALSE`, suppresses informational messages
@@ -150,6 +142,10 @@
 #'     \item{`$overall`}{Dataset-level counts and proportions by `dup_type`
 #'       via [janitor::tabyl()].}
 #'   }
+#'
+#'   The `format()` method returns the printed report as a character vector;
+#'   the `print()` method writes it to standard output with [writeLines()] and
+#'   returns `x` invisibly.
 #'   When `return_format = "tibble"`, the `$visit_groups` tibble only.
 #'
 #' @examples
@@ -164,7 +160,7 @@
 #' # Join classifications back to raw data for row-level inspection
 #' # (clean first so join keys match the snake_case output of
 #' # classify_duplicates; essence_raw has Hospital, so that's the
-#' # preferred join key here, not hospital_name -- see Details in ?dedupe)
+#' # preferred join key here, not hospital_name; see Details in ?dedupe)
 #' essence_raw |>
 #'   janitor::clean_names() |>
 #'   dplyr::left_join(
@@ -181,6 +177,9 @@ classify_duplicates <- function(data,
                                 return_format = c("list", "tibble"),
                                 verbose       = TRUE) {
 
+  check_data_frame(data)
+  check_flag(verbose)
+
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
   # below as a plain HospitalName default ----
@@ -192,7 +191,7 @@ classify_duplicates <- function(data,
     rlang::sym(rlang::as_name(facility_col_quo))
   }
 
-  return_format <- match.arg(return_format)
+  return_format <- rlang::arg_match(return_format)
 
   # Normalize names upfront ----
   data_clean    <- clean_names_safe(data)
@@ -201,36 +200,53 @@ classify_duplicates <- function(data,
   )
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
-  # Resolve required columns: accept raw ESSENCE names, clean_names() output, or variants ----
-  biosense_col <- resolve_col_optional(data_clean, rlang::sym("C_BioSense_ID"))
-  date_col     <- resolve_col_optional(data_clean, rlang::sym("Date"))
-  pid_col      <- resolve_col_optional(data_clean, rlang::sym("C_Unique_Patient_ID"))
-
-  biosense_col_str <- if (!is.null(biosense_col)) rlang::as_string(biosense_col) else NA_character_
-  date_col_str     <- if (!is.null(date_col))     rlang::as_string(date_col)     else NA_character_
-  pid_col_str      <- if (!is.null(pid_col))      rlang::as_string(pid_col)      else NA_character_
+  # Resolve required columns: accept raw ESSENCE names, clean_names()
+  # output, or variants ----
+  required_cols <- c(
+    biosense = "C_BioSense_ID",
+    date     = "Date",
+    pid      = "C_Unique_Patient_ID"
+  )
+  resolved_cols <- lapply(
+    required_cols,
+    function(col) resolve_col_optional(data_clean, rlang::sym(col))
+  )
 
   # Validate required columns ----
-  missing_cols <- character(0L)
-  if (is.null(biosense_col)) missing_cols <- c(missing_cols, "C_BioSense_ID")
-  if (is.null(date_col))     missing_cols <- c(missing_cols, "Date")
-  if (is.null(pid_col))      missing_cols <- c(missing_cols, "C_Unique_Patient_ID")
+  missing_cols <- required_cols[vapply(resolved_cols, is.null, logical(1L))]
 
   if (length(missing_cols) > 0L) {
+    missing_bullets <- stats::setNames(
+      paste0("`", missing_cols, "`"),
+      rep("x", length(missing_cols))
+    )
     rlang::abort(
-      paste0(
-        "The following required columns are missing from data:\n",
-        paste0("  - ", missing_cols, collapse = "\n"),
-        "\nAll classification types require: C_BioSense_ID, Date, C_Unique_Patient_ID.",
-        "\nEnsure these are included as fields in your ESSENCE API pull."
+      c(
+        "The following required columns are missing from `data`:",
+        missing_bullets,
+        "i" = paste0(
+          "All classification types require `C_BioSense_ID`, `Date`, and ",
+          "`C_Unique_Patient_ID`."
+        ),
+        "i" = "Include them as fields in your ESSENCE API pull."
       )
     )
   }
 
+  biosense_col_str <- rlang::as_string(resolved_cols$biosense)
+  date_col_str     <- rlang::as_string(resolved_cols$date)
+  pid_col_str      <- rlang::as_string(resolved_cols$pid)
+
   # Resolve optional C_Patient_Class ----
-  pc_col        <- resolve_col_optional(data_clean, rlang::sym("C_Patient_Class"))
+  pc_col <- resolve_col_optional(
+    data_clean, rlang::sym("C_Patient_Class")
+  )
   has_patient_class <- !is.null(pc_col)
-  pc_col_str    <- if (has_patient_class) rlang::as_string(pc_col) else NA_character_
+  pc_col_str <- if (has_patient_class) {
+    rlang::as_string(pc_col)
+  } else {
+    NA_character_
+  }
 
   if (!has_patient_class) {
     inform_if(
@@ -270,9 +286,11 @@ classify_duplicates <- function(data,
       "{fac_col_str}"   := dplyr::first(.data[[fac_col_str]]),
       "{visit_col_str}" := dplyr::first(.data[[visit_col_str]]),
       n_rows         = dplyr::n(),
-      n_biosense_ids = dplyr::n_distinct(.data[[biosense_col_str]], na.rm = TRUE),
-      n_dates        = dplyr::n_distinct(.data[[date_col_str]],     na.rm = TRUE),
-      n_pid          = dplyr::n_distinct(.data[[pid_col_str]],      na.rm = TRUE),
+      n_biosense_ids = dplyr::n_distinct(
+        .data[[biosense_col_str]], na.rm = TRUE
+      ),
+      n_dates        = dplyr::n_distinct(.data[[date_col_str]], na.rm = TRUE),
+      n_pid          = dplyr::n_distinct(.data[[pid_col_str]], na.rm = TRUE),
       n_patient_classes = if (has_patient_class) {
         dplyr::n_distinct(.data[[pc_col_str]], na.rm = TRUE)
       } else {
@@ -290,20 +308,25 @@ classify_duplicates <- function(data,
       .class_change = n_patient_classes > 1L & has_patient_class,
       dup_type = dplyr::case_when(
         # No duplication
-        n_rows == 1L                                              ~ "no_duplication",
+        n_rows == 1L ~ "no_duplication",
         # Type unknown: multiple rows, no variation in assessed fields
-        n_rows > 1L & !.date_change & !.pid_change & !.class_change ~ "type_unknown",
+        n_rows > 1L & !.date_change & !.pid_change & !.class_change ~
+          "type_unknown",
         # Single mechanisms
-        .date_change  & !.pid_change  & !.class_change           ~ "visit_date_change",
-        !.date_change &  .pid_change  & !.class_change           ~ "pid_change",
-        !.date_change & !.pid_change  &  .class_change           ~ "patient_class_change",
+        .date_change & !.pid_change & !.class_change ~ "visit_date_change",
+        !.date_change & .pid_change & !.class_change ~ "pid_change",
+        !.date_change & !.pid_change & .class_change ~ "patient_class_change",
         # Compound: two mechanisms
-        .date_change  &  .pid_change  & !.class_change           ~ "visit_date_change+pid_change",
-        .date_change  & !.pid_change  &  .class_change           ~ "visit_date_change+patient_class_change",
-        !.date_change &  .pid_change  &  .class_change           ~ "pid_change+patient_class_change",
+        .date_change & .pid_change & !.class_change ~
+          "visit_date_change+pid_change",
+        .date_change & !.pid_change & .class_change ~
+          "visit_date_change+patient_class_change",
+        !.date_change & .pid_change & .class_change ~
+          "pid_change+patient_class_change",
         # Compound: all three mechanisms
-        .date_change  &  .pid_change  &  .class_change           ~ "visit_date_change+pid_change+patient_class_change",
-        TRUE                                                      ~ "type_unknown"
+        .date_change & .pid_change & .class_change ~
+          "visit_date_change+pid_change+patient_class_change",
+        TRUE ~ "type_unknown"
       )
     ) |>
     dplyr::select(-.date_change, -.pid_change, -.class_change)
@@ -371,32 +394,51 @@ classify_duplicates <- function(data,
   )
 }
 
-# print.essence_dup_classified() ----
+# format.essence_dup_classified() / print.essence_dup_classified() ----
+# See the note above format.essence_dup_summary(): print() writes a single
+# formatted character vector so all output goes to stdout.
+#' @rdname classify_duplicates
+#' @param x An `essence_dup_classified` object, as returned by
+#'   `classify_duplicates()` with `return_format = "list"`.
+#' @param ... Passed on to `format()`; currently unused.
 #' @export
-print.essence_dup_classified <- function(x, ...) {
+format.essence_dup_classified <- function(x, ...) {
   has_pc <- attr(x, "has_patient_class")
 
-  cli::cli_h1("ESSENCE Duplicate Classification")
+  cli::cli_format_method({
+    cli::cli_h1("ESSENCE Duplicate Classification")
 
-  if (!has_pc) {
-    cli::cli_alert_info(
-      "Patient class change detection was unavailable (`c_patient_class` absent)."
+    if (!has_pc) {
+      cli::cli_alert_info(
+        paste0(
+          "Patient class change detection was unavailable ",
+          "(`c_patient_class` absent)."
+        )
+      )
+    }
+
+    cli::cli_h2("Overall")
+    cli::cli_verbatim(print_lines(x$overall))
+
+    cli::cli_h2("By Facility")
+    cli::cli_verbatim(print_lines(x$by_facility, n = Inf))
+
+    cli_duplicate_ids_footer(x)
+
+    cli::cli_h2("Visit Groups")
+    cli::cli_text(
+      "{nrow(x$visit_groups)} facility \u00d7 Visit_ID groups total. ",
+      "Access full detail via $visit_groups."
     )
-  }
+  })
+}
 
-  cli::cli_h2("Overall")
-  print(x$overall)
-
-  cli::cli_h2("By Facility")
-  print(x$by_facility, n = Inf)
-
-  cli_duplicate_ids_footer(x)
-
-  cli::cli_h2("Visit Groups")
-  cli::cli_text(
-    "{nrow(x$visit_groups)} facility \u00d7 Visit_ID groups total. ",
-    "Access full detail via $visit_groups."
-  )
-
+#' @rdname classify_duplicates
+#' @export
+print.essence_dup_classified <- function(x, ...) {
+  # Same lines format() builds, written to stdout; kept as its own method
+  # (not a shared helper) so each class owns its print() behavior.
+  lines <- format(x, ...)
+  writeLines(lines)
   invisible(x)
 }

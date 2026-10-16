@@ -31,8 +31,9 @@ test_that("link_encounters() honors an explicitly supplied facility_col over the
 test_that("link_encounters() adds episode metadata columns", {
   data <- make_essence_data(n = 5L)
   result <- link_encounters(data, data[0L, ])
-  expect_true(all(c(".episode_id", ".episode_n_rows", ".index_encounter") %in%
-                  names(result)))
+  expect_true(all(
+    c(".episode_id", ".episode_n_rows", ".index_encounter") %in% names(result)
+  ))
 })
 
 test_that("link_encounters() produces two rows for ED+Admitted visits in long format", {
@@ -204,9 +205,9 @@ test_that("link_encounters() preserves true has_been_e/has_been_admitted on an A
     dplyr::mutate(HasBeenAdmitted = 1L)
   result <- link_encounters(data, data[0L, ])
   escalated <- dplyr::filter(result, .episode_n_rows == 2L)
-  expect_true(nrow(escalated) > 0L)
-  expect_false(any(is.na(escalated$has_been_e)))
-  expect_false(any(is.na(escalated$has_been_admitted)))
+  expect_gt(nrow(escalated), 0L)
+  expect_false(anyNA(escalated$has_been_e))
+  expect_false(anyNA(escalated$has_been_admitted))
   expect_true(all(escalated$has_been_e == 1L))
   expect_true(all(escalated$has_been_admitted == 1L))
 })
@@ -340,7 +341,7 @@ test_that("link_encounters() falls back to a position's C_Visit_Date_Time when i
   )
   result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long"))
   expect_true("patient_class" %in% names(result))
-  expect_false(any(is.na(result$.patient_class_sequence)))
+  expect_false(anyNA(result$.patient_class_sequence))
 })
 
 test_that("link_encounters() warns and falls back when C_Patient_Class_MDT_Updates doesn't match the expected format", {
@@ -355,7 +356,7 @@ test_that("link_encounters() warns and falls back when C_Patient_Class_MDT_Updat
     result <- suppressMessages(link_encounters(data, data[0L, ], return_format = "long")),
     "could not be parsed"
   )
-  expect_false(any(is.na(result$.patient_class_sequence)))
+  expect_false(anyNA(result$.patient_class_sequence))
 })
 
 test_that("link_encounters() parses ISO 8601 'T'-separated timestamps inside C_Patient_Class_MDT_Updates segments", {
@@ -420,7 +421,7 @@ test_that("link_encounters() warns and retains NA patient_class for missing/empt
     ),
     "missing or empty"
   )
-  expect_true(any(is.na(result$patient_class)))
+  expect_true(anyNA(result$patient_class))
 })
 
 test_that("link_encounters() C_Patient_Class_List code form maps to patient class labels in long format", {
@@ -474,7 +475,7 @@ test_that("link_encounters() preserves true HasBeenI values (not NA) when HasBee
   data <- make_essence_data(n = 5L) |>
     dplyr::mutate(HasBeenI = c(1L, 0L, 1L, 0L, 1L))
   result <- suppressMessages(link_encounters(data, data[0L, ]))
-  expect_false(any(is.na(result$has_been_i)))
+  expect_false(anyNA(result$has_been_i))
   expect_equal(sort(result$has_been_i), sort(data$HasBeenI))
 })
 
@@ -725,73 +726,13 @@ test_that("pick_primary_row_index() returns the index of the ED row when present
   expect_equal(pick_primary_row_index(c("Direct Admit", "ED")), 2L)
 })
 
+test_that("merge_concat() starts from the first value when the primary value is missing", {
+  expect_identical(merge_concat(c("a", "b"), NA_character_), "a; b")
+  expect_identical(merge_concat(c("a", "b"), ""), "a; b")
+})
+
 test_that("pick_primary_row_index() returns 1 when no ED row exists", {
   expect_equal(pick_primary_row_index(c("Direct Admit", "Observation")), 1L)
-})
-
-test_that("collapse_episode() reconciles has_been_ flags via max", {
-  episode <- tibble::tibble(
-    patient_class      = c("ED", "Direct Admit"),
-    has_been_e         = c(1L, 0L),
-    has_been_admitted  = c(0L, 1L)
-  )
-  result <- collapse_episode(episode, merge_fields = character(0), merge_delimiter = ";")
-  expect_equal(nrow(result), 1L)
-  expect_equal(result$has_been_e, 1L)
-  expect_equal(result$has_been_admitted, 1L)
-})
-
-test_that("collapse_episode() applies merge_fields strategies", {
-  episode <- tibble::tibble(
-    patient_class = c("ED", "Direct Admit"),
-    c_death       = c("No", "Yes"),
-    ccdd          = c("abdominal pain|R10.9", "opioid overdose|T40.6")
-  )
-  result <- collapse_episode(
-    episode,
-    merge_fields    = c(c_death = "prefer_yes", ccdd = "union_ccdd"),
-    merge_delimiter = ";"
-  )
-  expect_equal(result$c_death, "Yes")
-  expect_equal(result$ccdd, "abdominal pain;opioid overdose|R10.9;T40.6")
-})
-
-test_that("collapse_episode() passes through untouched columns from the primary row", {
-  episode <- tibble::tibble(
-    patient_class = c("ED", "Direct Admit"),
-    hospital_name = c("Central Medical Center", "Central Medical Center"),
-    visit_id      = c("V00000001", "V00000001"),
-    unrelated_col = c("ed_value", "admit_value")
-  )
-  result <- collapse_episode(episode, merge_fields = character(0), merge_delimiter = ";")
-  expect_equal(result$unrelated_col, "ed_value")
-})
-
-test_that("collapse_episode() handles a single-row episode as a no-op", {
-  episode <- tibble::tibble(patient_class = "ED", c_death = "No")
-  result <- collapse_episode(
-    episode,
-    merge_fields    = c(c_death = "prefer_yes"),
-    merge_delimiter = ";"
-  )
-  expect_equal(nrow(result), 1L)
-  expect_equal(result$c_death, "No")
-})
-
-test_that("collapse_episode() folds across more than 2 rows without error", {
-  episode <- tibble::tibble(
-    patient_class = c("ED", "Direct Admit", "Observation"),
-    has_been_e    = c(1L, 0L, 0L),
-    c_death       = c("No", "No", "Yes")
-  )
-  result <- collapse_episode(
-    episode,
-    merge_fields    = c(c_death = "prefer_yes"),
-    merge_delimiter = ";"
-  )
-  expect_equal(nrow(result), 1L)
-  expect_equal(result$has_been_e, 1L)
-  expect_equal(result$c_death, "Yes")
 })
 
 # integration tests: merge behavior via full link_encounters() calls ----
@@ -845,6 +786,16 @@ test_that("link_encounters() applies union_delimited to ccdd_category_flat in co
   expect_equal(result$ccdd_category_flat, "GI;Pain;Overdose;Toxicology")
 })
 
+test_that("link_encounters() takes columns outside merge_fields from the primary (ED) row", {
+  fixture <- make_readmit_merge_data()
+  result  <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  # c_bio_sense_id differs between the ED and direct-admit rows and is not a
+  # merge field, so the primary (ED) row's value must survive untouched
+  expect_identical(result$c_bio_sense_id, "BS0000000001")
+})
+
 test_that("link_encounters() collapsed output's patient_class reflects the primary (ED) row", {
   fixture <- make_readmit_merge_data()
   result  <- suppressMessages(
@@ -885,9 +836,9 @@ test_that("link_encounters() preserves true has_been_ values (not NA or -Inf) fo
     )
   result <- suppressMessages(link_encounters(ed_data, direct_data))
   ed_only <- dplyr::filter(result, patient_class == "ED", .episode_n_rows == 1L)
-  expect_true(nrow(ed_only) > 0L)
+  expect_gt(nrow(ed_only), 0L)
   expect_false(any(is.infinite(ed_only$has_been_admitted)))
-  expect_false(any(is.na(ed_only$has_been_admitted)))
+  expect_false(anyNA(ed_only$has_been_admitted))
   expect_true(all(ed_only$has_been_e == 1L))
   expect_true(all(ed_only$has_been_admitted == 0L))
 })

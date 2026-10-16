@@ -9,9 +9,13 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @importFrom dplyr across all_of arrange bind_rows case_when desc filter group_by if_else left_join mutate n n_distinct pick recode_values rows_update select semi_join slice slice_max starts_with summarise ungroup
+#' @importFrom dplyr across all_of arrange bind_rows case_when desc filter
+#'   group_by if_else left_join mutate n n_distinct pick recode_values
+#'   rows_update select semi_join slice slice_max starts_with summarise
+#'   ungroup
 #' @importFrom janitor adorn_pct_formatting clean_names make_clean_names tabyl
-#' @importFrom rlang .data := abort as_name as_string enquo ensym inform quo_is_null sym warn
+#' @importFrom rlang .data := abort as_name as_string enquo ensym inform
+#'   quo_is_null sym warn
 #' @importFrom stats quantile
 #' @importFrom stringr fixed str_detect str_starts
 #' @importFrom tibble tibble

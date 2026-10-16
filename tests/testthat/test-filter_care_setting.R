@@ -20,8 +20,11 @@ test_that("filter_care_setting() removes non-ED facility types", {
 test_that("filter_care_setting() retains Emergency Care rows", {
   data <- make_mixed_facility_data()
   result <- filter_care_setting(data)
-  expect_true(all(result$facility_type %in% c("emergency_care", "inpatient_practice_setting",
-                                               "Emergency Care", "Inpatient Practice Setting")))
+  expect_true(all(
+    result$facility_type %in%
+      c("emergency_care", "inpatient_practice_setting",
+        "Emergency Care", "Inpatient Practice Setting")
+  ))
 })
 
 test_that("filter_care_setting() fix_facility_type_vector corrects FSED type", {
@@ -42,10 +45,12 @@ test_that("filter_care_setting() fix_facility_type_vector corrects FSED type", {
     data,
     fix_facility_type_vector = "Hillside FSED"
   )
-  expect_true(nrow(result) > 0L)
+  expect_gt(nrow(result), 0L)
   # FSED should be retained (corrected to Emergency Care)
-  expect_true("hillside_fsed" %in% result$hospital_name |
-              "Hillside FSED" %in% result$hospital_name)
+  expect_true(
+    "hillside_fsed" %in% result$hospital_name |
+      "Hillside FSED" %in% result$hospital_name
+  )
 })
 
 test_that("filter_care_setting() dry_run returns preview tibble", {
@@ -134,7 +139,7 @@ test_that("filter_care_setting() fix_facility_id_vector corrects matching facili
   result <- filter_care_setting(data, fix_facility_id_vector = 1001L)
   expect_true(all(
     result$facility_type[result$hospital == 1001L] == "Emergency Care" |
-    result$facility_type[result$hospital == 1001L] == "emergency_care"
+      result$facility_type[result$hospital == 1001L] == "emergency_care"
   ))
 })
 
@@ -144,7 +149,7 @@ test_that("filter_care_setting() fix_facility_id_vector accepts character IDs ma
       FacilityType = dplyr::if_else(Hospital == 1001L, "Urgent Care", FacilityType)
     )
   result <- filter_care_setting(data, fix_facility_id_vector = "1001")
-  expect_true(nrow(dplyr::filter(result, hospital == 1001L)) > 0L)
+  expect_gt(nrow(dplyr::filter(result, hospital == 1001L)), 0L)
 })
 
 test_that("filter_care_setting() never warns on unmatched fix_facility_id_vector IDs", {
@@ -188,7 +193,7 @@ test_that("filter_care_setting() excludes ID-corrected facility from regex candi
       )
     )
   )
-  expect_true(nrow(dplyr::filter(result, hospital == 1001L)) > 0L)
+  expect_gt(nrow(dplyr::filter(result, hospital == 1001L)), 0L)
 })
 
 test_that("filter_care_setting() dry_run preview includes facility_id column", {

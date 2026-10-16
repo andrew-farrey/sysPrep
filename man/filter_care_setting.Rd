@@ -23,18 +23,16 @@ filter_care_setting(
 \item{data}{A data frame of ESSENCE visit-level records, typically the
 output of \code{\link[=dedupe]{dedupe()}}.}
 
-\item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{facility_col}{Unquoted
 column name identifying the facility. Defaults to \code{HospitalName}.
 Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
 equivalents.}
 
-\item{facility_type_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name identifying the facility type. Defaults to
+\item{facility_type_col}{Unquoted column name identifying the facility type. Defaults to
 \code{FacilityType}. Accepts both raw ESSENCE names and
 post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
-\item{facility_id_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name identifying the facility's stable numeric ID.
+\item{facility_id_col}{Unquoted column name identifying the facility's stable numeric ID.
 Defaults to \code{Hospital} (\code{C_BioSense_Facility_ID} in the NSSP Master
 Facility Table). Accepts both raw ESSENCE names and
 post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents, and any arbitrarily-named
@@ -80,8 +78,8 @@ and whether it would be retained, without modifying or filtering the
 data. Defaults to \code{FALSE}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
-\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case
-on output.}
+\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
+output.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}
@@ -220,7 +218,9 @@ essence_raw |> filter_care_setting(keep_types = "Emergency Care")
 # Preview what would be filtered before committing
 essence_raw |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services"),
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    ),
     dry_run = TRUE
   )
 
@@ -255,7 +255,9 @@ essence_raw |>
 essence_raw |>
   dedupe(order_by = Arrived_Date_Time) |>
   filter_care_setting(
-    fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+    fix_facility_type_vector = c(
+      "Hillside FSED", "Downtown Emergency Services"
+    )
   )
 
 }

@@ -1,5 +1,6 @@
 ---
 title: "Linking ED and Inpatient Records for Accurate Burden Estimation"
+description: "How one care episode can be split across separately queried ED and inpatient pulls, and how `link_encounters()` links the pieces for unduplicated burden counts."
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Linking ED and Inpatient Records for Accurate Burden Estimation}

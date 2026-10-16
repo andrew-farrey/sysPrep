@@ -1,9 +1,55 @@
 # sysPrep 0.1.0
 
+* **Input validation:** every exported function now checks its arguments up
+  front and aborts with a message that names the offending argument. This
+  covers a non-data-frame `data` (or `ed_data`/`inpatient_admission_data`);
+  a `TRUE`/`FALSE` switch (`verbose`, `clean_names`, `overwrite`, ...) that
+  is `NA` or not length 1; a `percentile_low`/`percentile_high` outside
+  `[0, 1]` or reversed, or a negative `iqr_multiplier`, in
+  `review_facility_ed_visits()`; a non-character `keep_types`, `fix_to`, or
+  `fix_facility_type_regex` in `filter_care_setting()`; and a non-string
+  `site` or output column name in the geography functions. A malformed
+  `merge_fields` in `link_encounters()` (for example an unnamed vector,
+  which was previously ignored without a message) now aborts too. Errors
+  are attributed to the exported function the user called rather than an
+  internal helper, and choice arguments (`keep`, `method`, `return_format`)
+  report their valid values through `rlang::arg_match()`.
+* **Bug fix:** `assign_treating_geography()` now warns when no `Region` value
+  begins with the `site` prefix (for example `site = "ky"`, since matching is
+  case-sensitive, or a pull from a different state than `site`). Previously
+  every visit was silently flagged as out-of-state.
+* **Behavior change:** `print()` for `essence_dup_summary` and
+  `essence_dup_classified` objects now writes the whole report to standard
+  output, through new `format()` methods, instead of splitting it between the
+  message and output streams. `capture.output()`, `sink()`, and knitr now see
+  the complete report.
+* **Interface change:** `dedupe()`'s signature now shows `keep`'s valid values
+  (`c("first", "last", "most_complete")`; the default is still `"first"`), and
+  `link_encounters()`'s signature no longer shows a misleading
+  `inpatient_admission_data = NULL` default. The argument was already
+  required: omitting it, or passing `NULL`, aborts with the same message as
+  before.
+* **Documentation:** parameters shared by several functions (`data`,
+  `facility_col`, `visit_col`, `clean_names`, `verbose`, the geography column
+  arguments, and others) are now documented once and inherited with
+  `@inheritParams`, so their wording can no longer drift between help pages.
+  The `format()` and `print()` methods for `essence_dup_summary` and
+  `essence_dup_classified` are documented on `?summarize_duplicates` and
+  `?classify_duplicates`. Internal helpers are documented for maintainers
+  (for example `?resolve_col`, `?key_has_na_mask`, `?merge_strategies`); they
+  are marked `@keywords internal`, so they do not appear in the reference
+  index.
+* **Internal:** removed `collapse_episode()`, an unused earlier implementation
+  of the episode-collapsing step in `link_encounters()`, and reorganized the
+  helpers into thematic `R/utils-*.R` files. No change to any function's
+  output.
+* **Dependencies:** the minimum `dplyr` version is now 1.2.0, the release that
+  added `dplyr::recode_values()`, which `link_encounters()` already used.
+  `stats` and `utils` are now declared in `Imports`.
 * **New feature:** `link_encounters()` gains an optional `fallback_visit_col`
   argument. By default (`NULL`), a row missing `visit_col` is never merged
   with another row solely because they share that same missing value (see
-  the NA-key bug fix below) -- correct in general, but it means a real
+  the NA-key bug fix below); correct in general, but it means a real
   split episode (an ED row and a direct-admit row for the same visit) with
   `Visit_ID` missing on both sides is left as two unmatched rows instead
   of one linked episode, since `visit_col` alone can't confirm they match.

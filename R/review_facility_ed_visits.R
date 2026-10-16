@@ -51,17 +51,12 @@
 #' within each `FacilityType`. This prevents large academic medical centers
 #' from inflating thresholds that mask low counts at smaller facilities.
 #'
+#' @inheritParams dedupe
+#' @inheritParams filter_care_setting
+#' @inheritParams classify_duplicates
 #' @param data A data frame of ESSENCE visit-level records, typically after
 #'   [dedupe()] and optionally [filter_care_setting()].
-#' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. When not supplied, prefers
-#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
-#'   see `?dedupe`'s "Facility identifier preference" section for the full
-#'   rationale.
-#' @param facility_type_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
-#'   Unquoted column name identifying the facility type. Defaults to
-#'   `FacilityType`.
-#' @param date_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Optional.
+#' @param date_col Optional.
 #'   Unquoted column name for the visit date. When supplied, outlier
 #'   detection uses visits per day rather than raw counts. Accepts `Date`,
 #'   `C_Visit_Date`, or post-[janitor::clean_names()] equivalents.
@@ -80,11 +75,6 @@
 #' @param return_format Character string. One of `"outliers_only"` (default)
 #'   or `"all"`. `"outliers_only"` returns only flagged facilities.
 #'   `"all"` returns all facilities with outlier flag columns appended.
-#' @param clean_names Logical. If `TRUE` (default), applies
-#'   [janitor::clean_names()] to standardize column names on output.
-#' @param verbose Logical. If `FALSE`, suppresses informational messages
-#'   (`rlang::inform()`); warnings and errors are always shown regardless.
-#'
 #' @return A tibble with one row per facility containing facility identifier,
 #'   facility type, `n_visits`, optionally `visits_per_day` and `n_days`,
 #'   and outlier flag columns `.outlier_low`, `.outlier_high`,
@@ -112,20 +102,41 @@
 #'     return_format = "all"
 #'   )
 #'
-#' @seealso [filter_care_setting()] for removing non-ED facilities before review.
+#' @seealso [filter_care_setting()] for removing non-ED facilities before
+#'   review.
 #' @export
 review_facility_ed_visits <- function(data,
-                                      facility_col      = NULL,
+                                      facility_col = NULL,
                                       facility_type_col = FacilityType,
-                                      date_col          = NULL,
-                                      method            = c("percentile", "iqr", "both"),
-                                      percentile_low    = 0.05,
-                                      percentile_high   = 0.95,
-                                      iqr_multiplier    = 1.5,
-                                      group_by_type     = FALSE,
-                                      return_format     = c("outliers_only", "all"),
-                                      clean_names       = TRUE,
-                                      verbose           = TRUE) {
+                                      date_col = NULL,
+                                      method = c("percentile", "iqr", "both"),
+                                      percentile_low = 0.05,
+                                      percentile_high = 0.95,
+                                      iqr_multiplier = 1.5,
+                                      group_by_type = FALSE,
+                                      return_format = c("outliers_only", "all"),
+                                      clean_names = TRUE,
+                                      verbose = TRUE) {
+
+  check_data_frame(data)
+  check_number(percentile_low, lower = 0, upper = 1)
+  check_number(percentile_high, lower = 0, upper = 1)
+  check_number(iqr_multiplier, lower = 0)
+  check_flag(group_by_type)
+  check_flag(clean_names)
+  check_flag(verbose)
+
+  if (percentile_low >= percentile_high) {
+    rlang::abort(
+      c(
+        "`percentile_low` must be less than `percentile_high`.",
+        "x" = paste0(
+          "`percentile_low` is ", percentile_low,
+          " and `percentile_high` is ", percentile_high, "."
+        )
+      )
+    )
+  }
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
@@ -138,8 +149,8 @@ review_facility_ed_visits <- function(data,
     rlang::sym(rlang::as_name(facility_col_quo))
   }
 
-  method        <- match.arg(method)
-  return_format <- match.arg(return_format)
+  method        <- rlang::arg_match(method)
+  return_format <- rlang::arg_match(return_format)
 
   # Normalize names ----
   data <- clean_names_safe(data)
@@ -160,7 +171,7 @@ review_facility_ed_visits <- function(data,
     if (is.null(date_col_sym)) {
       rlang::warn(
         paste0(
-          "Date column '", date_col_str, "' not found in data. ",
+          "Date column `", date_col_str, "` not found in data. ",
           "Falling back to raw visit counts."
         )
       )
@@ -330,14 +341,17 @@ review_facility_ed_visits <- function(data,
   n_total   <- nrow(facility_counts)
 
   if (n_total == 0L) {
-    inform_if(verbose, "No facilities in data after processing. Returning empty result.")
+    inform_if(
+      verbose,
+      "No facilities in data after processing. Returning empty result."
+    )
   } else {
     inform_if(
       verbose,
       paste0(
         n_flagged, " of ", n_total, " facilities flagged as outliers (",
         round(n_flagged / n_total * 100, 1), "%) ",
-        "using method = '", method, "'",
+        "using `method = \"", method, "\"`",
         if (group_by_type) " within FacilityType groups" else "", "."
       )
     )

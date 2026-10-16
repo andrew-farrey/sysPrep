@@ -22,19 +22,17 @@ assign_facility_geography(
 \item{data}{A data frame of ESSENCE visit-level records, typically the
 output of \code{\link[=dedupe]{dedupe()}} and \code{\link[=filter_care_setting]{filter_care_setting()}}.}
 
-\item{region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{region_col}{Unquoted
 column name for the patient region field. Defaults to \code{Region}.}
 
-\item{hospital_region_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name for the hospital region field. Defaults to
+\item{hospital_region_col}{Unquoted column name for the hospital region field. Defaults to
 \code{HospitalRegion}. Required when \code{new_region_col} is not \code{NULL}.}
 
-\item{zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{zip_col}{Unquoted
 column name for the patient zip code field. Defaults to \code{ZipCode}.
 Required when \code{new_zip_col} is not \code{NULL}.}
 
-\item{hospital_zip_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name for the hospital zip code field. Defaults to
+\item{hospital_zip_col}{Unquoted column name for the hospital zip code field. Defaults to
 \code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{new_region_col}{Character string or \code{NULL}. Name of the column to
@@ -54,12 +52,13 @@ required to reproduce the original in-place-overwrite behavior. See
 Details.}
 
 \item{preserve_original_geographies}{Logical. If \code{TRUE}, adds
-\code{original_region} and/or \code{original_zip_code} columns before
-overwriting. Only has an effect when \code{overwrite = TRUE}. Defaults to
-\code{FALSE}.}
+\code{original_region} and/or \code{original_zip_code} columns containing
+pre-overwrite values before reassignment. Only has an effect when
+\code{overwrite = TRUE}. Defaults to \code{FALSE}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
-\code{\link[janitor:clean_names]{janitor::clean_names()}} on output.}
+\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
+output.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}

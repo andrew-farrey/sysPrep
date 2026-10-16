@@ -19,9 +19,9 @@
   packageStartupMessage(
     "\u2b21 ", pkgname, " ", version, "\n\n",
     "Preprocessing methods for NSSP ESSENCE syndromic surveillance data.\n",
-    "This is an independent R package and is not affiliated with the National\n",
-    "Syndromic Surveillance Program (NSSP) or the Centers for Disease\n",
-    "Control and Prevention (CDC).\n\n",
+    "This is an independent R package and is not affiliated with the\n",
+    "National Syndromic Surveillance Program (NSSP) or the Centers for\n",
+    "Disease Control and Prevention (CDC).\n\n",
     "Docs:      https://andrew-farrey.github.io/sysPrep/\n",
     "Vignettes: browseVignettes(\"sysPrep\")\n\n",
     "Deduplication method used by your site not present?\n",

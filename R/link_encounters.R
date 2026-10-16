@@ -220,7 +220,7 @@
 #' ## Split episodes with a missing visit_col on both sides
 #' A missing `visit_col` value means that row's true identity is unknown,
 #' not confirmed to match every other row with a missing value (see
-#' [dedupe()]'s "Missing key values" section) -- so by default,
+#' [dedupe()]'s "Missing key values" section), so by default,
 #' `link_encounters()` never merges two rows into one episode solely
 #' because they share the same missing `visit_col`. This is the right
 #' default when nothing else ties the rows together. But an ED row and a
@@ -237,7 +237,7 @@
 #' Rows with a non-missing `visit_col` are never affected, and a row
 #' missing both `visit_col` and `fallback_visit_col` (or missing
 #' `facility_col`) still gets its own unique episode, exactly as when
-#' `fallback_visit_col` isn't supplied at all -- the default `NULL`
+#' `fallback_visit_col` isn't supplied at all: the default `NULL`
 #' preserves that original behavior precisely.
 #'
 #' ## Episode metadata columns
@@ -251,7 +251,7 @@
 #'     episode. A row with a missing `facility_col` or `visit_col` value
 #'     has an unknown identity, not one confirmed to match every other row
 #'     with a missing value, so its `.episode_id` gets a unique numeric
-#'     suffix instead of being shared with any other row -- unless
+#'     suffix instead of being shared with any other row, unless
 #'     `fallback_visit_col` recovers the match; see Details.}
 #'   \item{`.patient_class_sequence`}{All patient classes for the episode
 #'     in chronological order and collapsed, e.g., `"Direct Admit->ED"`
@@ -263,6 +263,8 @@
 #'     `TRUE` (retained for schema consistency with long format).}
 #' }
 #'
+#' @inheritParams dedupe
+#' @inheritParams classify_duplicates
 #' @param ed_data A deduplicated data frame of ED visits queried with
 #'   `HasBeenE = 1`. Requires `HasBeenE` and at least one of
 #'   `HasBeenAdmitted`/`HasBeenI` (the standard ESSENCE pull fields), or
@@ -272,16 +274,16 @@
 #'   Rows with `HasBeenE = 1` are automatically removed to prevent duplicate
 #'   rows for the same underlying record. `link_encounters()` aborts if this
 #'   is `NULL`; see Details.
-#' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#' @param facility_col Unquoted
 #'   column name identifying the facility. When not supplied, prefers
 #'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present in
 #'   `ed_data`; see `?dedupe`'s "Facility identifier preference" section
 #'   for the full rationale. Accepts both raw ESSENCE names and
 #'   post-[janitor::clean_names()] equivalents.
-#' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#' @param visit_col Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
 #'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
-#' @param fallback_visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
+#' @param fallback_visit_col
 #'   Optional. Unquoted column name of a secondary identifier (e.g.
 #'   `C_BioSense_ID`) used to match two rows into one episode when
 #'   `visit_col` is missing on the row being matched. Defaults to `NULL`,
@@ -300,12 +302,6 @@
 #'   within-half structure of `CCDD`/`CCDDParsed`.
 #' @param return_format Character string. One of `"collapsed"` (default) or
 #'   `"long"`. See Details.
-#' @param clean_names Logical. If `TRUE` (default), applies
-#'   [janitor::clean_names()] to standardize column names to snake_case
-#'   on output.
-#' @param verbose Logical. If `FALSE`, suppresses informational messages
-#'   (`rlang::inform()`); warnings and errors are always shown regardless.
-#'
 #' @return When `return_format = "collapsed"` (default), a data frame with
 #'   one row per true care episode, `HasBeen_` flags reconciled via max, and
 #'   `merge_fields` columns reconciled per their assigned strategy. When
@@ -321,7 +317,9 @@
 #' ed_clean <- essence_ed_raw |>
 #'   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
 #'   filter_care_setting(
-#'     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+#'     fix_facility_type_vector = c(
+#'       "Hillside FSED", "Downtown Emergency Services"
+#'     )
 #'   )
 #' inpatient_clean <- dedupe(
 #'   essence_inp_raw, order_by = Arrived_Date_Time, keep = "last"
@@ -356,22 +354,27 @@
 #'   [assign_treating_geography()] for geography attribution.
 #' @export
 link_encounters <- function(ed_data,
-                            inpatient_admission_data = NULL,
-                            facility_col             = NULL,
-                            visit_col                = Visit_ID,
-                            fallback_visit_col       = NULL,
-                            merge_fields             = c(
-                              CCDD                   = "union_ccdd",
-                              CCDDParsed             = "union_ccdd",
-                              CCDDCategory_flat      = "union_delimited",
-                              C_Death                = "prefer_yes",
-                              Discharge_Disposition  = "prefer_admission",
-                              DispositionCategory    = "prefer_admission"
+                            inpatient_admission_data,
+                            facility_col = NULL,
+                            visit_col = Visit_ID,
+                            fallback_visit_col = NULL,
+                            merge_fields = c(
+                              CCDD = "union_ccdd",
+                              CCDDParsed = "union_ccdd",
+                              CCDDCategory_flat = "union_delimited",
+                              C_Death = "prefer_yes",
+                              Discharge_Disposition = "prefer_admission",
+                              DispositionCategory = "prefer_admission"
                             ),
-                            merge_delimiter          = ";",
-                            return_format            = c("collapsed", "long"),
-                            clean_names              = TRUE,
-                            verbose                  = TRUE) {
+                            merge_delimiter = ";",
+                            return_format = c("collapsed", "long"),
+                            clean_names = TRUE,
+                            verbose = TRUE) {
+
+  check_data_frame(ed_data)
+  check_flag(clean_names)
+  check_flag(verbose)
+  check_string(merge_delimiter)
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
@@ -384,7 +387,8 @@ link_encounters <- function(ed_data,
     rlang::sym(rlang::as_name(facility_col_quo))
   }
 
-  if (is.null(inpatient_admission_data)) {
+  if (missing(inpatient_admission_data) ||
+        is.null(inpatient_admission_data)) {
     rlang::abort(
       paste0(
         "`link_encounters()` requires `inpatient_admission_data`. Single-",
@@ -402,19 +406,11 @@ link_encounters <- function(ed_data,
     )
   }
 
-  return_format <- match.arg(return_format)
+  check_data_frame(inpatient_admission_data)
 
-  valid_strategies   <- c("concat", "union_delimited", "union_ccdd", "prefer_yes", "prefer_admission")
-  invalid_strategies <- setdiff(merge_fields, valid_strategies)
-  if (length(invalid_strategies) > 0L) {
-    rlang::abort(
-      paste0(
-        "Invalid merge strategy/strategies in `merge_fields`: ",
-        paste(unique(invalid_strategies), collapse = ", "), ". ",
-        "Valid strategies: ", paste(valid_strategies, collapse = ", "), "."
-      )
-    )
-  }
+  return_format <- rlang::arg_match(return_format)
+
+  check_merge_fields(merge_fields)
 
   names(merge_fields) <- janitor::make_clean_names(names(merge_fields))
 
@@ -441,23 +437,33 @@ link_encounters <- function(ed_data,
   }
 
   # Detect C_Patient_Class_List (optional, more granular derivation) ----
-  pc_list_col <- resolve_col_optional(ed_data, rlang::sym("C_Patient_Class_List"))
+  pc_list_col <- resolve_col_optional(
+    ed_data, rlang::sym("C_Patient_Class_List")
+  )
   use_pc_list <- !is.null(pc_list_col)
-  pc_list_str <- if (use_pc_list) rlang::as_string(pc_list_col) else NA_character_
+  pc_list_str <- if (use_pc_list) {
+    rlang::as_string(pc_list_col)
+  } else {
+    NA_character_
+  }
 
   # Detect C_Patient_Class_MDT_Updates (optional, per-class timestamps used
   # to chronologically order `.patient_class_sequence`; see below) ----
-  mdt_col     <- resolve_col_optional(ed_data, rlang::sym("C_Patient_Class_MDT_Updates"))
+  mdt_col     <- resolve_col_optional(
+    ed_data, rlang::sym("C_Patient_Class_MDT_Updates")
+  )
   use_mdt     <- use_pc_list && !is.null(mdt_col)
   mdt_col_str <- if (use_mdt) rlang::as_string(mdt_col) else NA_character_
 
   # When C_Patient_Class_List is absent, use the standard HasBeen_ flags ----
   if (!use_pc_list) {
 
-    has_been_e_col        <- resolve_col_optional(ed_data, rlang::sym("HasBeenE"))
-    has_been_admitted_col <- resolve_col_optional(ed_data, rlang::sym("HasBeenAdmitted"))
-    has_been_i_col        <- resolve_col_optional(ed_data, rlang::sym("HasBeenI"))
-    has_been_o_col        <- resolve_col_optional(ed_data, rlang::sym("HasBeenO"))
+    has_been_e_col <- resolve_col_optional(ed_data, rlang::sym("HasBeenE"))
+    has_been_admitted_col <- resolve_col_optional(
+      ed_data, rlang::sym("HasBeenAdmitted")
+    )
+    has_been_i_col <- resolve_col_optional(ed_data, rlang::sym("HasBeenI"))
+    has_been_o_col <- resolve_col_optional(ed_data, rlang::sym("HasBeenO"))
 
     has_been_e        <- !is.null(has_been_e_col)
     has_been_admitted <- !is.null(has_been_admitted_col)
@@ -588,8 +594,9 @@ link_encounters <- function(ed_data,
       if (n_unparsed > 0L) {
         rlang::warn(
           paste0(
-            n_unparsed, " row(s) had a non-empty `C_Patient_Class_MDT_Updates` ",
-            "value that could not be parsed in the expected ",
+            n_unparsed, " row(s) had a non-empty ",
+            "`C_Patient_Class_MDT_Updates` value that could not be parsed in ",
+            "the expected ",
             "`{position};timestamp;` format; chronological ordering for ",
             "these rows falls back to `C_Visit_Date_Time` or `Date`+`Time` ",
             "if available."
@@ -597,7 +604,10 @@ link_encounters <- function(ed_data,
         )
       }
     } else {
-      mdt_split_list <- lapply(pc_split_list, function(pc) rep(NA_character_, length(pc)))
+      mdt_split_list <- lapply(
+        pc_split_list,
+        function(pc) rep(NA_character_, length(pc))
+      )
     }
 
     ed_long <- ed_data |>
@@ -767,7 +777,7 @@ link_encounters <- function(ed_data,
     )
   }
 
-  if (!any(!is.na(ed_long$.class_time))) {
+  if (all(is.na(ed_long$.class_time))) {
     rlang::warn(
       paste0(
         "No `C_Patient_Class_MDT_Updates`, `C_Visit_Date_Time`, or ",
@@ -826,11 +836,11 @@ link_encounters <- function(ed_data,
   group_id <- na_safe_group_id(ed_long, c(fac_col_str, visit_col_str))
 
   # Built as plain vectors (not inside a dplyr verb's tidy-eval) so the
-  # fallback branch's .data[[fallback_col_str]] lookup is never attempted
-  # at all when fallback_col_str is NULL (no fallback_visit_col supplied);
-  # dplyr::case_when() evaluates every RHS eagerly regardless of which
-  # rows the corresponding LHS matches, so that lookup would otherwise
-  # error even though uses_fallback is all-FALSE in that case ----
+  # fallback branch's lookup of fallback_col_str is never attempted at all
+  # when it is NULL (no fallback_visit_col supplied). A case_when() here
+  # would evaluate every right-hand side eagerly, and indexing ed_long with
+  # a NULL column name would error even though uses_fallback is all-FALSE
+  # in that case ----
   normal_episode_id  <- paste(
     ed_long[[fac_col_str]], ed_long[[visit_col_str]], sep = "_"
   )
@@ -842,11 +852,13 @@ link_encounters <- function(ed_data,
   } else {
     rep(NA_character_, nrow(ed_long))
   }
-  episode_id_vec <- dplyr::case_when(
-    uses_fallback ~ fallback_episode_id,
-    still_na_key  ~ na_key_episode_id,
-    TRUE          ~ normal_episode_id
-  )
+  # Precedence: fallback match, then unmatchable NA-key singleton, then the
+  # normal key; which() treats an NA flag as FALSE ----
+  episode_id_vec <- normal_episode_id
+  na_key_idx     <- which(still_na_key)
+  fallback_idx   <- which(uses_fallback)
+  episode_id_vec[na_key_idx]   <- na_key_episode_id[na_key_idx]
+  episode_id_vec[fallback_idx] <- fallback_episode_id[fallback_idx]
 
   # `.by =` groups only for the duration of this one mutate() call, without
   # materializing a separate grouped-tibble object the way group_by() +
@@ -865,16 +877,16 @@ link_encounters <- function(ed_data,
     dplyr::select(-.class_time)
 
   # Collapse each episode to one row ----
-  # Deliberately NOT dplyr::group_modify(~ collapse_episode(...)): that
-  # approach slices out a full-width single-row data.frame per episode and
-  # binds every one of them back together at the end, which is the actual
-  # source of the memory/time blowup on a full year of data (millions of
-  # tiny per-group data.frame objects, all of them live simultaneously
-  # until the final bind completes). The block below reconciles only the
-  # columns that actually change (has_been_* flags and merge_fields) as
-  # plain vectorized, per-episode-grouped column operations, then does a
-  # single row filter to keep one row per episode, no per-group
-  # data.frame construction, no giant final bind ----
+  # Deliberately NOT a per-episode helper applied through
+  # dplyr::group_modify(): that approach slices out a full-width single-row
+  # data.frame per episode and binds every one of them back together at the
+  # end, which is the actual source of the memory/time blowup on a full
+  # year of data (millions of tiny per-group data.frame objects, all of
+  # them live simultaneously until the final bind completes). The block
+  # below reconciles only the columns that actually change (has_been_*
+  # flags and merge_fields) as plain vectorized, per-episode-grouped
+  # column operations, then does a single row filter to keep one row per
+  # episode, no per-group data.frame construction, no giant final bind ----
   if (return_format == "collapsed") {
     has_been_cols <- grep("^has_been_", names(result), value = TRUE)
     merge_cols    <- intersect(names(merge_fields), names(result))
@@ -920,260 +932,4 @@ link_encounters <- function(ed_data,
   }
 
   if (clean_names) clean_names_safe(result) else result
-}
-
-# parse_mdt_updates() ----
-# Parses ESSENCE's C_Patient_Class_MDT_Updates encoding: pipe-delimited
-# "{position};timestamp;" segments, one per patient class, where `position`
-# is the 1-based character position in the corresponding
-# C_Patient_Class_List value (e.g. "{1};2026-06-19 16:00:06.000;
-# |{2};2026-06-19 17:55:10.000;" for C_Patient_Class_List = "EI"). Returns a
-# character vector of length `n_classes` giving the timestamp string at each
-# position, NA where no segment matches that position (e.g. a class that was
-# never explicitly updated) or the segment doesn't match this encoding.
-parse_mdt_updates <- function(mdt_str, n_classes) {
-  out <- rep(NA_character_, n_classes)
-  if (is.na(mdt_str) || mdt_str == "") return(out)
-
-  segments <- strsplit(mdt_str, "|", fixed = TRUE)[[1]]
-  for (seg in segments) {
-    seg <- trimws(seg)
-    if (!nzchar(seg)) next
-    m <- regmatches(seg, regexec("^\\{(\\d+)\\}\\s*;\\s*([^;]+)", seg))[[1]]
-    if (length(m) == 3L) {
-      idx <- suppressWarnings(as.integer(m[2]))
-      if (!is.na(idx) && idx >= 1L && idx <= n_classes) {
-        out[idx] <- trimws(m[3])
-      }
-    }
-  }
-  out
-}
-
-# safe_as_posixct() ----
-# Parses a character vector of timestamps for chronological ordering
-# purposes. A single malformed or non-standard-format value must not abort
-# the whole vectorized parse (as.POSIXct() throws rather than warns when a
-# string matches none of its tryFormats); unparseable values become NA
-# instead, so ordering degrades gracefully to the next tier for just that
-# row rather than erroring out link_encounters() entirely. Recognizes
-# space- and "T"-separated ISO 8601-style timestamps (with or without a
-# trailing "Z") in addition to base R's defaults.
-safe_as_posixct <- function(x) {
-  if (inherits(x, "POSIXct")) return(x)
-
-  formats <- c(
-    "%Y-%m-%dT%H:%M:%OS", "%Y-%m-%d %H:%M:%OS",
-    "%Y-%m-%dT%H:%M",     "%Y-%m-%d %H:%M",
-    "%Y-%m-%d",
-    "%m/%d/%Y %H:%M:%OS", "%m/%d/%Y %H:%M", "%m/%d/%Y"
-  )
-
-  x_clean <- sub("Z$", "", trimws(as.character(x)))
-  result  <- as.POSIXct(rep(NA_character_, length(x_clean)))
-
-  # Vectorized per-format fill: try each format against the whole vector at
-  # once (one C-level strptime() pass) and only keep trying remaining
-  # unparsed elements with the next format. This gives the same per-element
-  # "first matching format wins" result as the old row-by-row loop, without
-  # a separate R function call + tryCatch per row; the row-by-row version
-  # is what made this the dominant cost on a full year of data ----
-  remaining <- !is.na(x_clean) & x_clean != ""
-  for (fmt in formats) {
-    if (!any(remaining)) break
-    parsed <- suppressWarnings(as.POSIXct(x_clean[remaining], format = fmt))
-    ok <- !is.na(parsed)
-    if (any(ok)) {
-      idx            <- which(remaining)[ok]
-      result[idx]    <- parsed[ok]
-      remaining[idx] <- FALSE
-    }
-  }
-
-  result
-}
-
-# compute_patient_class_sequence() ----
-# Orders an episode's distinct patient classes by the earliest .class_time
-# each class occurs at, e.g. "Direct Admit->ED" when the direct-admit
-# record's timestamp precedes the ED record's. Falls back to alphabetical
-# order (matching legacy behavior) when no usable timestamp exists for the
-# episode at all; classes with no timestamp sort after timed classes when
-# some but not all classes in the episode have one.
-compute_patient_class_sequence <- function(patient_class, class_time) {
-  classes <- unique(patient_class)
-  classes <- classes[!is.na(classes)]
-  if (length(classes) == 0L) return(NA_character_)
-
-  min_time <- do.call(c, lapply(classes, function(cl) {
-    times <- class_time[!is.na(patient_class) & patient_class == cl]
-    if (all(is.na(times))) return(as.POSIXct(NA))
-    min(times, na.rm = TRUE)
-  }))
-
-  if (all(is.na(min_time))) {
-    return(paste(sort(classes), collapse = "->"))
-  }
-
-  ord <- order(min_time, classes, na.last = TRUE)
-  paste(classes[ord], collapse = "->")
-}
-
-# merge_concat() ----
-# Free-text merge: starting from primary_value, appends each other non-empty
-# value not already a substring of the accumulated result.
-merge_concat <- function(values, primary_value) {
-  values <- values[!is.na(values) & values != ""]
-  if (length(values) == 0L) return(primary_value)
-
-  base <- if (!is.na(primary_value) && nzchar(primary_value)) primary_value else values[1]
-
-  for (v in values) {
-    if (!identical(v, base) && !grepl(v, base, fixed = TRUE)) {
-      base <- paste0(base, "; ", v)
-    }
-  }
-
-  base
-}
-
-# merge_union_delimited() ----
-# Splits each value on `delimiter`, trims whitespace, and returns the union
-# of unique parts (preserving order of first appearance) rejoined with the
-# same delimiter.
-merge_union_delimited <- function(values, delimiter) {
-  values <- values[!is.na(values) & values != ""]
-  if (length(values) == 0L) return(NA_character_)
-
-  parts <- unlist(strsplit(values, delimiter, fixed = TRUE))
-  parts <- trimws(parts)
-  parts <- parts[nzchar(parts)]
-
-  paste(unique(parts), collapse = delimiter)
-}
-
-# merge_union_ccdd() ----
-# ESSENCE CCDD/CCDDParsed structure: "CC-values|DD-values", with `|`
-# separating CC from DD (fixed by the ESSENCE convention, not
-# user-configurable) and `delimiter` separating individual values within
-# each half. Unions unique values within each half separately, then rejoins.
-merge_union_ccdd <- function(values, delimiter) {
-  values <- values[!is.na(values) & values != ""]
-  if (length(values) == 0L) return(NA_character_)
-
-  # Vectorized across all of this group's values at once, rather than
-  # calling strsplit()/trimws() per value in a loop; trimws() compiles a
-  # perl regex on every call, and this function runs once per multi-row
-  # episode, so per-value looping is the difference between O(episodes)
-  # and O(episodes x rows-per-episode) regex compiles on a full year of
-  # data ----
-  halves    <- strsplit(values, "|", fixed = TRUE)
-  cc_halves <- vapply(halves, function(h) if (length(h) >= 1L) h[1] else "", character(1L))
-  dd_halves <- vapply(halves, function(h) if (length(h) >= 2L) h[2] else "", character(1L))
-
-  cc_halves <- cc_halves[nzchar(cc_halves)]
-  dd_halves <- dd_halves[nzchar(dd_halves)]
-
-  cc_parts <- if (length(cc_halves) > 0L) {
-    trimws(unlist(strsplit(cc_halves, delimiter, fixed = TRUE), use.names = FALSE))
-  } else {
-    character(0)
-  }
-  dd_parts <- if (length(dd_halves) > 0L) {
-    trimws(unlist(strsplit(dd_halves, delimiter, fixed = TRUE), use.names = FALSE))
-  } else {
-    character(0)
-  }
-
-  cc_parts <- unique(cc_parts[nzchar(cc_parts)])
-  dd_parts <- unique(dd_parts[nzchar(dd_parts)])
-
-  paste0(paste(cc_parts, collapse = delimiter), "|", paste(dd_parts, collapse = delimiter))
-}
-
-# merge_prefer_yes() ----
-# If any value is affirmative (case-insensitive "Yes", or 1/"1" for
-# 0/1-coded flag columns), the merged value is that affirmative value.
-# Otherwise falls back to primary_value.
-merge_prefer_yes <- function(values, primary_value) {
-  values_clean  <- values[!is.na(values)]
-  is_affirmative <- tolower(as.character(values_clean)) %in% c("yes", "1")
-  if (any(is_affirmative)) return(values_clean[is_affirmative][1])
-  primary_value
-}
-
-# merge_prefer_admission() ----
-# Returns the value from whichever row's patient_class indicates an
-# admission (Inpatient/Direct Admit/Admitted), if such a row has a
-# non-missing value for this field. Otherwise falls back to primary_value.
-merge_prefer_admission <- function(values, patient_classes, primary_value) {
-  admission_classes <- c("Inpatient", "Direct Admit", "Admitted")
-  admission_idx <- which(
-    patient_classes %in% admission_classes & !is.na(values) & values != ""
-  )
-  if (length(admission_idx) > 0L) return(values[admission_idx[1]])
-  primary_value
-}
-
-# merge_field_value() ----
-# Dispatches a single field's values to the strategy named in merge_fields.
-merge_field_value <- function(values, patient_classes, primary_value, strategy, delimiter) {
-  switch(
-    strategy,
-    concat           = merge_concat(values, primary_value),
-    union_delimited  = merge_union_delimited(values, delimiter),
-    union_ccdd       = merge_union_ccdd(values, delimiter),
-    prefer_yes       = merge_prefer_yes(values, primary_value),
-    prefer_admission = merge_prefer_admission(values, patient_classes, primary_value),
-    rlang::abort(
-      paste0(
-        "Unknown merge strategy '", strategy, "' in `merge_fields`. ",
-        "Valid strategies: concat, union_delimited, union_ccdd, prefer_yes, ",
-        "prefer_admission."
-      )
-    )
-  )
-}
-
-# pick_primary_row_index() ----
-# Returns the index of the ED row in an episode if one exists, else 1
-# (first row in original order). Matches the precedence link_encounters()
-# has always given the ED row via .index_encounter.
-pick_primary_row_index <- function(patient_classes) {
-  ed_idx <- which(patient_classes == "ED")
-  if (length(ed_idx) > 0L) return(ed_idx[1])
-  1L
-}
-
-# collapse_episode() ----
-# Collapses one episode's rows (all rows sharing a facility x Visit_ID) into
-# a single composite row: has_been_* columns are reconciled via max(),
-# columns named in merge_fields are reconciled via their assigned strategy,
-# and every other column takes its value from the primary row.
-collapse_episode <- function(episode_df, merge_fields, merge_delimiter) {
-  primary_idx <- pick_primary_row_index(episode_df$patient_class)
-  result_row  <- episode_df[primary_idx, ]
-
-  has_been_cols <- grep("^has_been_", names(episode_df), value = TRUE)
-  for (col in has_been_cols) {
-    vals <- episode_df[[col]]
-    if (!all(is.na(vals))) {
-      result_row[[col]] <- max(vals, na.rm = TRUE)
-    }
-  }
-
-  merge_cols <- intersect(names(merge_fields), names(episode_df))
-  for (col in merge_cols) {
-    result_row[[col]] <- merge_field_value(
-      values          = episode_df[[col]],
-      patient_classes = episode_df$patient_class,
-      primary_value   = episode_df[[col]][primary_idx],
-      strategy        = merge_fields[[col]],
-      delimiter       = merge_delimiter
-    )
-  }
-
-  result_row[[".index_encounter"]] <- TRUE
-
-  result_row
 }

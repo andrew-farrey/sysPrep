@@ -41,19 +41,13 @@
 #'     proportions.}
 #' }
 #'
-#' @param data A data frame of raw ESSENCE visit-level records.
-#' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the facility. When not supplied, prefers
-#'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present;
-#'   see `?dedupe`'s "Facility identifier preference" section for the full
-#'   rationale. Accepts both raw ESSENCE names and
-#'   post-[janitor::clean_names()] equivalents.
-#' @param visit_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
-#'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
-#'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
-#'
+#' @inheritParams dedupe
 #' @return A named list of class `essence_dup_summary` with components
 #'   `$duplicate_ids`, `$by_facility`, and `$overall`.
+#'
+#'   The `format()` method returns the printed report as a character vector;
+#'   the `print()` method writes it to standard output with [writeLines()] and
+#'   returns `x` invisibly.
 #'
 #' @examples
 #' # Basic usage before deduplication
@@ -68,7 +62,7 @@
 #' # Filter raw data to duplicated visits for manual review
 #' # (clean first so join keys match snake_case output of $duplicate_ids;
 #' # essence_raw has Hospital, so that's the preferred join key here,
-#' # not hospital_name -- see Details in ?dedupe)
+#' # not hospital_name; see Details in ?dedupe)
 #' essence_raw |>
 #'   janitor::clean_names() |>
 #'   dplyr::semi_join(
@@ -82,6 +76,8 @@
 summarize_duplicates <- function(data,
                                  facility_col = NULL,
                                  visit_col    = Visit_ID) {
+
+  check_data_frame(data)
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
@@ -188,27 +184,48 @@ summarize_duplicates <- function(data,
   )
 }
 
-# print.essence_dup_summary() ----
+# format.essence_dup_summary() / print.essence_dup_summary() ----
+# Rendering is built as a character vector (cli::cli_format_method()) and
+# print() just writes it with writeLines(), so the whole summary goes to
+# stdout as one block:
+# capture.output(), sink(), and knitr all see it, and it never splits across
+# the message and output streams the way direct cli_*() calls would.
+#' @rdname summarize_duplicates
+#' @param x An `essence_dup_summary` object, as returned by
+#'   `summarize_duplicates()`.
+#' @param ... Passed on to `format()`; currently unused.
+#' @export
+format.essence_dup_summary <- function(x, ...) {
+  cli::cli_format_method({
+    cli::cli_h1("ESSENCE Duplicate Summary")
+
+    cli::cli_h2("Overall")
+    cli::cli_bullets(c(
+      "*" = "Total rows in pull:             {x$overall$n_total_rows}",
+      "*" = paste0(
+        "Unique visits (facility x ID):  ", "{x$overall$n_unique_visits}"
+      ),
+      "*" = paste0(
+        "Duplicated Visit IDs:           ",
+        "{x$overall$n_duplicated_visit_ids} ({x$overall$pct_duplicated}%)"
+      ),
+      "*" = "Excess rows to remove:          {x$overall$n_excess_rows}"
+    ))
+
+    if (nrow(x$by_facility) > 0L) {
+      cli::cli_h2("By Facility (most duplicated first)")
+      cli::cli_verbatim(print_lines(x$by_facility, n = Inf))
+    }
+
+    if (nrow(x$duplicate_ids) > 0L) {
+      cli_duplicate_ids_footer(x)
+    }
+  })
+}
+
+#' @rdname summarize_duplicates
 #' @export
 print.essence_dup_summary <- function(x, ...) {
-  cli::cli_h1("ESSENCE Duplicate Summary")
-
-  cli::cli_h2("Overall")
-  cli::cli_bullets(c(
-    "*" = "Total rows in pull:             {x$overall$n_total_rows}",
-    "*" = "Unique visits (facility x ID):  {x$overall$n_unique_visits}",
-    "*" = "Duplicated Visit IDs:           {x$overall$n_duplicated_visit_ids} ({x$overall$pct_duplicated}%)",
-    "*" = "Excess rows to remove:          {x$overall$n_excess_rows}"
-  ))
-
-  if (nrow(x$by_facility) > 0L) {
-    cli::cli_h2("By Facility (most duplicated first)")
-    print(x$by_facility, n = Inf)
-  }
-
-  if (nrow(x$duplicate_ids) > 0L) {
-    cli_duplicate_ids_footer(x)
-  }
-
+  writeLines(format(x, ...))
   invisible(x)
 }

@@ -1,5 +1,6 @@
 ---
 title: "Understanding and Resolving Duplicate Records in ESSENCE Data"
+description: "Why ESSENCE `dataDetails` pulls contain more than one row for a single visit, how to quantify and classify those rows, and how to choose a `dedupe()` strategy."
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Understanding and Resolving Duplicate Records in ESSENCE Data}

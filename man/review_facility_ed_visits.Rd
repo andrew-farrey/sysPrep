@@ -23,17 +23,18 @@ review_facility_ed_visits(
 \item{data}{A data frame of ESSENCE visit-level records, typically after
 \code{\link[=dedupe]{dedupe()}} and optionally \code{\link[=filter_care_setting]{filter_care_setting()}}.}
 
-\item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{facility_col}{Unquoted
 column name identifying the facility. When not supplied, prefers
 \code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
-see \code{?dedupe}'s "Facility identifier preference" section for the full
-rationale.}
+see the "Facility identifier preference" section of \code{\link[=dedupe]{dedupe()}}.
+Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
+equivalents.}
 
-\item{facility_type_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
-Unquoted column name identifying the facility type. Defaults to
-\code{FacilityType}.}
+\item{facility_type_col}{Unquoted column name identifying the facility type. Defaults to
+\code{FacilityType}. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
-\item{date_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Optional.
+\item{date_col}{Optional.
 Unquoted column name for the visit date. When supplied, outlier
 detection uses visits per day rather than raw counts. Accepts \code{Date},
 \code{C_Visit_Date}, or post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.
@@ -60,7 +61,8 @@ or \code{"all"}. \code{"outliers_only"} returns only flagged facilities.
 \code{"all"} returns all facilities with outlier flag columns appended.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
-\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names on output.}
+\code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
+output.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}
@@ -153,5 +155,6 @@ essence_clean |>
 
 }
 \seealso{
-\code{\link[=filter_care_setting]{filter_care_setting()}} for removing non-ED facilities before review.
+\code{\link[=filter_care_setting]{filter_care_setting()}} for removing non-ED facilities before
+review.
 }

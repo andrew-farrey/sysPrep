@@ -43,7 +43,8 @@
 #' on the prefix mismatch below. For example, with `site = "KY"`:
 #' - `"KY_Jefferson"` -> in-state, unchanged
 #' - `"TN_Davidson"` -> out-of-state, region assigned from `HospitalRegion`
-#' - `"OTHER_REGION"` -> unknown residence, region assigned from `HospitalRegion`
+#' - `"OTHER_REGION"` -> unknown residence, region assigned from
+#'   `HospitalRegion`
 #' - `"KY_UNKNOWN"` -> unknown residence, region assigned from `HospitalRegion`
 #'
 #' ## Geography types and output columns
@@ -133,20 +134,22 @@
 #' overwriting, retaining the pre-overwrite values for QA, audit trails, or
 #' residential vs. treating geography comparisons.
 #'
+#' @inheritParams dedupe
+#' @inheritParams classify_duplicates
 #' @param data A data frame of ESSENCE visit-level records, typically the
 #'   output of [dedupe()] and [filter_care_setting()].
 #' @param site Character string. The site prefix used to identify in-state
 #'   visits. Defaults to `"KY"`. Visits whose `Region` does not begin with
 #'   `paste0(site, "_")` are treated as out-of-state.
-#' @param region_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#' @param region_col Unquoted
 #'   column name for the patient region field. Defaults to `Region`.
-#' @param hospital_region_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
+#' @param hospital_region_col
 #'   Unquoted column name for the hospital region field. Defaults to
 #'   `HospitalRegion`. Required when `new_region_col` is not `NULL`.
-#' @param zip_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#' @param zip_col Unquoted
 #'   column name for the patient zip code field. Defaults to `ZipCode`.
 #'   Required when `new_zip_col` is not `NULL`.
-#' @param hospital_zip_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
+#' @param hospital_zip_col
 #'   Unquoted column name for the hospital zip code field. Defaults to
 #'   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
 #' @param new_region_col Character string or `NULL`. Name of the column to
@@ -167,11 +170,6 @@
 #'   `original_region` and/or `original_zip_code` columns containing
 #'   pre-overwrite values before reassignment. Only has an effect when
 #'   `overwrite = TRUE`. Defaults to `FALSE`.
-#' @param clean_names Logical. If `TRUE` (default), applies
-#'   [janitor::clean_names()] on output.
-#' @param verbose Logical. If `FALSE`, suppresses informational messages
-#'   (`rlang::inform()`); warnings and errors are always shown regardless.
-#'
 #' @return The input data frame with reassigned region and/or zip code
 #'   values written to `new_region_col`/`new_zip_col` (or to `region_col`/
 #'   `zip_col` in place, when `overwrite = TRUE`). A `.out_of_state` logical
@@ -217,31 +215,40 @@
 #'   all visits regardless of patient residence.
 #' @export
 assign_treating_geography <- function(data,
-                                      site                          = "KY",
-                                      region_col                    = Region,
-                                      hospital_region_col           = HospitalRegion,
-                                      zip_col                       = ZipCode,
-                                      hospital_zip_col              = HospitalZip,
-                                      new_region_col                = "region_hybrid",
-                                      new_zip_col                   = "zip_code_hybrid",
-                                      overwrite                     = FALSE,
+                                      site = "KY",
+                                      region_col = Region,
+                                      hospital_region_col = HospitalRegion,
+                                      zip_col = ZipCode,
+                                      hospital_zip_col = HospitalZip,
+                                      new_region_col = "region_hybrid",
+                                      new_zip_col = "zip_code_hybrid",
+                                      overwrite = FALSE,
                                       preserve_original_geographies = FALSE,
-                                      clean_names                   = TRUE,
-                                      verbose                       = TRUE) {
+                                      clean_names = TRUE,
+                                      verbose = TRUE) {
+
+  check_data_frame(data)
+  check_string(site)
+  check_flag(overwrite)
+  check_flag(preserve_original_geographies)
+  check_flag(clean_names)
+  check_flag(verbose)
 
   # Normalize names ----
   data <- clean_names_safe(data)
 
   # Resolve source columns gracefully ----
   region_sym      <- resolve_col_optional(data, rlang::ensym(region_col))
-  hosp_region_sym <- resolve_col_optional(data, rlang::ensym(hospital_region_col))
+  hosp_region_sym <- resolve_col_optional(
+    data, rlang::ensym(hospital_region_col)
+  )
   zip_sym         <- resolve_col_optional(data, rlang::ensym(zip_col))
   hosp_zip_sym    <- resolve_col_optional(data, rlang::ensym(hospital_zip_col))
 
-  region_col_str      <- if (!is.null(region_sym))      rlang::as_string(region_sym)
-  hosp_region_col_str <- if (!is.null(hosp_region_sym)) rlang::as_string(hosp_region_sym)
-  zip_col_str         <- if (!is.null(zip_sym))         rlang::as_string(zip_sym)
-  hosp_zip_col_str    <- if (!is.null(hosp_zip_sym))    rlang::as_string(hosp_zip_sym)
+  region_col_str      <- as_string_or_null(region_sym)
+  hosp_region_col_str <- as_string_or_null(hosp_region_sym)
+  zip_col_str         <- as_string_or_null(zip_sym)
+  hosp_zip_col_str    <- as_string_or_null(hosp_zip_sym)
 
   # Which geography types to process is driven directly by new_region_col/
   # new_zip_col: NULL skips that type entirely ----
@@ -304,6 +311,26 @@ assign_treating_geography <- function(data,
   # pass the str_starts() check below and be silently left as "in-state" ----
   site_prefix <- paste0(site, "_")
 
+  # A `site` that matches no Region value (a typo, wrong case, or another
+  # state's pull) would otherwise flag every visit as out-of-state without
+  # any sign that something is off ----
+  if (nrow(data) > 0L &&
+        !any(startsWith(as.character(data[[region_col_str]]), site_prefix),
+             na.rm = TRUE)) {
+    rlang::warn(
+      c(
+        paste0(
+          "No `", region_col_str, "` value begins with `", site_prefix,
+          "`, so every visit will be treated as out-of-state."
+        ),
+        "i" = paste0(
+          "Check that `site` (currently \"", site, "\") matches the prefix ",
+          "of your ESSENCE Region values; it is case-sensitive."
+        )
+      )
+    )
+  }
+
   data <- data |>
     dplyr::mutate(
       .out_of_state = is.na(.data[[region_col_str]]) |
@@ -335,7 +362,10 @@ assign_treating_geography <- function(data,
   output_cols  <- c(region_output_col_str, zip_output_col_str)
 
   if (n_total == 0L) {
-    inform_if(verbose, "No rows in data after processing. Returning empty data frame.")
+    inform_if(
+      verbose,
+      "No rows in data after processing. Returning empty data frame."
+    )
   } else {
     inform_if(
       verbose,

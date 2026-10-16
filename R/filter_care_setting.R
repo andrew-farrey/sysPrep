@@ -103,17 +103,19 @@
 #' Unmatched entries in `fix_facility_id_vector` never produce a warning, at
 #' any setting, for the same reason.
 #'
+#' @inheritParams dedupe
+#' @inheritParams classify_duplicates
 #' @param data A data frame of ESSENCE visit-level records, typically the
 #'   output of [dedupe()].
-#' @param facility_col <[`tidy-select`][dplyr::dplyr_tidy_select]> Unquoted
+#' @param facility_col Unquoted
 #'   column name identifying the facility. Defaults to `HospitalName`.
 #'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
 #'   equivalents.
-#' @param facility_type_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
+#' @param facility_type_col
 #'   Unquoted column name identifying the facility type. Defaults to
 #'   `FacilityType`. Accepts both raw ESSENCE names and
 #'   post-[janitor::clean_names()] equivalents.
-#' @param facility_id_col <[`tidy-select`][dplyr::dplyr_tidy_select]>
+#' @param facility_id_col
 #'   Unquoted column name identifying the facility's stable numeric ID.
 #'   Defaults to `Hospital` (`C_BioSense_Facility_ID` in the NSSP Master
 #'   Facility Table). Accepts both raw ESSENCE names and
@@ -152,12 +154,6 @@
 #'   facility's original facility type, corrected facility type, visit count,
 #'   and whether it would be retained, without modifying or filtering the
 #'   data. Defaults to `FALSE`.
-#' @param clean_names Logical. If `TRUE` (default), applies
-#'   [janitor::clean_names()] to standardize column names to snake_case
-#'   on output.
-#' @param verbose Logical. If `FALSE`, suppresses informational messages
-#'   (`rlang::inform()`); warnings and errors are always shown regardless.
-#'
 #' @return When `dry_run = FALSE` (default), a filtered data frame retaining
 #'   only visits from facilities whose `FacilityType`, after any corrections,
 #'   appears in `keep_types`. When `dry_run = TRUE`, a tibble with columns
@@ -175,7 +171,9 @@
 #' # Preview what would be filtered before committing
 #' essence_raw |>
 #'   filter_care_setting(
-#'     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services"),
+#'     fix_facility_type_vector = c(
+#'       "Hillside FSED", "Downtown Emergency Services"
+#'     ),
 #'     dry_run = TRUE
 #'   )
 #'
@@ -210,25 +208,36 @@
 #' essence_raw |>
 #'   dedupe(order_by = Arrived_Date_Time) |>
 #'   filter_care_setting(
-#'     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
+#'     fix_facility_type_vector = c(
+#'       "Hillside FSED", "Downtown Emergency Services"
+#'     )
 #'   )
 #'
 #' @seealso [review_facility_ed_visits()] for flagging facility-level visit
 #'   count outliers after filtering.
 #' @export
 filter_care_setting <- function(data,
-                                facility_col             = HospitalName,
-                                facility_type_col        = FacilityType,
-                                facility_id_col          = Hospital,
-                                keep_types               = c("Emergency Care",
-                                                             "Inpatient Practice Setting"),
-                                fix_facility_id_vector   = NULL,
+                                facility_col = HospitalName,
+                                facility_type_col = FacilityType,
+                                facility_id_col = Hospital,
+                                keep_types = c("Emergency Care",
+                                               "Inpatient Practice Setting"),
+                                fix_facility_id_vector = NULL,
                                 fix_facility_type_vector = NULL,
-                                fix_facility_type_regex  = NULL,
-                                fix_to                   = "Emergency Care",
-                                dry_run                  = FALSE,
-                                clean_names              = TRUE,
-                                verbose                  = TRUE) {
+                                fix_facility_type_regex = NULL,
+                                fix_to = "Emergency Care",
+                                dry_run = FALSE,
+                                clean_names = TRUE,
+                                verbose = TRUE) {
+
+  check_data_frame(data)
+  check_character(keep_types)
+  check_character(fix_facility_type_vector, allow_null = TRUE)
+  check_string(fix_facility_type_regex, allow_null = TRUE)
+  check_string(fix_to)
+  check_flag(dry_run)
+  check_flag(clean_names)
+  check_flag(verbose)
 
   # Normalize names upfront ----
   data <- clean_names_safe(data)
@@ -240,7 +249,11 @@ filter_care_setting <- function(data,
   # fix_facility_id_vector is actually supplied ----
   id_col_sym      <- resolve_col_optional(data, rlang::ensym(facility_id_col))
   use_facility_id <- !is.null(id_col_sym)
-  id_col_str      <- if (use_facility_id) rlang::as_string(id_col_sym) else NA_character_
+  id_col_str      <- if (use_facility_id) {
+    rlang::as_string(id_col_sym)
+  } else {
+    NA_character_
+  }
 
   if (!use_facility_id && !is.null(fix_facility_id_vector)) {
     rlang::abort(
@@ -297,7 +310,8 @@ filter_care_setting <- function(data,
           " facility name(s) in `fix_facility_type_vector` not found in data ",
           "and will be ignored:\n",
           paste0("  - ", unmatched, collapse = "\n"),
-          "\nCheck for trailing whitespace or name changes since last data pull."
+          "\nCheck for trailing whitespace or name changes since the last ",
+          "data pull."
         )
       )
     }
@@ -314,7 +328,7 @@ filter_care_setting <- function(data,
 
     already_corrected <- c(
       corrected_by_id_names,
-      if (!is.null(fix_facility_type_vector)) fix_facility_type_vector else character(0)
+      fix_facility_type_vector
     )
 
     regex_matched <- unique(
@@ -329,7 +343,7 @@ filter_care_setting <- function(data,
         paste0(
           length(regex_matched),
           " facility/facilities matched by `fix_facility_type_regex` ",
-          "and corrected to '", fix_to, "':\n",
+          "and corrected to `", fix_to, "`:\n",
           paste0("  - ", regex_matched, collapse = "\n"),
           "\nConsider promoting these to `fix_facility_type_vector` or ",
           "`fix_facility_id_vector` for explicitness and reproducibility."
@@ -404,10 +418,31 @@ filter_care_setting <- function(data,
         paste(keep_types, collapse = ", "),
         ") did not match any `FacilityType` values in data. ",
         "Check for exact case match; ESSENCE facility type values ",
-        "are title case by default (e.g., 'Emergency Care' not 'emergency care')."
+        "are title case by default (e.g., \"Emergency Care\", not ",
+        "\"emergency care\")."
       )
     )
   }
 
   if (clean_names) clean_names_safe(result) else result
+}
+
+#' Overwrite facility types for matching rows
+#'
+#' Internal helper shared by [filter_care_setting()]'s facility ID, facility
+#' name, and regex correction blocks. Overwrites the facility type column with
+#' `fix_to` for the rows selected by `mask`, leaving other rows unchanged.
+#'
+#' @param data A data frame.
+#' @param type_col_str Name of the facility type column in `data`.
+#' @param mask Logical vector, one element per row: which rows to correct.
+#' @param fix_to The facility type value to write.
+#'
+#' @return `data` with `type_col_str` updated.
+#' @keywords internal
+apply_type_correction <- function(data, type_col_str, mask, fix_to) {
+  dplyr::mutate(
+    data,
+    "{type_col_str}" := dplyr::if_else(mask, fix_to, .data[[type_col_str]])
+  )
 }

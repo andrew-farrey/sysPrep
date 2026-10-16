@@ -2,6 +2,8 @@
 % Please edit documentation in R/classify_duplicates.R
 \name{classify_duplicates}
 \alias{classify_duplicates}
+\alias{format.essence_dup_classified}
+\alias{print.essence_dup_classified}
 \title{Classify the mechanism of duplication in an ESSENCE data pull}
 \usage{
 classify_duplicates(
@@ -11,26 +13,37 @@ classify_duplicates(
   return_format = c("list", "tibble"),
   verbose = TRUE
 )
+
+\method{format}{essence_dup_classified}(x, ...)
+
+\method{print}{essence_dup_classified}(x, ...)
 }
 \arguments{
 \item{data}{A data frame of raw ESSENCE visit-level records.}
 
-\item{facility_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
+\item{facility_col}{Unquoted
 column name identifying the facility. When not supplied, prefers
 \code{Hospital}/\code{C_BioSense_Facility_ID} over \code{HospitalName} if present;
-see \code{?dedupe}'s "Facility identifier preference" section for the full
-rationale. Accepts both raw ESSENCE names and
-post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+see the "Facility identifier preference" section of \code{\link[=dedupe]{dedupe()}}.
+Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
+equivalents.}
 
-\item{visit_col}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> Unquoted
-column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
-both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+\item{visit_col}{Unquoted
+column name identifying the visit. Defaults to \code{Visit_ID}. Common
+alternatives include \code{MedicalRecordNumber}, \code{MRN}, \code{VisitNumber}, and
+\code{C_Unique_Patient_ID}. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{return_format}{Character string. One of \code{"list"} (default) or
 \code{"tibble"}. See Details.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
 (\code{rlang::inform()}); warnings and errors are always shown regardless.}
+
+\item{x}{An \code{essence_dup_classified} object, as returned by
+\code{classify_duplicates()} with \code{return_format = "list"}.}
+
+\item{...}{Passed on to \code{format()}; currently unused.}
 }
 \value{
 When \code{return_format = "list"}, a named list of class
@@ -46,6 +59,10 @@ facility, sorted by total duplicated Visit IDs descending.}
 \item{\verb{$overall}}{Dataset-level counts and proportions by \code{dup_type}
 via \code{\link[janitor:tabyl]{janitor::tabyl()}}.}
 }
+
+The \code{format()} method returns the printed report as a character vector;
+the \code{print()} method writes it to standard output with \code{\link[=writeLines]{writeLines()}} and
+returns \code{x} invisibly.
 When \code{return_format = "tibble"}, the \verb{$visit_groups} tibble only.
 }
 \description{
@@ -121,7 +138,8 @@ of the three primary mechanisms are detected and classified.}
 \subsection{Required columns}{
 
 All classification types require \code{facility_col}, \code{visit_col},
-\code{C_BioSense_ID} (or \code{c_biosense_id} / \code{c_bio_sense_id}), \code{Date} (or \code{date}), and
+\code{C_BioSense_ID} (or \code{c_biosense_id} / \code{c_bio_sense_id}), \code{Date} (or
+\code{date}), and
 \code{C_Unique_Patient_ID} (or \code{c_unique_patient_id}). The function aborts
 with an informative message if any are absent.
 }
@@ -194,7 +212,7 @@ essence_raw |>
 # Join classifications back to raw data for row-level inspection
 # (clean first so join keys match the snake_case output of
 # classify_duplicates; essence_raw has Hospital, so that's the
-# preferred join key here, not hospital_name -- see Details in ?dedupe)
+# preferred join key here, not hospital_name; see Details in ?dedupe)
 essence_raw |>
   janitor::clean_names() |>
   dplyr::left_join(

@@ -22,8 +22,9 @@ test_that("review_facility_ed_visits() outlier flag columns are present", {
   result <- suppressMessages(
     review_facility_ed_visits(data, return_format = "all")
   )
-  expect_true(all(c(".outlier_low", ".outlier_high", ".outlier_flag") %in%
-                  names(result)))
+  expect_true(all(
+    c(".outlier_low", ".outlier_high", ".outlier_flag") %in% names(result)
+  ))
 })
 
 test_that("review_facility_ed_visits() return_format = 'all' returns all facilities", {
@@ -101,8 +102,9 @@ test_that("review_facility_ed_visits() group_by_type = TRUE returns expected col
   result <- suppressMessages(
     review_facility_ed_visits(data, group_by_type = TRUE, return_format = "all")
   )
-  expect_true(all(c(".outlier_low", ".outlier_high", ".outlier_flag") %in%
-                  names(result)))
+  expect_true(all(
+    c(".outlier_low", ".outlier_high", ".outlier_flag") %in% names(result)
+  ))
   expect_equal(nrow(result), dplyr::n_distinct(data$HospitalName))
 })
 
