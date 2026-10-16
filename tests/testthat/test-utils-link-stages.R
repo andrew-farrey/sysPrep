@@ -59,3 +59,24 @@ test_that("check_inpatient_admission_data() attributes its error to the caller",
   expect_match(conditionMessage(err), "requires `inpatient_admission_data`")
   expect_identical(rlang::call_name(err$call), "caller")
 })
+
+test_that("parse_mdt_segment() returns the position and trimmed timestamp", {
+  expect_identical(
+    parse_mdt_segment("{2}; 2026-06-19 17:55:10.000 ;", n_classes = 3L),
+    list(idx = 2L, time = "2026-06-19 17:55:10.000")
+  )
+})
+
+test_that("parse_mdt_segment() returns NULL for a segment that does not match", {
+  expect_null(parse_mdt_segment("garbage", n_classes = 2L))
+  expect_null(parse_mdt_segment("{1}2026-06-19", n_classes = 2L))
+})
+
+test_that("parse_mdt_segment() returns NULL for a position outside 1..n_classes", {
+  expect_null(parse_mdt_segment("{3};2026-06-19 17:55:10.000;", n_classes = 2L))
+  expect_null(parse_mdt_segment("{0};2026-06-19 17:55:10.000;", n_classes = 2L))
+  # too large to fit an integer: as.integer() gives NA
+  expect_null(
+    parse_mdt_segment("{99999999999};2026-06-19 17:55:10.000;", n_classes = 2L)
+  )
+})

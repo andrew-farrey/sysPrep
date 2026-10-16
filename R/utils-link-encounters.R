@@ -32,6 +32,11 @@
 #' timestamp sort after timed classes when some but not all classes in the
 #' episode have one.
 #'
+#' `parse_mdt_segment()` parses one trimmed, non-empty `{position};timestamp;`
+#' segment into its position and timestamp string, or returns `NULL` when the
+#' segment does not match this encoding or its position is not between 1 and
+#' `n_classes`.
+#'
 #' `pick_primary_row_index()` returns the index of the ED row in an episode
 #' if one exists, else `1` (the first row in original order). This matches
 #' the precedence [link_encounters()] has always given the ED row via
@@ -39,6 +44,8 @@
 #'
 #' @param mdt_str A single `C_Patient_Class_MDT_Updates` string (may be `NA`
 #'   or empty).
+#' @param seg A single trimmed, non-empty `C_Patient_Class_MDT_Updates`
+#'   segment.
 #' @param n_classes Integer. The number of patient classes in the
 #'   corresponding `C_Patient_Class_List` value.
 #' @param x A vector of timestamps, as character or anything coercible with
@@ -51,8 +58,10 @@
 #'   one per row.
 #'
 #' @return `parse_mdt_updates()` returns a character vector of length
-#'   `n_classes`. `safe_as_posixct()` returns a `POSIXct` vector the length of
-#'   `x`. `compute_patient_class_sequence()` returns a single string, or
+#'   `n_classes`. `parse_mdt_segment()` returns a list with `idx` (an integer
+#'   position) and `time` (a string), or `NULL`. `safe_as_posixct()` returns
+#'   a `POSIXct` vector the length of `x`.
+#'   `compute_patient_class_sequence()` returns a single string, or
 #'   `NA_character_` when there is no non-missing patient class.
 #'   `pick_primary_row_index()` returns a single integer.
 #' @keywords internal
@@ -60,19 +69,23 @@ parse_mdt_updates <- function(mdt_str, n_classes) {
   out <- rep(NA_character_, n_classes)
   if (is.na(mdt_str) || mdt_str == "") return(out)
 
-  segments <- strsplit(mdt_str, "|", fixed = TRUE)[[1]]
-  for (seg in segments) {
-    seg <- trimws(seg)
-    if (!nzchar(seg)) next
-    m <- regmatches(seg, regexec("^\\{(\\d+)\\}\\s*;\\s*([^;]+)", seg))[[1]]
-    if (length(m) == 3L) {
-      idx <- suppressWarnings(as.integer(m[2]))
-      if (!is.na(idx) && idx >= 1L && idx <= n_classes) {
-        out[idx] <- trimws(m[3])
-      }
-    }
+  segments <- trimws(strsplit(mdt_str, "|", fixed = TRUE)[[1]])
+  for (seg in segments[nzchar(segments)]) {
+    parsed <- parse_mdt_segment(seg, n_classes)
+    if (!is.null(parsed)) out[parsed$idx] <- parsed$time
   }
   out
+}
+
+#' @rdname parse_mdt_updates
+parse_mdt_segment <- function(seg, n_classes) {
+  m <- regmatches(seg, regexec("^\\{(\\d+)\\}\\s*;\\s*([^;]+)", seg))[[1]]
+  if (length(m) != 3L) return(NULL)
+
+  idx <- suppressWarnings(as.integer(m[2]))
+  if (is.na(idx) || idx < 1L || idx > n_classes) return(NULL)
+
+  list(idx = idx, time = trimws(m[3]))
 }
 
 #' @rdname parse_mdt_updates

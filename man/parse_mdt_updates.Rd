@@ -2,12 +2,15 @@
 % Please edit documentation in R/utils-link-encounters.R
 \name{parse_mdt_updates}
 \alias{parse_mdt_updates}
+\alias{parse_mdt_segment}
 \alias{safe_as_posixct}
 \alias{compute_patient_class_sequence}
 \alias{pick_primary_row_index}
 \title{Patient class timing helpers for link_encounters()}
 \usage{
 parse_mdt_updates(mdt_str, n_classes)
+
+parse_mdt_segment(seg, n_classes)
 
 safe_as_posixct(x)
 
@@ -21,6 +24,9 @@ or empty).}
 
 \item{n_classes}{Integer. The number of patient classes in the
 corresponding \code{C_Patient_Class_List} value.}
+
+\item{seg}{A single trimmed, non-empty \code{C_Patient_Class_MDT_Updates}
+segment.}
 
 \item{x}{A vector of timestamps, as character or anything coercible with
 \code{as.character()}. A \code{POSIXct} vector is returned unchanged.}
@@ -36,8 +42,10 @@ one per row.}
 }
 \value{
 \code{parse_mdt_updates()} returns a character vector of length
-\code{n_classes}. \code{safe_as_posixct()} returns a \code{POSIXct} vector the length of
-\code{x}. \code{compute_patient_class_sequence()} returns a single string, or
+\code{n_classes}. \code{parse_mdt_segment()} returns a list with \code{idx} (an integer
+position) and \code{time} (a string), or \code{NULL}. \code{safe_as_posixct()} returns
+a \code{POSIXct} vector the length of \code{x}.
+\code{compute_patient_class_sequence()} returns a single string, or
 \code{NA_character_} when there is no non-missing patient class.
 \code{pick_primary_row_index()} returns a single integer.
 }
@@ -73,6 +81,11 @@ ED record's. It falls back to alphabetical order (matching legacy behavior)
 when no usable timestamp exists for the episode at all; classes with no
 timestamp sort after timed classes when some but not all classes in the
 episode have one.
+
+\code{parse_mdt_segment()} parses one trimmed, non-empty \verb{\{position\};timestamp;}
+segment into its position and timestamp string, or returns \code{NULL} when the
+segment does not match this encoding or its position is not between 1 and
+\code{n_classes}.
 
 \code{pick_primary_row_index()} returns the index of the ED row in an episode
 if one exists, else \code{1} (the first row in original order). This matches

@@ -26,6 +26,22 @@
 #' what makes writing to a new column non-destructive by default and requires
 #' an explicit opt-in before any existing column can be clobbered.
 #'
+#' The remaining helpers are the stages the two exported functions share:
+#' `resolve_geography_sources()` resolves the four optional source columns
+#' to strings (or `NULL` when absent); `resolve_geography_outputs()` resolves
+#' both output column names with `resolve_geography_output_col()`;
+#' `reassign_geography()` works out which output columns already exist and
+#' calls `assign_geography_reassignment()`. Only [assign_treating_geography()]
+#' uses `warn_site_without_region_match()` (a `site` that matches no `Region`
+#' value, such as a typo, the wrong case, or another state's pull, would
+#' otherwise flag every visit as out-of-state without any sign that something
+#' is off) and `flag_out_of_state()`. `"{site}_UNKNOWN"` (for example
+#' `"KY_UNKNOWN"`) is ESSENCE's placeholder for a known-site record whose
+#' residential geography could not be determined; unlike `"OTHER_REGION"` it
+#' carries the site prefix, so it must be tested for explicitly or the prefix
+#' check would leave it classified as in-state. `inform_treating_result()`
+#' and `inform_facility_result()` report the outcome.
+#'
 #' `assign_geography_reassignment()` applies the "preserve original values,
 #' then reassign from the hospital columns" logic common to both functions.
 #' `mask` marks which rows are reassigned: [assign_treating_geography()]
@@ -39,6 +55,15 @@
 #' `is.na(original_region)`.
 #'
 #' @param verbose Logical. Whether to emit informational messages.
+#' @param region_sym,hosp_region_sym,zip_sym,hosp_zip_sym Symbols captured
+#'   from the four source column arguments (raw ESSENCE or snake_case names).
+#' @param flags The list returned by `validate_geography_cols()`, with
+#'   `do_region` and `do_zip`.
+#' @param sources The list returned by `resolve_geography_sources()`.
+#' @param outputs The list returned by `resolve_geography_outputs()`.
+#' @param new_region_col,new_zip_col The user-supplied output column names, or
+#'   `NULL` to skip that geography type.
+#' @param site The site prefix identifying in-state `Region` values.
 #' @param do_region,do_zip Logical. Whether region/zip geography is being
 #'   processed.
 #' @param region_col_str,hosp_region_col_str,zip_col_str,hosp_zip_col_str
@@ -64,9 +89,15 @@
 #'   reassigned.
 #'
 #' @return `validate_geography_cols()` returns a list with `do_region` and
-#'   `do_zip`. `resolve_geography_output_col()` returns the normalized output
-#'   column name, or `NULL`. `assign_geography_reassignment()` returns `data`
-#'   with the geography columns written.
+#'   `do_zip`. `resolve_geography_sources()` returns a list with `region`,
+#'   `hosp_region`, `zip`, and `hosp_zip` (strings or `NULL`).
+#'   `resolve_geography_outputs()` returns a list with `region` and `zip`
+#'   (strings or `NULL`). `reassign_geography()` and `flag_out_of_state()`
+#'   return the updated data frame. `warn_site_without_region_match()` and
+#'   `inform_*_result()` are called for their conditions.
+#'   `resolve_geography_output_col()` returns the normalized output column
+#'   name, or `NULL`. `assign_geography_reassignment()` returns `data` with
+#'   the geography columns written.
 #' @keywords internal
 validate_geography_cols <- function(verbose, do_region, do_zip,
                                     region_col_str, hosp_region_col_str,
@@ -187,4 +218,146 @@ assign_geography_reassignment <- function(data, do_region, do_zip,
   }
 
   data
+}
+
+#' @rdname validate_geography_cols
+resolve_geography_sources <- function(data, region_sym, hosp_region_sym,
+                                      zip_sym, hosp_zip_sym) {
+  resolve_str <- function(sym) {
+    as_string_or_null(resolve_col_optional(data, sym))
+  }
+
+  list(
+    region      = resolve_str(region_sym),
+    hosp_region = resolve_str(hosp_region_sym),
+    zip         = resolve_str(zip_sym),
+    hosp_zip    = resolve_str(hosp_zip_sym)
+  )
+}
+
+#' @rdname validate_geography_cols
+resolve_geography_outputs <- function(data, flags, new_region_col, new_zip_col,
+                                      overwrite, reserved_col,
+                                      call = rlang::caller_env()) {
+  # Aborts on a reserved-name collision, or on an existing-column collision
+  # unless overwrite = TRUE. By default new_region_col/new_zip_col name new
+  # columns, leaving region_col/zip_col untouched; passing the source
+  # column's own name plus overwrite = TRUE reproduces the original
+  # in-place-overwrite behavior ----
+  list(
+    region = if (flags$do_region) {
+      resolve_geography_output_col(
+        new_region_col, data, overwrite, reserved_col, "new_region_col",
+        call = call
+      )
+    },
+    zip = if (flags$do_zip) {
+      resolve_geography_output_col(
+        new_zip_col, data, overwrite, reserved_col, "new_zip_col",
+        call = call
+      )
+    }
+  )
+}
+
+#' @rdname validate_geography_cols
+reassign_geography <- function(data, flags, sources, outputs,
+                               preserve_original_geographies, mask) {
+  region_target_exists <- flags$do_region &&
+    outputs$region %in% names(data)
+  zip_target_exists    <- flags$do_zip && outputs$zip %in% names(data)
+
+  # Preserve original geographies (only meaningful when the target already
+  # held a value, i.e. overwrite = TRUE was used) and reassign ----
+  assign_geography_reassignment(
+    data, flags$do_region, flags$do_zip,
+    sources$region, sources$hosp_region,
+    sources$zip, sources$hosp_zip,
+    outputs$region, outputs$zip,
+    region_target_exists, zip_target_exists,
+    preserve_original_geographies,
+    mask = mask
+  )
+}
+
+#' @rdname validate_geography_cols
+warn_site_without_region_match <- function(data, region_col_str, site) {
+  site_prefix <- paste0(site, "_")
+
+  if (nrow(data) > 0L &&
+        !any(startsWith(as.character(data[[region_col_str]]), site_prefix),
+             na.rm = TRUE)) {
+    rlang::warn(
+      c(
+        paste0(
+          "No `", region_col_str, "` value begins with `", site_prefix,
+          "`, so every visit will be treated as out-of-state."
+        ),
+        "i" = paste0(
+          "Check that `site` (currently \"", site, "\") matches the prefix ",
+          "of your ESSENCE Region values; it is case-sensitive."
+        )
+      )
+    )
+  }
+}
+
+#' @rdname validate_geography_cols
+flag_out_of_state <- function(data, region_col_str, site) {
+  site_prefix <- paste0(site, "_")
+
+  dplyr::mutate(
+    data,
+    .out_of_state = is.na(.data[[region_col_str]]) |
+      .data[[region_col_str]] == "OTHER_REGION" |
+      .data[[region_col_str]] == paste0(site_prefix, "UNKNOWN") |
+      !stringr::str_starts(
+        .data[[region_col_str]],
+        stringr::fixed(site_prefix)
+      )
+  )
+}
+
+#' @rdname validate_geography_cols
+inform_treating_result <- function(data, outputs, verbose) {
+  n_reassigned <- sum(data$.out_of_state, na.rm = TRUE)
+  n_total      <- nrow(data)
+  output_cols  <- c(outputs$region, outputs$zip)
+
+  if (n_total == 0L) {
+    inform_if(
+      verbose,
+      "No rows in data after processing. Returning empty data frame."
+    )
+  } else {
+    inform_if(
+      verbose,
+      paste0(
+        n_reassigned, " of ", n_total, " visits (",
+        round(n_reassigned / n_total * 100, 1), "%) ",
+        "identified as out-of-state or OTHER_REGION and assigned treating ",
+        "facility geography in `", paste(output_cols, collapse = "`/`"), "`."
+      )
+    )
+  }
+}
+
+#' @rdname validate_geography_cols
+inform_facility_result <- function(data, outputs, verbose) {
+  output_cols <- c(outputs$region, outputs$zip)
+
+  if (nrow(data) == 0L) {
+    inform_if(
+      verbose,
+      "No rows in data after processing. Returning empty data frame."
+    )
+  } else {
+    inform_if(
+      verbose,
+      paste0(
+        "Facility geography applied to all ", nrow(data), " visits in `",
+        paste(output_cols, collapse = "`/`"), "`."
+      )
+    )
+  }
 }

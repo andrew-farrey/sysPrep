@@ -162,69 +162,15 @@ dedupe <- function(data,
   )
   visit_col      <- resolve_col(data, rlang::ensym(visit_col))
 
-  # Resolve optional order_by ----
-  order_by_quo     <- rlang::enquo(order_by)
-  has_order_by     <- !rlang::quo_is_null(order_by_quo)
-
-  if (has_order_by) {
-    order_by_str <- rlang::as_name(order_by_quo)
-    order_col    <- resolve_col(data, rlang::sym(order_by_str))
-
-    if (keep == "most_complete") {
-      rlang::warn(
-        paste0(
-          "`order_by` is ignored when `keep = 'most_complete'`. ",
-          "Row selection is based on column completeness, not sort order."
-        )
-      )
-    } else {
-      data <- dplyr::arrange(
-        data,
-        !!facility_col,
-        !!visit_col,
-        !!order_col
-      )
-    }
-  }
-
-  # Group and apply keep strategy ----
-  # Grouping directly on facility_col/visit_col would follow dplyr's SQL-
-  # style convention of treating every NA as equal to every other NA,
-  # silently collapsing rows with a missing identifier into a single
-  # "duplicate" even though a missing value means the row's true identity
-  # is unknown, not confirmed to match. na_safe_group_id() groups normally
-  # but gives each NA-key row its own singleton group instead ----
-  fac_col_str   <- rlang::as_string(facility_col)
-  visit_col_str <- rlang::as_string(visit_col)
-  n_na_key      <- sum(key_has_na_mask(data, c(fac_col_str, visit_col_str)))
-  inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, rlang::inform)
-
-  data$.group_id <- na_safe_group_id(data, c(fac_col_str, visit_col_str))
-  grouped        <- dplyr::group_by(data, .group_id)
-
-  deduped <- switch(
-    keep,
-    "first" = {
-      dplyr::slice(grouped, 1L)
-    },
-    "last" = {
-      dplyr::slice(grouped, dplyr::n())
-    },
-    "most_complete" = {
-      # pick(everything()) already excludes .group_id here: dplyr::pick()
-      # never includes the active grouping variable(s) in its selectable
-      # set, so no explicit -.group_id exclusion is needed (or possible --
-      # pick() errors if asked to exclude a column it never included) ----
-      grouped |>
-        dplyr::mutate(
-          .n_complete = rowSums(!is.na(dplyr::pick(dplyr::everything())))
-        ) |>
-        dplyr::slice_max(.n_complete, n = 1L, with_ties = FALSE) |>
-        dplyr::select(-.n_complete)
-    }
+  # Apply the optional order_by, then keep one row per facility x visit
+  # group according to `keep` ----
+  data <- sort_for_dedupe(
+    data, facility_col, visit_col, rlang::enquo(order_by), keep
   )
 
-  deduped <- dplyr::ungroup(deduped) |> dplyr::select(-.group_id)
+  deduped <- keep_group_rows(
+    data, rlang::as_string(facility_col), rlang::as_string(visit_col), keep
+  )
 
   if (clean_names) {
     clean_names_safe(deduped)

@@ -41,10 +41,17 @@
   index.
 * **Internal:** removed `collapse_episode()`, an unused earlier implementation
   of the episode-collapsing step in `link_encounters()`, and reorganized the
-  helpers into thematic `R/utils-*.R` files. `link_encounters()` itself is
-  now a short pipeline over documented stage helpers (`?check_inpatient_admission_data`
-  lists them in order) instead of one 580-line function. No change to any
-  function's output.
+  helpers into thematic `R/utils-*.R` files. The long exported functions are
+  now short pipelines over documented stage helpers, each group on one help
+  page that lists the stages in order: `link_encounters()`
+  (`?check_inpatient_admission_data`), `review_facility_ed_visits()`
+  (`?check_percentile_order`), `filter_care_setting()`
+  (`?apply_type_correction`), the two geography functions
+  (`?validate_geography_cols`), `classify_duplicates()`
+  (`?resolve_classification_cols`), and `dedupe()`/`summarize_duplicates()`
+  (`?sort_for_dedupe`). `link_encounters()` went from 580 lines at cyclomatic
+  complexity 49 to 97 lines at complexity 6. No change to any function's
+  output, messages, or warnings.
 * **Dependencies:** the minimum `dplyr` version is now 1.2.0, the release that
   added `dplyr::recode_values()`, which `link_encounters()` already used.
   `stats` and `utils` are now declared in `Imports`.

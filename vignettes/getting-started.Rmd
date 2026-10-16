@@ -36,9 +36,9 @@ spatial scan tool for cluster/anomaly detection). This is the context in
 which these methods were developed: applied opioid overdose surveillance and
 cluster detection using NSSP ESSENCE data.
 
-Four categories of data quality problems are present in virtually every ESSENCE
-pull, and can bias case counts or distort cluster/anomaly detection if left
-unaddressed:
+Four categories of data quality problems can occur in an ESSENCE pull, with how
+often depending on the site and the feed, and can bias case counts or distort
+cluster/anomaly detection if left unaddressed:
 
 **Duplicate records.** A single clinical encounter may appear as multiple
 rows in the same pull. Ordinary clinical updates (a lab result, a

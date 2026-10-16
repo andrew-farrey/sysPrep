@@ -248,34 +248,10 @@ filter_care_setting <- function(data,
   # Resolve facility_id_col optionally; not required unless
   # fix_facility_id_vector is actually supplied ----
   id_col_sym      <- resolve_col_optional(data, rlang::ensym(facility_id_col))
-  use_facility_id <- !is.null(id_col_sym)
-  id_col_str      <- if (use_facility_id) {
-    rlang::as_string(id_col_sym)
-  } else {
-    NA_character_
-  }
-
-  if (!use_facility_id && !is.null(fix_facility_id_vector)) {
-    rlang::abort(
-      paste0(
-        "`facility_id_col` not found in data, but `fix_facility_id_vector` ",
-        "was supplied. Include the facility ID field (e.g. `Hospital`) in ",
-        "your ESSENCE API pull, or correct the `facility_id_col` argument."
-      )
-    )
-  }
-
-  if (!use_facility_id && is.null(fix_facility_id_vector)) {
-    inform_if(
-      verbose,
-      paste0(
-        "`facility_id_col` (default `Hospital`) not found in data. ID-based ",
-        "corrections via `fix_facility_id_vector` are more durable across ",
-        "facility name changes than `fix_facility_type_vector`; consider ",
-        "including `Hospital` as a field in your ESSENCE API pull."
-      )
-    )
-  }
+  id_col_str      <- resolve_facility_id_str(
+    id_col_sym, fix_facility_id_vector, verbose
+  )
+  use_facility_id <- !is.na(id_col_str)
 
   # Preserve original facility_type for dry_run comparison ----
   data <- dplyr::mutate(
@@ -283,166 +259,40 @@ filter_care_setting <- function(data,
     .original_facility_type = .data[[type_col_str]]
   )
 
-  # Apply exact facility ID corrections ----
-  corrected_by_id_names <- character(0)
-
-  if (use_facility_id && !is.null(fix_facility_id_vector)) {
-
-    id_matched_rows <- as.character(data[[id_col_str]]) %in%
-      as.character(fix_facility_id_vector)
-    corrected_by_id_names <- unique(data[[fac_col_str]][id_matched_rows])
-
-    data <- apply_type_correction(data, type_col_str, id_matched_rows, fix_to)
-  }
-
-  # Apply exact facility type corrections ----
-  if (!is.null(fix_facility_type_vector)) {
-
-    matched   <- fix_facility_type_vector[
-      fix_facility_type_vector %in% data[[fac_col_str]]
-    ]
-    unmatched <- setdiff(fix_facility_type_vector, matched)
-
-    if (dry_run && length(unmatched) > 0L) {
-      rlang::warn(
-        paste0(
-          length(unmatched),
-          " facility name(s) in `fix_facility_type_vector` not found in data ",
-          "and will be ignored:\n",
-          paste0("  - ", unmatched, collapse = "\n"),
-          "\nCheck for trailing whitespace or name changes since the last ",
-          "data pull."
-        )
-      )
-    }
-
-    data <- apply_type_correction(
-      data, type_col_str,
-      data[[fac_col_str]] %in% fix_facility_type_vector,
-      fix_to
-    )
-  }
-
-  # Apply regex facility type corrections ----
-  if (!is.null(fix_facility_type_regex)) {
-
-    already_corrected <- c(
-      corrected_by_id_names,
-      fix_facility_type_vector
-    )
-
-    regex_matched <- unique(
-      data[[fac_col_str]][
-        !data[[fac_col_str]] %in% already_corrected &
-          stringr::str_detect(data[[fac_col_str]], fix_facility_type_regex)
-      ]
-    )
-
-    if (length(regex_matched) > 0L) {
-      rlang::warn(
-        paste0(
-          length(regex_matched),
-          " facility/facilities matched by `fix_facility_type_regex` ",
-          "and corrected to `", fix_to, "`:\n",
-          paste0("  - ", regex_matched, collapse = "\n"),
-          "\nConsider promoting these to `fix_facility_type_vector` or ",
-          "`fix_facility_id_vector` for explicitness and reproducibility."
-        )
-      )
-
-      data <- apply_type_correction(
-        data, type_col_str,
-        stringr::str_detect(data[[fac_col_str]], fix_facility_type_regex) &
-          !data[[fac_col_str]] %in% already_corrected,
-        fix_to
-      )
-    }
-  }
+  # Apply the three correction routes in order: ID, exact name, then regex
+  # (which skips facilities an earlier route already corrected) ----
+  by_id <- correct_by_facility_id(
+    data, fac_col_str, type_col_str, id_col_str, fix_facility_id_vector, fix_to
+  )
+  data <- correct_by_facility_name(
+    by_id$data, fac_col_str, type_col_str, fix_facility_type_vector, fix_to,
+    dry_run
+  )
+  data <- correct_by_facility_regex(
+    data, fac_col_str, type_col_str, fix_facility_type_regex,
+    already_corrected = c(by_id$names, fix_facility_type_vector), fix_to
+  )
 
   # dry_run: return preview tibble without filtering ----
   if (dry_run) {
-    group_cols <- c(
-      fac_col_str,
-      if (use_facility_id) id_col_str else NULL,
-      ".original_facility_type",
-      type_col_str
-    )
-
-    preview <- data |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
-      dplyr::summarise(n_visits = dplyr::n(), .groups = "drop") |>
-      dplyr::rename(
-        facility                = dplyr::all_of(fac_col_str),
-        original_facility_type  = .original_facility_type,
-        corrected_facility_type = dplyr::all_of(type_col_str)
-      )
-
-    if (use_facility_id) {
-      preview <- dplyr::rename(preview, facility_id = dplyr::all_of(id_col_str))
-    }
-
-    preview <- preview |>
-      dplyr::mutate(
-        .would_keep = corrected_facility_type %in% keep_types
-      ) |>
-      dplyr::arrange(dplyr::desc(n_visits))
-
-    return(preview)
-  }
-
-  # Inform about FacilityType values not in keep_types that will be dropped ----
-  dropped_types <- setdiff(unique(data[[type_col_str]]), keep_types)
-
-  if (length(dropped_types) > 0L) {
-    inform_if(
-      verbose,
-      paste0(
-        "The following `FacilityType` values are not in `keep_types` ",
-        "and will be excluded:\n",
-        paste0("  - ", dropped_types, collapse = "\n")
+    return(
+      preview_type_corrections(
+        data, fac_col_str, type_col_str, id_col_str, use_facility_id,
+        keep_types
       )
     )
   }
 
-  # Filter to keep_types ----
+  # Filter to keep_types, reporting what was dropped ----
+  inform_dropped_types(data, type_col_str, keep_types, verbose)
+
   result <- dplyr::filter(
     data,
     .data[[type_col_str]] %in% keep_types
   ) |>
     dplyr::select(-.original_facility_type)
 
-  if (nrow(result) == 0L) {
-    rlang::warn(
-      paste0(
-        "No rows remain after filtering. `keep_types` values (",
-        paste(keep_types, collapse = ", "),
-        ") did not match any `FacilityType` values in data. ",
-        "Check for exact case match; ESSENCE facility type values ",
-        "are title case by default (e.g., \"Emergency Care\", not ",
-        "\"emergency care\")."
-      )
-    )
-  }
+  warn_if_no_rows(result, keep_types)
 
   if (clean_names) clean_names_safe(result) else result
-}
-
-#' Overwrite facility types for matching rows
-#'
-#' Internal helper shared by [filter_care_setting()]'s facility ID, facility
-#' name, and regex correction blocks. Overwrites the facility type column with
-#' `fix_to` for the rows selected by `mask`, leaving other rows unchanged.
-#'
-#' @param data A data frame.
-#' @param type_col_str Name of the facility type column in `data`.
-#' @param mask Logical vector, one element per row: which rows to correct.
-#' @param fix_to The facility type value to write.
-#'
-#' @return `data` with `type_col_str` updated.
-#' @keywords internal
-apply_type_correction <- function(data, type_col_str, mask, fix_to) {
-  dplyr::mutate(
-    data,
-    "{type_col_str}" := dplyr::if_else(mask, fix_to, .data[[type_col_str]])
-  )
 }

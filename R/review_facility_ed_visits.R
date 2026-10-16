@@ -125,18 +125,7 @@ review_facility_ed_visits <- function(data,
   check_flag(group_by_type)
   check_flag(clean_names)
   check_flag(verbose)
-
-  if (percentile_low >= percentile_high) {
-    rlang::abort(
-      c(
-        "`percentile_low` must be less than `percentile_high`.",
-        "x" = paste0(
-          "`percentile_low` is ", percentile_low,
-          " and `percentile_high` is ", percentile_high, "."
-        )
-      )
-    )
-  }
+  check_percentile_order(percentile_low, percentile_high)
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
@@ -152,7 +141,7 @@ review_facility_ed_visits <- function(data,
   method        <- rlang::arg_match(method)
   return_format <- rlang::arg_match(return_format)
 
-  # Normalize names ----
+  # Normalize names and resolve the columns ----
   data <- clean_names_safe(data)
 
   fac_col_str  <- resolve_facility_col_str(
@@ -160,202 +149,33 @@ review_facility_ed_visits <- function(data,
   )
   type_col_str <- resolve_col_str(data, rlang::ensym(facility_type_col))
 
-  # Resolve optional date column ----
-  date_col_quo <- rlang::enquo(date_col)
-  use_time_norm <- !rlang::quo_is_null(date_col_quo)
-  date_col_str  <- NULL
+  date_info  <- resolve_review_date_col(data, rlang::enquo(date_col))
+  use_time_norm <- date_info$use_time_norm
 
-  if (use_time_norm) {
-    date_col_str <- rlang::as_name(date_col_quo)
-    date_col_sym <- resolve_col_optional(data, rlang::sym(date_col_str))
-    if (is.null(date_col_sym)) {
-      rlang::warn(
-        paste0(
-          "Date column `", date_col_str, "` not found in data. ",
-          "Falling back to raw visit counts."
-        )
-      )
-      use_time_norm <- FALSE
-    } else {
-      date_col_str <- rlang::as_string(date_col_sym)
-    }
-  }
-
-  # Inform about key behavioral defaults ----
-  inform_if(
-    verbose,
-    paste0(
-      "Low-count facilities are expected for narrow syndrome definitions, ",
-      "particularly at small rural hospitals. Low outliers do not necessarily ",
-      "indicate a data quality problem. For most reliable outlier detection, ",
-      "use denominator (all-cause ED visit) data."
-    )
+  inform_review_defaults(
+    data, type_col_str, use_time_norm, group_by_type, verbose
   )
 
-  if (!use_time_norm) {
-    inform_if(
-      verbose,
-      paste0(
-        "No `date_col` supplied; using raw visit counts. ",
-        "Supply a date column (e.g., `date_col = Date`) to normalize to ",
-        "visits per day for dropout detection or cross-pull comparisons."
-      )
-    )
-  }
-
-  if (!group_by_type && dplyr::n_distinct(data[[type_col_str]]) > 1L) {
-    inform_if(
-      verbose,
-      paste0(
-        "Outlier detection across all facility types combined. ",
-        "Use `group_by_type = TRUE` to detect outliers within each ",
-        "`FacilityType` separately."
-      )
-    )
-  }
-
-  # Compute facility-level visit counts ----
-  group_vars <- c(fac_col_str, type_col_str)
-
-  facility_counts <- data |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
-    dplyr::summarise(
-      n_visits = dplyr::n(),
-      n_days   = if (use_time_norm) {
-        dplyr::n_distinct(.data[[date_col_str]], na.rm = TRUE)
-      } else {
-        NA_integer_
-      },
-      .groups = "drop"
-    )
-
-  if (use_time_norm) {
-    facility_counts <- dplyr::mutate(
-      facility_counts,
-      visits_per_day = n_visits / n_days
-    )
-  }
-
+  # Count visits, set thresholds, flag outliers ----
+  facility_counts <- count_facility_visits(
+    data, fac_col_str, type_col_str, use_time_norm, date_info$date_col_str
+  )
   detect_col <- if (use_time_norm) "visits_per_day" else "n_visits"
 
-  # Compute outlier thresholds (optionally within FacilityType groups) ----
-  threshold_groups <- if (group_by_type) {
-    dplyr::group_by(facility_counts, .data[[type_col_str]])
-  } else {
-    facility_counts
-  }
-
-  # Only compute the quantiles the chosen `method` actually uses, e.g. the
-  # IQR quantiles are wasted work (recomputed per group) under the default
-  # method = "percentile", and vice versa for method = "iqr".
-  needs_pct <- method != "iqr"
-  needs_iqr <- method != "percentile"
-
-  facility_counts <- threshold_groups |>
-    dplyr::mutate(
-      .pct_low  = if (needs_pct) {
-        quantile(.data[[detect_col]], percentile_low, na.rm = TRUE)
-      } else {
-        NA_real_
-      },
-      .pct_high = if (needs_pct) {
-        quantile(.data[[detect_col]], percentile_high, na.rm = TRUE)
-      } else {
-        NA_real_
-      },
-      .q1       = if (needs_iqr) {
-        quantile(.data[[detect_col]], 0.25, na.rm = TRUE)
-      } else {
-        NA_real_
-      },
-      .q3       = if (needs_iqr) {
-        quantile(.data[[detect_col]], 0.75, na.rm = TRUE)
-      } else {
-        NA_real_
-      },
-      .iqr      = .q3 - .q1,
-      .iqr_low  = if (needs_iqr) .q1 - iqr_multiplier * .iqr else NA_real_,
-      .iqr_high = if (needs_iqr) .q3 + iqr_multiplier * .iqr else NA_real_
-    ) |>
-    dplyr::ungroup()
-
-  # Apply outlier flags ----
-  # `method` is a single scalar value for the whole call, so the comparison
-  # is chosen once with if/else rather than dplyr::case_when(); case_when()
-  # with a scalar LHS and vector RHS is deprecated as of dplyr 1.2.0.
   facility_counts <- facility_counts |>
-    dplyr::mutate(
-      .outlier_low = if (method == "percentile") {
-        .data[[detect_col]] < .data[[".pct_low"]]
-      } else if (method == "iqr") {
-        .data[[detect_col]] < .data[[".iqr_low"]]
-      } else {
-        .data[[detect_col]] < .data[[".pct_low"]] |
-          .data[[detect_col]] < .data[[".iqr_low"]]
-      },
-      .outlier_high = if (method == "percentile") {
-        .data[[detect_col]] > .data[[".pct_high"]]
-      } else if (method == "iqr") {
-        .data[[detect_col]] > .data[[".iqr_high"]]
-      } else {
-        .data[[detect_col]] > .data[[".pct_high"]] |
-          .data[[detect_col]] > .data[[".iqr_high"]]
-      },
-      .outlier_flag = .outlier_low | .outlier_high,
-      .outlier_direction = dplyr::case_when(
-        .outlier_low  & .outlier_high ~ "both",
-        .outlier_low                  ~ "low",
-        .outlier_high                 ~ "high",
-        TRUE                          ~ NA_character_
-      ),
-      .outlier_method = dplyr::if_else(
-        .outlier_flag,
-        method,
-        NA_character_
-      )
+    add_outlier_thresholds(
+      detect_col, type_col_str, group_by_type, method,
+      percentile_low, percentile_high, iqr_multiplier
     ) |>
-    dplyr::select(
-      -dplyr::starts_with(".pct_"),
-      -dplyr::starts_with(".q"),
-      -dplyr::starts_with(".iqr")
-    )
+    flag_outliers(detect_col, method)
 
   if (!use_time_norm) {
     facility_counts <- dplyr::select(facility_counts, -n_days)
   }
 
-  # Return format ----
-  result <- if (return_format == "outliers_only") {
-    facility_counts |>
-      dplyr::filter(.outlier_flag) |>
-      dplyr::arrange(dplyr::desc(.outlier_direction), .data[[detect_col]])
-  } else {
-    dplyr::arrange(
-      facility_counts,
-      dplyr::desc(.outlier_flag),
-      .data[[detect_col]]
-    )
-  }
+  result <- arrange_review_result(facility_counts, detect_col, return_format)
 
-  n_flagged <- sum(facility_counts$.outlier_flag, na.rm = TRUE)
-  n_total   <- nrow(facility_counts)
-
-  if (n_total == 0L) {
-    inform_if(
-      verbose,
-      "No facilities in data after processing. Returning empty result."
-    )
-  } else {
-    inform_if(
-      verbose,
-      paste0(
-        n_flagged, " of ", n_total, " facilities flagged as outliers (",
-        round(n_flagged / n_total * 100, 1), "%) ",
-        "using `method = \"", method, "\"`",
-        if (group_by_type) " within FacilityType groups" else "", "."
-      )
-    )
-  }
+  inform_review_summary(facility_counts, method, group_by_type, verbose)
 
   if (clean_names) clean_names_safe(result) else result
 }

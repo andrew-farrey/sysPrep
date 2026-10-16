@@ -238,37 +238,30 @@ assign_treating_geography <- function(data,
   data <- clean_names_safe(data)
 
   # Resolve source columns gracefully ----
-  region_sym      <- resolve_col_optional(data, rlang::ensym(region_col))
-  hosp_region_sym <- resolve_col_optional(
-    data, rlang::ensym(hospital_region_col)
+  sources <- resolve_geography_sources(
+    data,
+    rlang::ensym(region_col), rlang::ensym(hospital_region_col),
+    rlang::ensym(zip_col), rlang::ensym(hospital_zip_col)
   )
-  zip_sym         <- resolve_col_optional(data, rlang::ensym(zip_col))
-  hosp_zip_sym    <- resolve_col_optional(data, rlang::ensym(hospital_zip_col))
-
-  region_col_str      <- as_string_or_null(region_sym)
-  hosp_region_col_str <- as_string_or_null(hosp_region_sym)
-  zip_col_str         <- as_string_or_null(zip_sym)
-  hosp_zip_col_str    <- as_string_or_null(hosp_zip_sym)
 
   # Which geography types to process is driven directly by new_region_col/
-  # new_zip_col: NULL skips that type entirely ----
-  do_region <- !is.null(new_region_col)
-  do_zip    <- !is.null(new_zip_col)
-
-  # Validate source columns required for each requested geography type
-  # (region_col_str is validated separately below, since it's unconditionally
-  # required for out-of-state detection) ----
-  geog_flags <- validate_geography_cols(
-    verbose, do_region, do_zip,
-    region_col_str, hosp_region_col_str,
-    zip_col_str, hosp_zip_col_str,
-    check_region_col = FALSE
+  # new_zip_col: NULL skips that type entirely. Source columns required for
+  # each requested type are validated here; `Region` itself is validated
+  # separately below, since it's unconditionally required for out-of-state
+  # detection ----
+  flags <- validate_geography_cols(
+    verbose,
+    do_region           = !is.null(new_region_col),
+    do_zip              = !is.null(new_zip_col),
+    region_col_str      = sources$region,
+    hosp_region_col_str = sources$hosp_region,
+    zip_col_str         = sources$zip,
+    hosp_zip_col_str    = sources$hosp_zip,
+    check_region_col    = FALSE
   )
-  do_region <- geog_flags$do_region
-  do_zip    <- geog_flags$do_zip
 
   # Region column required for out-of-state detection ----
-  if (is.null(region_col_str)) {
+  if (is.null(sources$region)) {
     rlang::abort(
       paste0(
         "`Region` (or `region`) is required for out-of-state visit detection. ",
@@ -277,106 +270,27 @@ assign_treating_geography <- function(data,
     )
   }
 
-  if (!do_region && !do_zip) {
+  if (!flags$do_region && !flags$do_zip) {
     rlang::warn(
       "No geography types could be processed. Returning data unchanged."
     )
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
-  # Resolve output columns: aborts on a reserved-name collision, or on an
-  # existing-column collision unless overwrite = TRUE. By default
-  # new_region_col/new_zip_col name new columns, leaving region_col/zip_col
-  # untouched; passing the source column's own name plus overwrite = TRUE
-  # reproduces the original in-place-overwrite behavior ----
-  region_output_col_str <- if (do_region) {
-    resolve_geography_output_col(
-      new_region_col, data, overwrite, ".out_of_state", "new_region_col"
-    )
-  } else {
-    NULL
-  }
-  zip_output_col_str <- if (do_zip) {
-    resolve_geography_output_col(
-      new_zip_col, data, overwrite, ".out_of_state", "new_zip_col"
-    )
-  } else {
-    NULL
-  }
+  outputs <- resolve_geography_outputs(
+    data, flags, new_region_col, new_zip_col, overwrite, ".out_of_state"
+  )
 
-  # Identify out-of-state / OTHER_REGION / unknown-residence visits ----
-  # `"{site}_UNKNOWN"` (e.g. "KY_UNKNOWN") is ESSENCE's placeholder for a
-  # known-site record whose residential geography could not be determined;
-  # unlike "OTHER_REGION", it carries the site prefix, so it would otherwise
-  # pass the str_starts() check below and be silently left as "in-state" ----
-  site_prefix <- paste0(site, "_")
-
-  # A `site` that matches no Region value (a typo, wrong case, or another
-  # state's pull) would otherwise flag every visit as out-of-state without
-  # any sign that something is off ----
-  if (nrow(data) > 0L &&
-        !any(startsWith(as.character(data[[region_col_str]]), site_prefix),
-             na.rm = TRUE)) {
-    rlang::warn(
-      c(
-        paste0(
-          "No `", region_col_str, "` value begins with `", site_prefix,
-          "`, so every visit will be treated as out-of-state."
-        ),
-        "i" = paste0(
-          "Check that `site` (currently \"", site, "\") matches the prefix ",
-          "of your ESSENCE Region values; it is case-sensitive."
-        )
-      )
-    )
-  }
-
-  data <- data |>
-    dplyr::mutate(
-      .out_of_state = is.na(.data[[region_col_str]]) |
-        .data[[region_col_str]] == "OTHER_REGION" |
-        .data[[region_col_str]] == paste0(site_prefix, "UNKNOWN") |
-        !stringr::str_starts(
-          .data[[region_col_str]],
-          stringr::fixed(site_prefix)
-        )
-    )
-
-  region_target_exists <- do_region && region_output_col_str %in% names(data)
-  zip_target_exists    <- do_zip    && zip_output_col_str    %in% names(data)
-
-  # Preserve original geographies (only meaningful when the target already
-  # held a value, i.e. overwrite = TRUE was used) and reassign ----
-  data <- assign_geography_reassignment(
-    data, do_region, do_zip,
-    region_col_str, hosp_region_col_str,
-    zip_col_str, hosp_zip_col_str,
-    region_output_col_str, zip_output_col_str,
-    region_target_exists, zip_target_exists,
-    preserve_original_geographies,
+  # Identify out-of-state / OTHER_REGION / unknown-residence visits, then
+  # reassign them from the hospital columns ----
+  warn_site_without_region_match(data, sources$region, site)
+  data <- flag_out_of_state(data, sources$region, site)
+  data <- reassign_geography(
+    data, flags, sources, outputs, preserve_original_geographies,
     mask = data$.out_of_state
   )
 
-  n_reassigned <- sum(data$.out_of_state, na.rm = TRUE)
-  n_total      <- nrow(data)
-  output_cols  <- c(region_output_col_str, zip_output_col_str)
-
-  if (n_total == 0L) {
-    inform_if(
-      verbose,
-      "No rows in data after processing. Returning empty data frame."
-    )
-  } else {
-    inform_if(
-      verbose,
-      paste0(
-        n_reassigned, " of ", n_total, " visits (",
-        round(n_reassigned / n_total * 100, 1), "%) ",
-        "identified as out-of-state or OTHER_REGION and assigned treating ",
-        "facility geography in `", paste(output_cols, collapse = "`/`"), "`."
-      )
-    )
-  }
+  inform_treating_result(data, outputs, verbose)
 
   if (clean_names) clean_names_safe(data) else data
 }

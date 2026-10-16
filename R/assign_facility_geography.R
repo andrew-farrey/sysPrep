@@ -202,92 +202,46 @@ assign_facility_geography <- function(data,
   data <- clean_names_safe(data)
 
   # Resolve source columns gracefully ----
-  region_sym      <- resolve_col_optional(data, rlang::ensym(region_col))
-  hosp_region_sym <- resolve_col_optional(
-    data, rlang::ensym(hospital_region_col)
+  sources <- resolve_geography_sources(
+    data,
+    rlang::ensym(region_col), rlang::ensym(hospital_region_col),
+    rlang::ensym(zip_col), rlang::ensym(hospital_zip_col)
   )
-  zip_sym         <- resolve_col_optional(data, rlang::ensym(zip_col))
-  hosp_zip_sym    <- resolve_col_optional(data, rlang::ensym(hospital_zip_col))
-
-  region_col_str      <- as_string_or_null(region_sym)
-  hosp_region_col_str <- as_string_or_null(hosp_region_sym)
-  zip_col_str         <- as_string_or_null(zip_sym)
-  hosp_zip_col_str    <- as_string_or_null(hosp_zip_sym)
 
   # Which geography types to process is driven directly by new_region_col/
   # new_zip_col: NULL skips that type entirely ----
-  do_region <- !is.null(new_region_col)
-  do_zip    <- !is.null(new_zip_col)
-
-  geog_flags <- validate_geography_cols(
-    verbose, do_region, do_zip,
-    region_col_str, hosp_region_col_str,
-    zip_col_str, hosp_zip_col_str
+  flags <- validate_geography_cols(
+    verbose,
+    do_region           = !is.null(new_region_col),
+    do_zip              = !is.null(new_zip_col),
+    region_col_str      = sources$region,
+    hosp_region_col_str = sources$hosp_region,
+    zip_col_str         = sources$zip,
+    hosp_zip_col_str    = sources$hosp_zip
   )
-  do_region <- geog_flags$do_region
-  do_zip    <- geog_flags$do_zip
 
-  if (!do_region && !do_zip) {
+  if (!flags$do_region && !flags$do_zip) {
     rlang::warn(
       "No geography types could be processed. Returning data unchanged."
     )
     return(if (clean_names) clean_names_safe(data) else data)
   }
 
-  # Resolve output columns: aborts on a reserved-name collision, or on an
-  # existing-column collision unless overwrite = TRUE. By default
-  # new_region_col/new_zip_col name new columns, leaving region_col/zip_col
-  # untouched; passing the source column's own name plus overwrite = TRUE
-  # reproduces the original in-place-overwrite behavior ----
-  region_output_col_str <- if (do_region) {
-    resolve_geography_output_col(
-      new_region_col, data, overwrite, ".facility_geography", "new_region_col"
-    )
-  } else {
-    NULL
-  }
-  zip_output_col_str <- if (do_zip) {
-    resolve_geography_output_col(
-      new_zip_col, data, overwrite, ".facility_geography", "new_zip_col"
-    )
-  } else {
-    NULL
-  }
+  outputs <- resolve_geography_outputs(
+    data, flags, new_region_col, new_zip_col, overwrite,
+    ".facility_geography"
+  )
 
-  region_target_exists <- do_region && region_output_col_str %in% names(data)
-  zip_target_exists    <- do_zip    && zip_output_col_str    %in% names(data)
-
-  # Preserve original geographies (only meaningful when the target already
-  # held a value, i.e. overwrite = TRUE was used) and reassign all rows with
-  # facility geography (mask = all rows, since this function is universal) ----
-  data <- assign_geography_reassignment(
-    data, do_region, do_zip,
-    region_col_str, hosp_region_col_str,
-    zip_col_str, hosp_zip_col_str,
-    region_output_col_str, zip_output_col_str,
-    region_target_exists, zip_target_exists,
-    preserve_original_geographies,
+  # Reassign all rows with facility geography (mask = all rows, since this
+  # function is universal) ----
+  data <- reassign_geography(
+    data, flags, sources, outputs, preserve_original_geographies,
     mask = rep(TRUE, nrow(data))
   )
 
   data <- dplyr::mutate(data, .facility_geography = TRUE)
 
-  output_cols <- c(region_output_col_str, zip_output_col_str)
-
-  if (nrow(data) == 0L) {
-    inform_if(
-      verbose,
-      "No rows in data after processing. Returning empty data frame."
-    )
-  } else {
-    inform_if(
-      verbose,
-      paste0(
-        "Facility geography applied to all ", nrow(data), " visits in `",
-        paste(output_cols, collapse = "`/`"), "`."
-      )
-    )
-  }
+  inform_facility_result(data, outputs, verbose)
 
   if (clean_names) clean_names_safe(data) else data
 }

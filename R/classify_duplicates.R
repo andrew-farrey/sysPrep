@@ -193,143 +193,23 @@ classify_duplicates <- function(data,
 
   return_format <- rlang::arg_match(return_format)
 
-  # Normalize names upfront ----
+  # Normalize names upfront and resolve the columns ----
   data_clean    <- clean_names_safe(data)
   fac_col_str   <- resolve_facility_col_str(
     data_clean, facility_col_sym, facility_col_missing
   )
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
-  # Resolve required columns: accept raw ESSENCE names, clean_names()
-  # output, or variants ----
-  required_cols <- c(
-    biosense = "C_BioSense_ID",
-    date     = "Date",
-    pid      = "C_Unique_Patient_ID"
-  )
-  resolved_cols <- lapply(
-    required_cols,
-    function(col) resolve_col_optional(data_clean, rlang::sym(col))
-  )
+  cols          <- resolve_classification_cols(data_clean)
+  patient_class <- resolve_patient_class_col(data_clean, verbose)
+  has_patient_class <- patient_class$has_patient_class
 
-  # Validate required columns ----
-  missing_cols <- required_cols[vapply(resolved_cols, is.null, logical(1L))]
-
-  if (length(missing_cols) > 0L) {
-    missing_bullets <- stats::setNames(
-      paste0("`", missing_cols, "`"),
-      rep("x", length(missing_cols))
-    )
-    rlang::abort(
-      c(
-        "The following required columns are missing from `data`:",
-        missing_bullets,
-        "i" = paste0(
-          "All classification types require `C_BioSense_ID`, `Date`, and ",
-          "`C_Unique_Patient_ID`."
-        ),
-        "i" = "Include them as fields in your ESSENCE API pull."
-      )
-    )
-  }
-
-  biosense_col_str <- rlang::as_string(resolved_cols$biosense)
-  date_col_str     <- rlang::as_string(resolved_cols$date)
-  pid_col_str      <- rlang::as_string(resolved_cols$pid)
-
-  # Resolve optional C_Patient_Class ----
-  pc_col <- resolve_col_optional(
-    data_clean, rlang::sym("C_Patient_Class")
-  )
-  has_patient_class <- !is.null(pc_col)
-  pc_col_str <- if (has_patient_class) {
-    rlang::as_string(pc_col)
-  } else {
-    NA_character_
-  }
-
-  if (!has_patient_class) {
-    inform_if(
-      verbose,
-      paste0(
-        "`c_patient_class` not found in data. ",
-        "Patient class change detection will be skipped. ",
-        "To enable, include `c_patient_class` as a field in your ESSENCE ",
-        "API pull. All other duplication types will still be classified."
-      )
-    )
-  }
-
-  # Build visit-group summary ----
-  # A missing facility_col or visit_col value means that row's true
-  # identity is unknown, not confirmed to match every other row with a
-  # missing value -- grouping on the raw columns directly would follow
-  # dplyr's SQL-style convention of treating every NA as equal to every
-  # other NA, silently classifying unrelated visits as "duplicated" just
-  # because they share a missing key. na_safe_group_id() groups normally
-  # but gives each NA-key row its own singleton group instead; see
-  # ?dedupe's "Facility identifier preference" section for the same
-  # category of silent-merge bug ----
-  n_na_key <- sum(key_has_na_mask(data_clean, c(fac_col_str, visit_col_str)))
-  inform_na_key_rows(
-    n_na_key, fac_col_str, visit_col_str,
-    function(...) inform_if(verbose, ...)
-  )
-
-  data_clean$.group_id <- na_safe_group_id(
-    data_clean, c(fac_col_str, visit_col_str)
-  )
-
+  # Build the visit-group summary and classify each group ----
   visit_groups <- data_clean |>
-    dplyr::group_by(.group_id) |>
-    dplyr::summarise(
-      "{fac_col_str}"   := dplyr::first(.data[[fac_col_str]]),
-      "{visit_col_str}" := dplyr::first(.data[[visit_col_str]]),
-      n_rows         = dplyr::n(),
-      n_biosense_ids = dplyr::n_distinct(
-        .data[[biosense_col_str]], na.rm = TRUE
-      ),
-      n_dates        = dplyr::n_distinct(.data[[date_col_str]], na.rm = TRUE),
-      n_pid          = dplyr::n_distinct(.data[[pid_col_str]], na.rm = TRUE),
-      n_patient_classes = if (has_patient_class) {
-        dplyr::n_distinct(.data[[pc_col_str]], na.rm = TRUE)
-      } else {
-        1L
-      },
-      .groups = "drop"
+    summarize_visit_groups(
+      fac_col_str, visit_col_str, cols, patient_class, verbose
     ) |>
-    dplyr::select(-.group_id)
-
-  # Classify duplication type ----
-  visit_groups <- visit_groups |>
-    dplyr::mutate(
-      .date_change  = n_dates > 1L,
-      .pid_change   = n_pid   > 1L,
-      .class_change = n_patient_classes > 1L & has_patient_class,
-      dup_type = dplyr::case_when(
-        # No duplication
-        n_rows == 1L ~ "no_duplication",
-        # Type unknown: multiple rows, no variation in assessed fields
-        n_rows > 1L & !.date_change & !.pid_change & !.class_change ~
-          "type_unknown",
-        # Single mechanisms
-        .date_change & !.pid_change & !.class_change ~ "visit_date_change",
-        !.date_change & .pid_change & !.class_change ~ "pid_change",
-        !.date_change & !.pid_change & .class_change ~ "patient_class_change",
-        # Compound: two mechanisms
-        .date_change & .pid_change & !.class_change ~
-          "visit_date_change+pid_change",
-        .date_change & !.pid_change & .class_change ~
-          "visit_date_change+patient_class_change",
-        !.date_change & .pid_change & .class_change ~
-          "pid_change+patient_class_change",
-        # Compound: all three mechanisms
-        .date_change & .pid_change & .class_change ~
-          "visit_date_change+pid_change+patient_class_change",
-        TRUE ~ "type_unknown"
-      )
-    ) |>
-    dplyr::select(-.date_change, -.pid_change, -.class_change)
+    classify_dup_type(has_patient_class)
 
   # Return tibble early if requested ----
   if (return_format == "tibble") return(visit_groups)
@@ -338,54 +218,16 @@ classify_duplicates <- function(data,
   # below ----
   dup_rows <- dplyr::filter(visit_groups, dup_type != "no_duplication")
 
-  # Component: duplicate_ids ----
-  duplicate_ids <- dplyr::select(
-    dup_rows,
-    dplyr::all_of(c(fac_col_str, visit_col_str))
-  )
-
-  # Component: by_facility wide summary ----
-  by_facility <- dup_rows |>
-    dplyr::count(
-      .data[[fac_col_str]],
-      dup_type
-    ) |>
-    tidyr::pivot_wider(
-      names_from  = dup_type,
-      values_from = n,
-      values_fill = 0L
-    ) |>
-    dplyr::mutate(
-      n_duplicated_total = rowSums(
-        dplyr::pick(-dplyr::all_of(fac_col_str))
-      )
-    ) |>
-    dplyr::arrange(dplyr::desc(n_duplicated_total))
-
-  # Component: overall tabyl-style summary ----
-  # janitor::adorn_pct_formatting() errors on a 0-row tabyl (it tries to
-  # write a "%" string into a 0-row percent column), so build the empty
-  # tibble directly rather than routing a clean pull through tabyl() ----
-  overall <- if (nrow(dup_rows) == 0L) {
-    tibble::tibble(
-      dup_type = character(0L),
-      n        = integer(0L),
-      percent  = character(0L)
-    )
-  } else {
-    dup_rows |>
-      janitor::tabyl(dup_type) |>
-      janitor::adorn_pct_formatting(digits = 1) |>
-      dplyr::arrange(dplyr::desc(n))
-  }
-
   # Assemble and return list ----
   structure(
     list(
-      duplicate_ids = duplicate_ids,
+      duplicate_ids = dplyr::select(
+        dup_rows,
+        dplyr::all_of(c(fac_col_str, visit_col_str))
+      ),
       visit_groups  = visit_groups,
-      by_facility   = by_facility,
-      overall       = overall
+      by_facility   = summarize_dup_by_facility(dup_rows, fac_col_str),
+      overall       = summarize_dup_overall(dup_rows)
     ),
     class             = "essence_dup_classified",
     facility_col      = fac_col_str,

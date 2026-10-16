@@ -98,85 +98,24 @@ summarize_duplicates <- function(data,
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Identify duplicate groups (facility x visit_col with n > 1) ----
-  # A missing facility_col or visit_col value means that row's true
-  # identity is unknown, not confirmed to match every other row with a
-  # missing value -- grouping on the raw columns directly would follow
-  # dplyr's SQL-style convention of treating every NA as equal to every
-  # other NA, silently reporting unrelated visits as "duplicated" just
-  # because they share a missing key. na_safe_group_id() groups normally
-  # but gives each NA-key row its own singleton group instead; see
-  # ?dedupe's "Facility identifier preference" section for the same
-  # category of silent-merge bug ----
-  n_na_key <- sum(key_has_na_mask(data_clean, c(fac_col_str, visit_col_str)))
-  inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, rlang::inform)
-
-  data_clean$.group_id <- na_safe_group_id(
-    data_clean, c(fac_col_str, visit_col_str)
-  )
-
-  group_counts <- data_clean |>
-    dplyr::group_by(.group_id) |>
-    dplyr::summarise(
-      "{fac_col_str}"   := dplyr::first(.data[[fac_col_str]]),
-      "{visit_col_str}" := dplyr::first(.data[[visit_col_str]]),
-      n_rows            = dplyr::n(),
-      .groups           = "drop"
-    )
-
-  dup_groups <- dplyr::filter(group_counts, n_rows > 1L)
-
-  # Component 1: facility x Visit_ID pairs with > 1 row ----
-  duplicate_ids <- dplyr::select(
-    dup_groups,
-    dplyr::all_of(c(fac_col_str, visit_col_str))
-  )
-
-  # Component 2: facility-level summary ----
-  # group_counts already has one row per distinct facility x visit_col pair
-  # (each NA-key row counted as its own visit).
-  n_total_visits <- nrow(group_counts)
-
-  dup_group_ids <- dup_groups$.group_id
-
-  by_facility <- data_clean |>
-    dplyr::group_by(.data[[fac_col_str]]) |>
-    dplyr::summarise(
-      n_visits               = dplyr::n_distinct(.group_id),
-      n_duplicated_visit_ids = dplyr::n_distinct(
-        .group_id[.group_id %in% dup_group_ids]
-      ),
-      n_excess_rows          = sum(.group_id %in% dup_group_ids) -
-        n_duplicated_visit_ids,
-      pct_duplicated         = round(
-        n_duplicated_visit_ids / n_visits * 100,
-        digits = 1
-      ),
-      .groups = "drop"
-    ) |>
-    dplyr::filter(n_duplicated_visit_ids > 0L) |>
-    dplyr::arrange(dplyr::desc(n_excess_rows))
-
-  # Component 3: overall summary ----
-  pct_dup <- if (n_total_visits == 0L) {
-    NA_real_
-  } else {
-    round(nrow(dup_groups) / n_total_visits * 100, digits = 1)
-  }
-
-  overall <- tibble::tibble(
-    n_total_rows           = nrow(data_clean),
-    n_unique_visits        = n_total_visits,
-    n_duplicated_visit_ids = nrow(dup_groups),
-    n_excess_rows          = sum(dup_groups$n_rows - 1L),
-    pct_duplicated         = pct_dup
-  )
+  groups       <- count_visit_row_groups(data_clean, fac_col_str, visit_col_str)
+  data_clean   <- groups$data
+  group_counts <- groups$counts
+  dup_groups   <- dplyr::filter(group_counts, n_rows > 1L)
 
   # Assemble and return ----
   structure(
     list(
-      duplicate_ids = duplicate_ids,
-      by_facility   = by_facility,
-      overall       = overall
+      duplicate_ids = dplyr::select(
+        dup_groups,
+        dplyr::all_of(c(fac_col_str, visit_col_str))
+      ),
+      by_facility   = dup_summary_by_facility(
+        data_clean, fac_col_str, dup_groups$.group_id
+      ),
+      overall       = dup_summary_overall(
+        data_clean, group_counts, dup_groups
+      )
     ),
     class        = "essence_dup_summary",
     facility_col = fac_col_str,

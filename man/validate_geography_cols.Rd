@@ -4,6 +4,13 @@
 \alias{validate_geography_cols}
 \alias{resolve_geography_output_col}
 \alias{assign_geography_reassignment}
+\alias{resolve_geography_sources}
+\alias{resolve_geography_outputs}
+\alias{reassign_geography}
+\alias{warn_site_without_region_match}
+\alias{flag_out_of_state}
+\alias{inform_treating_result}
+\alias{inform_facility_result}
 \title{Shared steps of the geography assignment functions}
 \usage{
 validate_geography_cols(
@@ -41,6 +48,41 @@ assign_geography_reassignment(
   preserve_original_geographies,
   mask
 )
+
+resolve_geography_sources(
+  data,
+  region_sym,
+  hosp_region_sym,
+  zip_sym,
+  hosp_zip_sym
+)
+
+resolve_geography_outputs(
+  data,
+  flags,
+  new_region_col,
+  new_zip_col,
+  overwrite,
+  reserved_col,
+  call = rlang::caller_env()
+)
+
+reassign_geography(
+  data,
+  flags,
+  sources,
+  outputs,
+  preserve_original_geographies,
+  mask
+)
+
+warn_site_without_region_match(data, region_col_str, site)
+
+flag_out_of_state(data, region_col_str, site)
+
+inform_treating_result(data, outputs, verbose)
+
+inform_facility_result(data, outputs, verbose)
 }
 \arguments{
 \item{verbose}{Logical. Whether to emit informational messages.}
@@ -79,12 +121,33 @@ column already existed in \code{data}.}
 
 \item{mask}{Logical vector, one element per row of \code{data}: which rows are
 reassigned.}
+
+\item{region_sym, hosp_region_sym, zip_sym, hosp_zip_sym}{Symbols captured
+from the four source column arguments (raw ESSENCE or snake_case names).}
+
+\item{flags}{The list returned by \code{validate_geography_cols()}, with
+\code{do_region} and \code{do_zip}.}
+
+\item{new_region_col, new_zip_col}{The user-supplied output column names, or
+\code{NULL} to skip that geography type.}
+
+\item{sources}{The list returned by \code{resolve_geography_sources()}.}
+
+\item{outputs}{The list returned by \code{resolve_geography_outputs()}.}
+
+\item{site}{The site prefix identifying in-state \code{Region} values.}
 }
 \value{
 \code{validate_geography_cols()} returns a list with \code{do_region} and
-\code{do_zip}. \code{resolve_geography_output_col()} returns the normalized output
-column name, or \code{NULL}. \code{assign_geography_reassignment()} returns \code{data}
-with the geography columns written.
+\code{do_zip}. \code{resolve_geography_sources()} returns a list with \code{region},
+\code{hosp_region}, \code{zip}, and \code{hosp_zip} (strings or \code{NULL}).
+\code{resolve_geography_outputs()} returns a list with \code{region} and \code{zip}
+(strings or \code{NULL}). \code{reassign_geography()} and \code{flag_out_of_state()}
+return the updated data frame. \code{warn_site_without_region_match()} and
+\verb{inform_*_result()} are called for their conditions.
+\code{resolve_geography_output_col()} returns the normalized output column
+name, or \code{NULL}. \code{assign_geography_reassignment()} returns \code{data} with
+the geography columns written.
 }
 \description{
 Internal helpers shared by \code{\link[=assign_treating_geography]{assign_treating_geography()}} and
@@ -112,6 +175,22 @@ comparison strips it from \code{reserved_col} too. It also aborts if the
 resolved name already exists in \code{data} unless \code{overwrite = TRUE}, which is
 what makes writing to a new column non-destructive by default and requires
 an explicit opt-in before any existing column can be clobbered.
+
+The remaining helpers are the stages the two exported functions share:
+\code{resolve_geography_sources()} resolves the four optional source columns
+to strings (or \code{NULL} when absent); \code{resolve_geography_outputs()} resolves
+both output column names with \code{resolve_geography_output_col()};
+\code{reassign_geography()} works out which output columns already exist and
+calls \code{assign_geography_reassignment()}. Only \code{\link[=assign_treating_geography]{assign_treating_geography()}}
+uses \code{warn_site_without_region_match()} (a \code{site} that matches no \code{Region}
+value, such as a typo, the wrong case, or another state's pull, would
+otherwise flag every visit as out-of-state without any sign that something
+is off) and \code{flag_out_of_state()}. \code{"{site}_UNKNOWN"} (for example
+\code{"KY_UNKNOWN"}) is ESSENCE's placeholder for a known-site record whose
+residential geography could not be determined; unlike \code{"OTHER_REGION"} it
+carries the site prefix, so it must be tested for explicitly or the prefix
+check would leave it classified as in-state. \code{inform_treating_result()}
+and \code{inform_facility_result()} report the outcome.
 
 \code{assign_geography_reassignment()} applies the "preserve original values,
 then reassign from the hospital columns" logic common to both functions.

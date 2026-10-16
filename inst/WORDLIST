@@ -48,6 +48,7 @@ Wickham
 Zenodo
 callout
 cli
+cyclomatic
 data's
 dedupe
 deduplicate
@@ -87,6 +88,7 @@ tableBuilder
 tabyl
 th
 tibble
+tibbles
 tidyverse
 timeSeries
 tri
