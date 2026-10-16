@@ -65,8 +65,12 @@
 - **Internal:** removed `collapse_episode()`, an unused earlier
   implementation of the episode-collapsing step in
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md),
-  and reorganized the helpers into thematic `R/utils-*.R` files. No
-  change to any function’s output.
+  and reorganized the helpers into thematic `R/utils-*.R` files.
+  [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  itself is now a short pipeline over documented stage helpers
+  ([`?check_inpatient_admission_data`](https://andrew-farrey.github.io/sysPrep/reference/check_inpatient_admission_data.md)
+  lists them in order) instead of one 580-line function. No change to
+  any function’s output.
 - **Dependencies:** the minimum `dplyr` version is now 1.2.0, the
   release that added
   [`dplyr::recode_values()`](https://dplyr.tidyverse.org/reference/recode-and-replace-values.html),
