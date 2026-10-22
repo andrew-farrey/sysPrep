@@ -41,7 +41,7 @@ jobs:
       # push to the default branch, which does have the token, must succeed;
       # on a pull request the tests and coverage run still report, and a
       # failed upload does not fail the check.
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           fail_ci_if_error: ${{ github.event_name == 'push' }}
           files: ./cobertura.xml
