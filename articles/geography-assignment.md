@@ -145,21 +145,23 @@ facility-location in nature to begin with.
 ESSENCE encodes geography in the format `{SITE}_{REGION}`, where `SITE`
 is the NSSP Site Short Name (e.g., `"KY"`) and `REGION` is the ESSENCE
 Region, a county name derived from a zip-code-to-county lookup table
-maintained by ESSENCE (e.g., `"Jefferson"`). Some site names contain
-additional underscores (e.g., multi-word state abbreviations used in
-certain NSSP configurations), so the site prefix is defined as all
-characters before the **last** underscore in the string.
+maintained by ESSENCE (e.g., `"Jefferson"`). The functions do not parse
+the prefix out of the data:
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+takes it as the `site` argument and tests whether `Region` begins with
+`paste0(site, "_")`. A site whose short name itself contains an
+underscore is therefore passed whole.
 
-Both geography functions use the same detection logic: - A visit is
-classified as **in-state** when `Region` begins with `paste0(site, "_")`
-(e.g., `"KY_"` for `site = "KY"`) and is not the known-site
-unknown-residence placeholder below. - A visit is classified as
-**out-of-state or unknown** when `Region` begins with a different
-prefix, is exactly `"OTHER_REGION"`, is exactly
-`paste0(site, "_UNKNOWN")` (e.g., `"KY_UNKNOWN"`), or is `NA`. The
-`"{site}_UNKNOWN"` form is checked explicitly rather than relying on the
-prefix mismatch, since it carries the site prefix and would otherwise be
-(incorrectly) classified as in-state.
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+uses this detection logic: - A visit is classified as **in-state** when
+`Region` begins with `paste0(site, "_")` (e.g., `"KY_"` for
+`site = "KY"`) and is not the known-site unknown-residence placeholder
+below. - A visit is classified as **out-of-state or unknown** when
+`Region` begins with a different prefix, is exactly `"OTHER_REGION"`, is
+exactly `paste0(site, "_UNKNOWN")` (e.g., `"KY_UNKNOWN"`), or is `NA`.
+The `"{site}_UNKNOWN"` form is checked explicitly rather than relying on
+the prefix mismatch, since it carries the site prefix and would
+otherwise be (incorrectly) classified as in-state.
 
 ``` r
 
@@ -476,7 +478,7 @@ facility-specific variability that is more common in high-density areas.
 A second advantage is logistical: hospital-level spatial clustering
 requires latitude/longitude coordinates from the NSSP Master Facility
 Table, an additional lookup outside the standard ESSENCE data pull.
-Region-level attribution achieves a close approximation of
+Region-level attribution offers a coarser, region-level alternative to
 hospital-level cluster detection using `HospitalRegion`, a field
 returned without any coordinate lookup, **provided it’s included in the
 pull**: `HospitalRegion` isn’t guaranteed on every ESSENCE pull by

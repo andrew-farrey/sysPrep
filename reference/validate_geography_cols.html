@@ -50,7 +50,7 @@ assign_facility_geography()."><meta property="og:image" content="https://andrew-
 <span>  <span class="va">hosp_region_col_str</span>,</span>
 <span>  <span class="va">zip_col_str</span>,</span>
 <span>  <span class="va">hosp_zip_col_str</span>,</span>
-<span>  check_region_col <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  check_zip_col <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">resolve_geography_output_col</span><span class="op">(</span></span>
@@ -77,6 +77,8 @@ assign_facility_geography()."><meta property="og:image" content="https://andrew-
 <span>  <span class="va">preserve_original_geographies</span>,</span>
 <span>  <span class="va">mask</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">patient_geography</span><span class="op">(</span><span class="va">data</span>, <span class="va">col_str</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">resolve_geography_sources</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
@@ -132,8 +134,9 @@ processed.</p></dd>
 absent.</p></dd>
 
 
-<dt id="arg-check-region-col">check_region_col<a class="anchor" aria-label="anchor" href="#arg-check-region-col"></a></dt>
-<dd><p>Logical. Whether to validate <code>region_col_str</code> here.</p></dd>
+<dt id="arg-check-zip-col">check_zip_col<a class="anchor" aria-label="anchor" href="#arg-check-zip-col"></a></dt>
+<dd><p>Logical. Whether to validate <code>zip_col_str</code> (the
+patient zip column) here.</p></dd>
 
 
 <dt id="arg-new-col">new_col<a class="anchor" aria-label="anchor" href="#arg-new-col"></a></dt>
@@ -183,6 +186,10 @@ column already existed in <code>data</code>.</p></dd>
 reassigned.</p></dd>
 
 
+<dt id="arg-col-str">col_str<a class="anchor" aria-label="anchor" href="#arg-col-str"></a></dt>
+<dd><p>A resolved column name, or <code>NULL</code> when the column is absent.</p></dd>
+
+
 <dt id="arg-region-sym-hosp-region-sym-zip-sym-hosp-zip-sym">region_sym, hosp_region_sym, zip_sym, hosp_zip_sym<a class="anchor" aria-label="anchor" href="#arg-region-sym-hosp-region-sym-zip-sym-hosp-zip-sym"></a></dt>
 <dd><p>Symbols captured
 from the four source column arguments (raw ESSENCE or snake_case names).</p></dd>
@@ -221,18 +228,24 @@ return the updated data frame. <code>warn_site_without_region_match()</code> and
 <code>inform_*_result()</code> are called for their conditions.
 <code>resolve_geography_output_col()</code> returns the normalized output column
 name, or <code>NULL</code>. <code>assign_geography_reassignment()</code> returns <code>data</code> with
-the geography columns written.</p>
+the geography columns written. <code>patient_geography()</code> returns the patient
+column's values, or a single <code>NA</code> when the column is absent.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>validate_geography_cols()</code> downgrades <code>do_region</code>/<code>do_zip</code> to <code>FALSE</code>
 (with an informational message) when a column required for that geography
-type is absent. <code>check_region_col</code> controls whether <code>region_col_str</code>
-itself is validated here: <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code> validates it
-separately afterward, since it is unconditionally required there for
-out-of-state detection regardless of which geography types are requested,
-whereas <code><a href="assign_facility_geography.html">assign_facility_geography()</a></code> has no such separate requirement and
-validates it as part of this check.</p>
+type is absent. The facility columns (<code>HospitalRegion</code>, <code>HospitalZip</code>) are
+always required for their type. The patient columns (<code>Region</code>, <code>ZipCode</code>)
+are only the "leave this row alone" values of a selective reassignment, so
+whether they are required depends on the caller. This function never
+validates <code>Region</code>: <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code> checks it separately
+afterward, since it is unconditionally required there for out-of-state
+detection regardless of which geography types are requested, and
+<code><a href="assign_facility_geography.html">assign_facility_geography()</a></code> never reads it. <code>check_zip_col</code> says whether
+to validate <code>ZipCode</code> here: <code><a href="assign_treating_geography.html">assign_treating_geography()</a></code> needs it, while
+<code><a href="assign_facility_geography.html">assign_facility_geography()</a></code> reassigns every row, so it never reads the
+patient columns (unless <code>overwrite = TRUE</code> names one as its output).</p>
 <p><code>resolve_geography_output_col()</code> resolves a <code>new_region_col</code>/<code>new_zip_col</code>
 argument (a plain string naming the output column, or <code>NULL</code> to skip that
 geography type) to its <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code>-normalized form. It aborts

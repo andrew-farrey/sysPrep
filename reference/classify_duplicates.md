@@ -46,9 +46,15 @@ print(x, ...)
 - visit_col:
 
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
-  Common alternatives include `MedicalRecordNumber`, `MRN`,
-  `VisitNumber`, and `C_Unique_Patient_ID`. Accepts both raw ESSENCE
-  names and
+  Use another column only if it identifies a single visit within a
+  facility (for example a site-specific visit or encounter number). Do
+  not use a patient-level identifier such as `C_Unique_Patient_ID`, an
+  MRN, or `MedicalRecordNumber`: those are shared by all of a patient's
+  visits, so every repeat visit by the same patient would be collapsed
+  into one row. An identifier has no numeric meaning: values are
+  compared as text (the number `100000` and the text `"100000"` are the
+  same visit), and the column is returned in the type it arrived in.
+  Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -61,7 +67,7 @@ print(x, ...)
 
   Logical. If `FALSE`, suppresses informational messages
   ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
-  warnings and errors are always shown regardless.
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 - x:
 
@@ -86,7 +92,9 @@ When `return_format = "list"`, a named list of class
 
   Tibble with one row per facility x visit_col containing `n_rows`,
   `n_biosense_ids`, `n_dates`, `n_pid`, `n_patient_classes` (if
-  available), and `dup_type`.
+  available), and `dup_type`. The `n_*` columns count distinct values
+  within the group; `n_biosense_ids` is reported for inspection and does
+  not enter the classification.
 
 - `$by_facility`:
 
@@ -95,8 +103,13 @@ When `return_format = "list"`, a named list of class
 
 - `$overall`:
 
-  Dataset-level counts and proportions by `dup_type` via
-  [`janitor::tabyl()`](https://sfirke.github.io/janitor/reference/tabyl.html).
+  Counts by `dup_type` via
+  [`janitor::tabyl()`](https://sfirke.github.io/janitor/reference/tabyl.html),
+  with `percent` as each type's share of the *duplicated* visit groups
+  (the groups with more than one row), not of all visits in the pull.
+  For the share of all visits that are duplicated, see `pct_duplicated`
+  in
+  [`summarize_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/summarize_duplicates.md)`$overall`.
 
 The [`format()`](https://rdrr.io/r/base/format.html) method returns the
 printed report as a character vector; the
@@ -135,8 +148,11 @@ mechanisms, each with different causes and implications:
   few inflated counts can trigger anomaly detection alerts that do not
   reflect genuine changes in incidence. The duplicate arises only at
   facilities whose systems continue to update `C_Visit_Date_Time` after
-  initial registration. Detected by multiple distinct `C_BioSense_ID`
-  values and `Date` values within a group.
+  initial registration. Detected by more than one distinct `Date` value
+  within a group. (The recomputed `C_BioSense_ID` accompanies it, but
+  the date change is what is tested: a group whose `C_BioSense_ID`
+  varies with no change in `Date`, patient identifier, or patient class
+  is `"type_unknown"`.)
 
 - `"pid_change"`:
 
@@ -165,10 +181,14 @@ mechanisms, each with different causes and implications:
 
 - `"type_unknown"`:
 
-  Multiple rows exist but all assessed fields are identical across rows.
-  The differentiating field was not included in the pull. Consider
-  adding `C_BioSense_ID`, `Date`, and `C_Unique_Patient_ID` to your
-  ESSENCE pull fields.
+  Multiple rows exist but the assessed fields (`Date`,
+  `C_Unique_Patient_ID`, and `C_Patient_Class` when present) are
+  identical across rows. Whatever differs between the rows is not one of
+  the fields assessed here, for example a plain retransmission, or a
+  field that was not included in the pull. `n_biosense_ids` in
+  `$visit_groups` shows whether the rows at least carry different
+  `C_BioSense_ID` values. To see what does differ, compare the rows of
+  the groups in `$duplicate_ids` directly.
 
 - Compound types:
 
@@ -263,7 +283,7 @@ essence_raw |> classify_duplicates()
 #> 
 #> ── ESSENCE Duplicate Classification ────────────────────────────────────────────
 #> 
-#> ── Overall ──
+#> ── Overall (percent of duplicated visit groups) ──
 #> 
 #>                      dup_type n percent
 #>                  type_unknown 5   38.5%

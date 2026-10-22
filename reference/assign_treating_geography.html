@@ -117,7 +117,10 @@ Required when <code>new_zip_col</code> is not <code>NULL</code>.</p></dd>
 
 <dt id="arg-new-region-col">new_region_col<a class="anchor" aria-label="anchor" href="#arg-new-region-col"></a></dt>
 <dd><p>Character string or <code>NULL</code>. Name of the column to
-write reassigned region values to. Defaults to <code>"region_hybrid"</code>: a
+write reassigned region values to. Unlike the unquoted arguments that
+point at columns already in <code>data</code>, this is a quoted string, because it
+names a column that usually does not exist yet. Defaults to
+<code>"region_hybrid"</code>: a
 new column, leaving <code>region_col</code> untouched. Pass <code>NULL</code> to skip region
 reassignment entirely. Pass <code>region_col</code>'s own name (with
 <code>overwrite = TRUE</code>) to overwrite it in place instead of writing a new
@@ -148,12 +151,16 @@ pre-overwrite values before reassignment. Only has an effect when
 <dt id="arg-clean-names">clean_names<a class="anchor" aria-label="anchor" href="#arg-clean-names"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), applies
 <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> to standardize column names to snake_case on
-output.</p></dd>
+output. If <code>FALSE</code>, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
-(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.</p></dd>
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -161,7 +168,9 @@ output.</p></dd>
     <p>The input data frame with reassigned region and/or zip code
 values written to <code>new_region_col</code>/<code>new_zip_col</code> (or to <code>region_col</code>/
 <code>zip_col</code> in place, when <code>overwrite = TRUE</code>). A <code>.out_of_state</code> logical
-column is added indicating which rows were reassigned. When
+column is added indicating which rows were reassigned. Despite its name
+it is <code>TRUE</code> for every row whose residence is not in <code>site</code>: another
+state, <code>"OTHER_REGION"</code>, <code>"{site}_UNKNOWN"</code>, and a missing <code>Region</code>. When
 <code>overwrite = TRUE</code> and <code>preserve_original_geographies = TRUE</code>,
 <code>original_region</code> and/or <code>original_zip_code</code> columns are also present.</p>
     </div>
@@ -181,9 +190,10 @@ summary table scoped to in-state values will silently exclude these rows
 without an explicit filter. EMS-based systems report incidence at the
 location of care rather than patient residence; this function brings
 ESSENCE data into that same frame. Assigning the treating facility's
-geography to these visits retains them in the analytic dataset while
-approximating both residence-based and incidence-based burden from a
-single geographic field.</p>
+geography to these visits retains them in the analytic dataset. The cost
+is that one geographic field then holds residence for most rows and
+treating location for the reassigned ones; see "Hybrid geography
+assignment and cluster detection" below.</p>
 </div>
 
 <div class="section">
@@ -193,8 +203,9 @@ single geographic field.</p>
 <p>The <code>Region</code> field uses the format <code>{SITE}_{REGION}</code>, where <code>SITE</code> is
 the NSSP Site Short Name and <code>REGION</code> is the ESSENCE Region, a county
 name derived from a zip-code-to-county lookup table maintained by
-ESSENCE. Because some site names contain multiple underscores, the
-prefix is all characters before the <strong>last</strong> underscore. A visit is
+ESSENCE. The prefix is supplied by the caller as <code>site</code> (it is not
+parsed out of the data), so a site whose short name contains an underscore
+is passed whole. A visit is
 classified as out-of-state or unknown residence when its <code>Region</code> does
 not begin with <code>paste0(site, "_")</code>, or when <code>Region</code> is <code>"OTHER_REGION"</code>,
 <code>paste0(site, "_UNKNOWN")</code> (e.g. <code>"KY_UNKNOWN"</code>), or <code>NA</code>. Unlike
@@ -222,8 +233,7 @@ that type is skipped with an informative message regardless of
 <p>By default, results are written to new columns (<code>region_hybrid</code>/
 <code>zip_code_hybrid</code>), and <code>region_col</code>/<code>zip_col</code> are never modified; safe
 to call repeatedly without risk of losing the original values. To
-overwrite <code>region_col</code>/<code>zip_col</code> in place instead (the only behavior this
-function had before this parameter existed), pass their own name to
+overwrite <code>region_col</code>/<code>zip_col</code> in place instead, pass their own name to
 <code>new_region_col</code>/<code>new_zip_col</code> and set <code>overwrite = TRUE</code>:
 <code>assign_treating_geography(new_region_col = "region", overwrite = TRUE)</code>.
 <code>overwrite</code> guards <strong>any</strong> collision with an existing column, not just
@@ -397,7 +407,7 @@ all visits regardless of patient residence.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .out_of_state &lt;lgl&gt;, region_hybrid &lt;chr&gt;, zip_code_hybrid &lt;chr&gt;</span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Overwrite region/zip_code in place (the original behavior); requires</span></span></span>
+<span class="r-in"><span><span class="co"># Overwrite region/zip_code in place; requires</span></span></span>
 <span class="r-in"><span><span class="co"># naming the source columns explicitly and opting in with overwrite</span></span></span>
 <span class="r-in"><span><span class="va">ed_clean</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">assign_treating_geography</span><span class="op">(</span></span></span>

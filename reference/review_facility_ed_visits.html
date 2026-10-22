@@ -140,12 +140,16 @@ or <code>"all"</code>. <code>"outliers_only"</code> returns only flagged facilit
 <dt id="arg-clean-names">clean_names<a class="anchor" aria-label="anchor" href="#arg-clean-names"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), applies
 <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> to standardize column names to snake_case on
-output.</p></dd>
+output. If <code>FALSE</code>, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
-(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.</p></dd>
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -153,7 +157,9 @@ output.</p></dd>
     <p>A tibble with one row per facility containing facility identifier,
 facility type, <code>n_visits</code>, optionally <code>visits_per_day</code> and <code>n_days</code>,
 and outlier flag columns <code>.outlier_low</code>, <code>.outlier_high</code>,
-<code>.outlier_flag</code>, <code>.outlier_direction</code>, and <code>.outlier_method</code>.</p>
+<code>.outlier_flag</code>, <code>.outlier_direction</code>, and <code>.outlier_method</code> (the
+criterion that flagged the facility: <code>"percentile"</code>, <code>"iqr"</code>, or
+<code>"percentile+iqr"</code>; <code>NA</code> for facilities that were not flagged).</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -180,21 +186,27 @@ flagged facilities in context.</p>
 <dl><dt><code>"percentile"</code> (default)</dt>
 <dd><p>Flags facilities below
 <code>percentile_low</code> and above <code>percentile_high</code> of the visit count
-distribution. Default thresholds of 5th and 95th percentile are
-interpretable and robust to skewed count distributions.</p></dd>
+distribution. This is a tail ranking, not a test for unusual values: it
+flags roughly the most extreme <code>percentile_low + (1 - percentile_high)</code>
+share of facilities whether or not any of them is actually abnormal
+(with the default thresholds and fewer than about 20 facilities it
+flags the lowest and the highest facility every time). Use it to
+produce a short, ordered list to look at; use <code>"iqr"</code> when you want
+only facilities that are unusual relative to the spread of the rest.</p></dd>
 
 <dt><code>"iqr"</code></dt>
 <dd><p>Flags facilities below <code>Q1 - iqr_multiplier * IQR</code> and
 above <code>Q3 + iqr_multiplier * IQR</code>. Tukey fences with the default
-multiplier of 1.5 are sensitive to data dropouts: a facility that
+multiplier of 1.5 flag nothing when facilities are similar, and are
+sensitive to data dropouts when <code>date_col</code> is supplied: a facility that
 abruptly stops sending visits during a pull window will fall well
 below the lower fence. Increase <code>iqr_multiplier</code> to reduce
 sensitivity.</p></dd>
 
 <dt><code>"both"</code></dt>
 <dd><p>Applies both methods independently. A facility is
-flagged if it meets either criterion. <code>.outlier_method</code> indicates
-which method triggered.</p></dd>
+flagged if it meets either criterion. <code>.outlier_method</code> records which
+criterion fired: <code>"percentile"</code>, <code>"iqr"</code>, or <code>"percentile+iqr"</code>.</p></dd>
 
 
 </dl></div>
@@ -205,9 +217,13 @@ which method triggered.</p></dd>
 
 <p>When <code>date_col</code> is supplied, visits per day is computed and outlier
 detection is applied to the normalized rate rather than raw counts.
-This makes pulls of different durations comparable and improves
-sensitivity to within-pull data dropouts (e.g., a facility that stops
-sending data mid-month).</p>
+<code>visits_per_day</code> is a facility's <code>n_visits</code> divided by the number of
+distinct dates in the whole pull, not by the days that facility sent data
+(<code>n_days</code>, reported alongside for reference). A facility that sends data
+every day of a 30-day pull and one that sends the same daily volume for 10
+days and then stops therefore get different rates, so a mid-pull dropout
+falls below the lower fence instead of being hidden. This also makes pulls
+of different durations comparable.</p>
 </div>
 
 <div class="section">
@@ -265,12 +281,13 @@ review.</p></div>
 <span class="r-in"><span>    date_col <span class="op">=</span> <span class="va">Date</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> 0 of 8 facilities flagged as outliers (0%) using `method = "iqr"`.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 0 × 10</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 10 variables: hospital &lt;int&gt;, facility_type &lt;chr&gt;, n_visits &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   n_days &lt;int&gt;, visits_per_day &lt;dbl&gt;, .outlier_low &lt;lgl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .outlier_high &lt;lgl&gt;, .outlier_flag &lt;lgl&gt;, .outlier_direction &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .outlier_method &lt;chr&gt;</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> 1 of 8 facilities flagged as outliers (12.5%) using `method = "iqr"`.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 10</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits n_days visits_per_day .outlier_low</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     <span style="text-decoration: underline;">1</span>001 Emergency Care       38     38          0.286 FALSE       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 4 more variables: .outlier_high &lt;lgl&gt;, .outlier_flag &lt;lgl&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   .outlier_direction &lt;chr&gt;, .outlier_method &lt;chr&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Both methods, grouped by facility type</span></span></span>
 <span class="r-in"><span><span class="va">essence_clean</span> <span class="op">|&gt;</span></span></span>

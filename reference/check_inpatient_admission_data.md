@@ -33,7 +33,22 @@ long_from_patient_class_list(
 
 long_from_has_been_flags(ed_data, exclude_from_pivot, verbose)
 
-bind_direct_admits(ed_long, inpatient_admission_data, verbose)
+bind_direct_admits(
+  ed_long,
+  inpatient_admission_data,
+  verbose,
+  key_cols = character(0),
+  text_cols = character(0),
+  call = rlang::caller_env()
+)
+
+as_text_cols(data, cols)
+
+check_linking_columns(
+  inpatient_admission_data,
+  key_cols,
+  call = rlang::caller_env()
+)
 
 add_class_time(ed_long)
 
@@ -106,6 +121,26 @@ collapse_episodes(result, merge_fields, merge_delimiter)
 
   The long-format data frame (one row per patient class) built so far.
 
+- key_cols:
+
+  Character vector of the linking columns (facility, visit, and the
+  fallback column if any) that must exist in `inpatient_admission_data`.
+  Defaults to none.
+
+- text_cols:
+
+  Character vector of the linking identifier columns (`facility_col`,
+  `visit_col`, and `fallback_visit_col`) to hold as text. Defaults to
+  none.
+
+- data:
+
+  A data frame. For `as_text_cols()`, one of the two pulls.
+
+- cols:
+
+  Character vector of column names in `data`.
+
 - fac_col_str, visit_col_str:
 
   Names of the facility and visit columns in `ed_long`.
@@ -142,6 +177,8 @@ aborts. `detect_patient_class_source()` returns a list with
 `validate_has_been_flags()` returns the `HasBeen_` columns to exclude
 from the pivot. The remaining stages return the updated long-format data
 frame, except `build_episode_ids()`, which returns a character vector.
+`check_linking_columns()` returns `NULL` invisibly or aborts.
+`as_text_cols()` returns `data` with those columns as character.
 
 ## Details
 
@@ -169,15 +206,17 @@ calls them:
     timestamps to them.
 
 5.  `bind_direct_admits()` tags `inpatient_admission_data` as
-    `"Direct Admit"` and appends it.
+    `"Direct Admit"` and appends it, after `check_linking_columns()` has
+    confirmed the linking columns exist in it and `as_text_cols()` has
+    converted the linking identifier columns to text.
 
 6.  `add_class_time()` fills the `.class_time` ordering column.
 
 7.  `build_episode_ids()` builds the `.episode_id` for every row.
 
 8.  `add_episode_metadata()` adds `.episode_id`,
-    `.patient_class_sequence`, `.episode_n_rows`, and
-    `.index_encounter`.
+    `.patient_class_sequence`, `.episode_n_rows`, and `.index_encounter`
+    (`TRUE` on the one row per episode that the collapsed output keeps).
 
 9.  `collapse_episodes()` reduces each episode to one row
     (`return_format = "collapsed"` only).
@@ -209,6 +248,13 @@ confirmed to match another row via a secondary identifier. The three
 candidate id strings are built as plain vectors, not inside a dplyr
 verb, so the fallback lookup is never attempted when no
 `fallback_visit_col` was supplied.
+
+`add_episode_metadata()` computes its columns over whole vectors keyed
+by episode
+([`episode_class_sequence()`](https://andrew-farrey.github.io/sysPrep/reference/parse_mdt_updates.md),
+[`episode_primary_row()`](https://andrew-farrey.github.io/sysPrep/reference/parse_mdt_updates.md)),
+not per episode inside `dplyr`'s `.by =`: most episodes have a single
+row, and a per-episode R call for each of them dominated the run time.
 
 `collapse_episodes()` deliberately avoids a per-episode helper applied
 through

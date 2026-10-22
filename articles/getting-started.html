@@ -129,13 +129,13 @@ near state borders or serving mobile populations.</p>
 <p><code>sysPrep</code> formalizes the preprocessing steps practitioners
 apply to address each of these problems into a reproducible, documented
 R pipeline.</p>
-<p><code>sysPrep</code>’s functions have been validated against records
-pulled from the NSSP ESSENCE <code>va_er</code> (Patient Location, Full
+<p><code>sysPrep</code> is designed for ESSENCE <code>dataDetails</code>
+pulls from the NSSP ESSENCE <code>va_er</code> (Patient Location, Full
 Details) and <code>va_hosp</code> (Facility Location, Full Details) data
-sources. Both sources return ED visit and inpatient admission records,
-so all exported functions apply to either. Column names and value
-formats referenced throughout this package (e.g.,
-<code>{SITE}_{REGION}</code> region strings,
+sources, which it was developed and tested against. Both sources return
+ED visit and inpatient admission records, so all exported functions
+apply to either. Column names and value formats referenced throughout
+this package (e.g., <code>{SITE}_{REGION}</code> region strings,
 <code>HasBeenE</code>/<code>HasBeenAdmitted</code> flags) reflect these
 two data sources.</p>
 </div>

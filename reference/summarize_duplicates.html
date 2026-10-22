@@ -54,7 +54,12 @@ ESSENCE data before <code><a href="dedupe.html">dedupe()</a></code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">summarize_duplicates</span><span class="op">(</span><span class="va">data</span>, facility_col <span class="op">=</span> <span class="cn">NULL</span>, visit_col <span class="op">=</span> <span class="va">Visit_ID</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">summarize_duplicates</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  facility_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  visit_col <span class="op">=</span> <span class="va">Visit_ID</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'essence_dup_summary'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
@@ -82,10 +87,22 @@ equivalents.</p></dd>
 
 <dt id="arg-visit-col">visit_col<a class="anchor" aria-label="anchor" href="#arg-visit-col"></a></dt>
 <dd><p>Unquoted
-column name identifying the visit. Defaults to <code>Visit_ID</code>. Common
-alternatives include <code>MedicalRecordNumber</code>, <code>MRN</code>, <code>VisitNumber</code>, and
-<code>C_Unique_Patient_ID</code>. Accepts both raw ESSENCE names and
-post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
+column name identifying the visit. Defaults to <code>Visit_ID</code>. Use another
+column only if it identifies a single visit within a facility (for
+example a site-specific visit or encounter number). Do not use a
+patient-level identifier such as <code>C_Unique_Patient_ID</code>, an MRN, or
+<code>MedicalRecordNumber</code>: those are shared by all of a patient's visits, so
+every repeat visit by the same patient would be collapsed into one row.
+An identifier has no numeric meaning: values are compared as text (the
+number <code>100000</code> and the text <code>"100000"</code> are the same visit), and the
+column is returned in the type it arrived in. Accepts both raw ESSENCE
+names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
+
+
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>

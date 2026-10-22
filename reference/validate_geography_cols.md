@@ -16,7 +16,7 @@ validate_geography_cols(
   hosp_region_col_str,
   zip_col_str,
   hosp_zip_col_str,
-  check_region_col = TRUE
+  check_zip_col = TRUE
 )
 
 resolve_geography_output_col(
@@ -43,6 +43,8 @@ assign_geography_reassignment(
   preserve_original_geographies,
   mask
 )
+
+patient_geography(data, col_str)
 
 resolve_geography_sources(
   data,
@@ -95,9 +97,10 @@ inform_facility_result(data, outputs, verbose)
   Resolved column names (strings), or `NULL` when the optional column is
   absent.
 
-- check_region_col:
+- check_zip_col:
 
-  Logical. Whether to validate `region_col_str` here.
+  Logical. Whether to validate `zip_col_str` (the patient zip column)
+  here.
 
 - new_col:
 
@@ -144,6 +147,10 @@ inform_facility_result(data, outputs, verbose)
   Logical vector, one element per row of `data`: which rows are
   reassigned.
 
+- col_str:
+
+  A resolved column name, or `NULL` when the column is absent.
+
 - region_sym, hosp_region_sym, zip_sym, hosp_zip_sym:
 
   Symbols captured from the four source column arguments (raw ESSENCE or
@@ -182,20 +189,29 @@ return the updated data frame. `warn_site_without_region_match()` and
 `inform_*_result()` are called for their conditions.
 `resolve_geography_output_col()` returns the normalized output column
 name, or `NULL`. `assign_geography_reassignment()` returns `data` with
-the geography columns written.
+the geography columns written. `patient_geography()` returns the patient
+column's values, or a single `NA` when the column is absent.
 
 ## Details
 
 `validate_geography_cols()` downgrades `do_region`/`do_zip` to `FALSE`
 (with an informational message) when a column required for that
-geography type is absent. `check_region_col` controls whether
-`region_col_str` itself is validated here:
+geography type is absent. The facility columns (`HospitalRegion`,
+`HospitalZip`) are always required for their type. The patient columns
+(`Region`, `ZipCode`) are only the "leave this row alone" values of a
+selective reassignment, so whether they are required depends on the
+caller. This function never validates `Region`:
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
-validates it separately afterward, since it is unconditionally required
+checks it separately afterward, since it is unconditionally required
 there for out-of-state detection regardless of which geography types are
-requested, whereas
+requested, and
 [`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
-has no such separate requirement and validates it as part of this check.
+never reads it. `check_zip_col` says whether to validate `ZipCode` here:
+[`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)
+needs it, while
+[`assign_facility_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_facility_geography.md)
+reassigns every row, so it never reads the patient columns (unless
+`overwrite = TRUE` names one as its output).
 
 `resolve_geography_output_col()` resolves a
 `new_region_col`/`new_zip_col` argument (a plain string naming the

@@ -222,7 +222,7 @@ classified
 #> 
 #> ── ESSENCE Duplicate Classification ────────────────────────────────────────────
 #> 
-#> ── Overall ──
+#> ── Overall (percent of duplicated visit groups) ──
 #> 
 #>                      dup_type n percent
 #>                  type_unknown 5   38.5%

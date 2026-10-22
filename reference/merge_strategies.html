@@ -50,6 +50,8 @@ care episode when <code><a href="link_encounters.html">link_encounters()</a></co
 <span></span>
 <span><span class="fu">merge_concat</span><span class="op">(</span><span class="va">values</span>, <span class="va">primary_value</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">contains_whole</span><span class="op">(</span><span class="va">text</span>, <span class="va">value</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">merge_union_delimited</span><span class="op">(</span><span class="va">values</span>, <span class="va">delimiter</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">merge_union_ccdd</span><span class="op">(</span><span class="va">values</span>, <span class="va">delimiter</span><span class="op">)</span></span>
@@ -99,12 +101,18 @@ strategy names.</p></dd>
 <dd><p>The delimiter separating individual values within a
 field.</p></dd>
 
+
+<dt id="arg-text-value">text, value<a class="anchor" aria-label="anchor" href="#arg-text-value"></a></dt>
+<dd><p>Single strings: the text to search and the value to look
+for in it.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>merge_strategies</code> is a character vector. <code>check_merge_fields()</code>
 returns <code>merge_fields</code> invisibly, or aborts. The <code>merge_*()</code> functions
-and <code>merge_field_value()</code> return a single merged value.</p>
+and <code>merge_field_value()</code> return a single merged value.
+<code>contains_whole()</code> returns a single logical.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -115,8 +123,13 @@ never drift apart. <code>merge_field_value()</code> dispatches one field's value
 the strategy named in <code>merge_fields</code>.</p>
 <p>The strategies are:</p><dl><dt><code>concat</code></dt>
 <dd><p>Free-text merge: starting from <code>primary_value</code>, appends
-each other non-empty value not already a substring of the accumulated
-result.</p></dd>
+each other non-empty value unless the accumulated result already
+contains it as whole words or whole codes (<code>contains_whole()</code>). Text or
+a code that appears in one record but not the other is therefore
+kept, so extra detail or context is preserved: <code>"fall"</code> is not found in
+<code>"waterfall"</code>, the diagnosis code <code>"R10.9"</code> is not found in <code>"R10.90"</code>,
+and a SNOMED code is matched only as the whole number. Matching ignores
+case, punctuation, and spacing.</p></dd>
 
 <dt><code>union_delimited</code></dt>
 <dd><p>Splits each value on <code>delimiter</code>, trims

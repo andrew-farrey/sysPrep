@@ -1,7 +1,12 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://andrew-farrey.github.io/sysPrep/404.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/CODE_OF_CONDUCT.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/CONTRIBUTING.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/LICENSE-text.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/LICENSE.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/PULL_REQUEST_TEMPLATE.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/SECURITY.html</loc></url>
+<url><loc>https://andrew-farrey.github.io/sysPrep/SUPPORT.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/articles/deduplication-and-classification.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.html</loc></url>
 <url><loc>https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.html</loc></url>

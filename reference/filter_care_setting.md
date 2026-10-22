@@ -35,7 +35,9 @@ filter_care_setting(
 - facility_col:
 
   Unquoted column name identifying the facility. Defaults to
-  `HospitalName`. Accepts both raw ESSENCE names and
+  `HospitalName`, and unlike other functions does not prefer `Hospital`;
+  see "Facility name column" in Details. Accepts both raw ESSENCE names
+  and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -109,13 +111,17 @@ filter_care_setting(
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names to snake_case on output.
+  to standardize column names to snake_case on output. If `FALSE`, the
+  input's own column names are restored on output (every function
+  normalizes names internally so that column arguments resolve either
+  way); any columns the function itself adds keep their snake_case or
+  dot-prefixed names.
 
 - verbose:
 
   Logical. If `FALSE`, suppresses informational messages
   ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
-  warnings and errors are always shown regardless.
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 ## Value
 
@@ -171,14 +177,26 @@ entirely. Regardless of which value a given site observes, the
 misclassified facilities to a specified `fix_to` value before the
 `keep_types` filter is applied.
 
-### Kentucky data structure
+### Default `keep_types`
 
-In Kentucky, inpatient admission data are transmitted through the
-corresponding ED hospital feeds and share the same `FacilityType`. The
-default `keep_types` of
-`c("Emergency Care", "Inpatient Practice Setting")` reflects this
-structure. Sites pulling ED visits only should set
-`keep_types = "Emergency Care"`.
+The default `keep_types` of
+`c("Emergency Care", "Inpatient Practice Setting")` keeps both facility
+types that identify hospitals with emergency or inpatient capacity, so a
+pull that mixes ED and inpatient records is not silently narrowed. In
+Kentucky, inpatient admission data are transmitted through the
+corresponding ED hospital feeds and carry the ED `FacilityType`, so
+Kentucky pulls do not depend on the second value; sites whose inpatient
+feeds are onboarded under `"Inpatient Practice Setting"` do. Sites
+pulling ED visits only should set `keep_types = "Emergency Care"`.
+
+### Facility name column
+
+Unlike the duplicate and review functions, `filter_care_setting()` does
+not prefer `Hospital` over `HospitalName` for `facility_col`: its
+name-based corrections (`fix_facility_type_vector`,
+`fix_facility_type_regex`) match facility *names*, so the column must
+hold names. The ID-based route (`fix_facility_id_vector`, matched on
+`facility_id_col`) is the one that uses the stable identifier.
 
 ### Processing order
 

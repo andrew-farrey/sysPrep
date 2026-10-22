@@ -280,7 +280,7 @@ dplyr::glimpse(episodes)
 #> Rows: 18
 #> Columns: 24
 #> $ hospital_name           <chr> "Central Medical Center", "Central Medical Cen…
-#> $ hospital                <int> 1001, 1001, 1001, 1001, 1001, 1001, 1002, 1002…
+#> $ hospital                <chr> "1001", "1001", "1001", "1001", "1001", "1001"…
 #> $ facility_type           <chr> "Emergency Care", "Emergency Care", "Emergency…
 #> $ hospital_region         <chr> "KY_Jefferson", "KY_Jefferson", "KY_Jefferson"…
 #> $ hospital_zip            <chr> "40201", "40201", "40201", "40201", "40201", "…
@@ -431,10 +431,11 @@ dplyr::count(episodes_long, patient_class)
 #> 3 ED               14
 ```
 
-In long format, `.index_encounter` marks the row that survives a “one
-row per episode” filter: `TRUE` on the ED row when both ED and admission
-rows are present, or on the single row for ED-only or Direct Admit-only
-episodes:
+In long format, `.index_encounter` marks exactly one row per episode,
+the row that survives a “one row per episode” filter: the ED row when
+the episode has one (the first, if it has several), otherwise the
+episode’s first row. That is the single row for ED-only or Direct
+Admit-only episodes:
 
 ``` r
 

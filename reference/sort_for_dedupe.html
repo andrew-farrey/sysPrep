@@ -51,9 +51,9 @@ so each exported function reads as a short pipeline.</p>
 <span>  call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">keep_group_rows</span><span class="op">(</span><span class="va">data</span>, <span class="va">fac_col_str</span>, <span class="va">visit_col_str</span>, <span class="va">keep</span><span class="op">)</span></span>
+<span><span class="fu">keep_group_rows</span><span class="op">(</span><span class="va">data</span>, <span class="va">fac_col_str</span>, <span class="va">visit_col_str</span>, <span class="va">keep</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">count_visit_row_groups</span><span class="op">(</span><span class="va">data_clean</span>, <span class="va">fac_col_str</span>, <span class="va">visit_col_str</span><span class="op">)</span></span>
+<span><span class="fu">count_visit_row_groups</span><span class="op">(</span><span class="va">data_clean</span>, <span class="va">fac_col_str</span>, <span class="va">visit_col_str</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">dup_summary_by_facility</span><span class="op">(</span><span class="va">data_clean</span>, <span class="va">fac_col_str</span>, <span class="va">dup_group_ids</span><span class="op">)</span></span>
 <span></span>
@@ -89,6 +89,10 @@ columns.</p></dd>
 
 <dt id="arg-fac-col-str-visit-col-str">fac_col_str, visit_col_str<a class="anchor" aria-label="anchor" href="#arg-fac-col-str-visit-col-str"></a></dt>
 <dd><p>Names of the facility and visit columns.</p></dd>
+
+
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>Logical. Whether to emit informational messages.</p></dd>
 
 
 <dt id="arg-data-clean">data_clean<a class="anchor" aria-label="anchor" href="#arg-data-clean"></a></dt>
@@ -132,11 +136,11 @@ silently collapsing rows with a missing identifier into a single
 unknown, not confirmed to match. Both exported functions therefore group
 with <code><a href="key_has_na_mask.html">na_safe_group_id()</a></code>, which gives each NA-key row its own singleton
 group, and report how many rows were affected.</p>
-<p>For <code>keep = "most_complete"</code>, <code>dplyr::pick(dplyr::everything())</code> already
-excludes <code>.group_id</code>: <code><a href="https://dplyr.tidyverse.org/reference/pick.html" class="external-link">dplyr::pick()</a></code> never includes the active grouping
-variable(s) among the columns it can pick, so no explicit exclusion is
-needed (or possible, since <code>pick()</code> errors if asked to exclude a column it
-never included).</p>
+<p>For <code>keep = "most_complete"</code>, the number of non-missing values in each row
+is counted once over the whole data frame, excluding the <code>.group_id</code> helper
+column, and each group then keeps its row with the highest count (the
+first, on a tie). Counting per group instead would repeat the same
+row-wise work once for each of the (often hundreds of thousands of) groups.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

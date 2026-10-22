@@ -48,9 +48,11 @@ patient classes and which row represents the episode.</p>
 <span></span>
 <span><span class="fu">safe_as_posixct</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">compute_patient_class_sequence</span><span class="op">(</span><span class="va">patient_class</span>, <span class="va">class_time</span><span class="op">)</span></span>
+<span><span class="fu">episode_class_sequence</span><span class="op">(</span><span class="va">episode</span>, <span class="va">patient_class</span>, <span class="va">class_time</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">pick_primary_row_index</span><span class="op">(</span><span class="va">patient_classes</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">pick_primary_row_index</span><span class="op">(</span><span class="va">patient_classes</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">episode_primary_row</span><span class="op">(</span><span class="va">episode</span>, <span class="va">patient_class</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -77,6 +79,11 @@ segment.</p></dd>
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code>. A <code>POSIXct</code> vector is returned unchanged.</p></dd>
 
 
+<dt id="arg-episode">episode<a class="anchor" aria-label="anchor" href="#arg-episode"></a></dt>
+<dd><p>Vector identifying the episode each row belongs to (for
+example <code>.episode_id</code>); rows with equal values are one episode.</p></dd>
+
+
 <dt id="arg-patient-class">patient_class<a class="anchor" aria-label="anchor" href="#arg-patient-class"></a></dt>
 <dd><p>Character vector of one episode's patient classes, one
 per row (so a class can repeat).</p></dd>
@@ -98,9 +105,11 @@ one per row.</p></dd>
 <code>n_classes</code>. <code>parse_mdt_segment()</code> returns a list with <code>idx</code> (an integer
 position) and <code>time</code> (a string), or <code>NULL</code>. <code>safe_as_posixct()</code> returns
 a <code>POSIXct</code> vector the length of <code>x</code>.
-<code>compute_patient_class_sequence()</code> returns a single string, or
-<code>NA_character_</code> when there is no non-missing patient class.
-<code>pick_primary_row_index()</code> returns a single integer.</p>
+<code>episode_class_sequence()</code> returns a character vector the length of
+<code>episode</code>: each row's episode sequence, <code>NA</code> for an episode with no
+non-missing patient class. <code>pick_primary_row_index()</code> returns a single
+integer. <code>episode_primary_row()</code> returns a logical vector the length of
+<code>episode</code>, <code>TRUE</code> on each episode's primary row.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -122,21 +131,27 @@ degrades gracefully to the next tier for just that row instead of failing
 ISO 8601-style timestamps (with or without a trailing <code>Z</code>) and US-style
 <code>month/day/year</code> timestamps, trying each format against the whole vector at
 once and keeping the first format that parses each element.</p>
-<p><code>compute_patient_class_sequence()</code> orders an episode's distinct patient
-classes by the earliest <code>class_time</code> each class occurs at, for example
+<p><code>episode_class_sequence()</code> orders each episode's distinct patient classes
+by the earliest <code>class_time</code> each class occurs at, for example
 <code>"Direct Admit-&gt;ED"</code> when the direct-admit record's timestamp precedes the
-ED record's. It falls back to alphabetical order (matching legacy behavior)
-when no usable timestamp exists for the episode at all; classes with no
-timestamp sort after timed classes when some but not all classes in the
-episode have one.</p>
+ED record's, and returns that string for every row of the episode. It falls
+back to alphabetical order when no usable timestamp exists for the episode
+at all; classes with no timestamp sort after timed classes when some but
+not all classes in the episode have one. Classes with identical timestamps
+(every class derived from one record shares that record's timestamp) also
+fall back to alphabetical order. That is a tiebreak only: when the
+timestamps are missing or equal the true order cannot be determined from
+the data, so the alphabetical order carries no clinical meaning.</p>
 <p><code>parse_mdt_segment()</code> parses one trimmed, non-empty <code>{position};timestamp;</code>
 segment into its position and timestamp string, or returns <code>NULL</code> when the
 segment does not match this encoding or its position is not between 1 and
 <code>n_classes</code>.</p>
 <p><code>pick_primary_row_index()</code> returns the index of the ED row in an episode
-if one exists, else <code>1</code> (the first row in original order). This matches
-the precedence <code><a href="link_encounters.html">link_encounters()</a></code> has always given the ED row via
-<code>.index_encounter</code>.</p>
+if one exists, else <code>1</code> (the first row in original order): the row whose
+values represent the episode when it is collapsed. <code>episode_primary_row()</code>
+marks that row in every episode of a long-format data frame, which is what
+<code>.index_encounter</code> records, so a long-format count of index encounters
+always equals the number of rows in the collapsed output.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

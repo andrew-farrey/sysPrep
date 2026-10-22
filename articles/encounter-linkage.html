@@ -387,7 +387,7 @@ when the ED row is kept as the surviving primary row.</p>
 <span><span class="co">#&gt; Rows: 18</span></span>
 <span><span class="co">#&gt; Columns: 24</span></span>
 <span><span class="co">#&gt; $ hospital_name           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "Central Medical Center"<span style="color: #949494;">, </span>"Central Medical Cen…</span></span>
-<span><span class="co">#&gt; $ hospital                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> 1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1001<span style="color: #949494;">, </span>1002<span style="color: #949494;">, </span>1002…</span></span>
+<span><span class="co">#&gt; $ hospital                <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "1001"<span style="color: #949494;">, </span>"1001"<span style="color: #949494;">, </span>"1001"<span style="color: #949494;">, </span>"1001"<span style="color: #949494;">, </span>"1001"<span style="color: #949494;">, </span>"1001"…</span></span>
 <span><span class="co">#&gt; $ facility_type           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "Emergency Care"<span style="color: #949494;">, </span>"Emergency Care"<span style="color: #949494;">, </span>"Emergency…</span></span>
 <span><span class="co">#&gt; $ hospital_region         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "KY_Jefferson"<span style="color: #949494;">, </span>"KY_Jefferson"<span style="color: #949494;">, </span>"KY_Jefferson"…</span></span>
 <span><span class="co">#&gt; $ hospital_zip            <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "40201"<span style="color: #949494;">, </span>"40201"<span style="color: #949494;">, </span>"40201"<span style="color: #949494;">, </span>"40201"<span style="color: #949494;">, </span>"40201"<span style="color: #949494;">, </span>"…</span></span>
@@ -524,10 +524,11 @@ linkage mechanism itself. No merge is applied in this mode.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Admitted          2</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Direct Admit      6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> ED               14</span></span></code></pre></div>
-<p>In long format, <code>.index_encounter</code> marks the row that
-survives a “one row per episode” filter: <code>TRUE</code> on the ED row
-when both ED and admission rows are present, or on the single row for
-ED-only or Direct Admit-only episodes:</p>
+<p>In long format, <code>.index_encounter</code> marks exactly one row
+per episode, the row that survives a “one row per episode” filter: the
+ED row when the episode has one (the first, if it has several),
+otherwise the episode’s first row. That is the single row for ED-only or
+Direct Admit-only episodes:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">episodes_long</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.index_encounter</span><span class="op">)</span> <span class="op">|&gt;</span></span>

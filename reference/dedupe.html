@@ -57,7 +57,8 @@ cluster detection, or geographic attribution.</p>
 <span>  visit_col <span class="op">=</span> <span class="va">Visit_ID</span>,</span>
 <span>  order_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"first"</span>, <span class="st">"last"</span>, <span class="st">"most_complete"</span><span class="op">)</span>,</span>
-<span>  clean_names <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  clean_names <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -80,10 +81,16 @@ equivalents.</p></dd>
 
 <dt id="arg-visit-col">visit_col<a class="anchor" aria-label="anchor" href="#arg-visit-col"></a></dt>
 <dd><p>Unquoted
-column name identifying the visit. Defaults to <code>Visit_ID</code>. Common
-alternatives include <code>MedicalRecordNumber</code>, <code>MRN</code>, <code>VisitNumber</code>, and
-<code>C_Unique_Patient_ID</code>. Accepts both raw ESSENCE names and
-post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
+column name identifying the visit. Defaults to <code>Visit_ID</code>. Use another
+column only if it identifies a single visit within a facility (for
+example a site-specific visit or encounter number). Do not use a
+patient-level identifier such as <code>C_Unique_Patient_ID</code>, an MRN, or
+<code>MedicalRecordNumber</code>: those are shared by all of a patient's visits, so
+every repeat visit by the same patient would be collapsed into one row.
+An identifier has no numeric meaning: values are compared as text (the
+number <code>100000</code> and the text <code>"100000"</code> are the same visit), and the
+column is returned in the type it arrived in. Accepts both raw ESSENCE
+names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
 
 
 <dt id="arg-order-by">order_by<a class="anchor" aria-label="anchor" href="#arg-order-by"></a></dt>
@@ -105,7 +112,16 @@ Defaults to <code>NULL</code> (row order as received).</p></dd>
 <dt id="arg-clean-names">clean_names<a class="anchor" aria-label="anchor" href="#arg-clean-names"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), applies
 <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> to standardize column names to snake_case on
-output.</p></dd>
+output. If <code>FALSE</code>, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.</p></dd>
+
+
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -183,7 +199,10 @@ Fastest and most transparent.</p></dd>
 retains the most recently received record; appropriate when ESSENCE
 records are updated chronologically and later rows reflect corrected
 information. Use <code>Arrived_Date_Time</code> as <code>order_by</code> to retain the most
-recently transmitted version of each record.</p></dd>
+recently transmitted version of each record. A row with a missing
+<code>order_by</code> value sorts after every row that has one, so <code>"last"</code>
+retains it over the rows with a value; make sure <code>order_by</code> is
+populated, or filter such rows first.</p></dd>
 
 <dt><code>"most_complete"</code></dt>
 <dd><p>Retains the row with the fewest <code>NA</code> values
@@ -315,27 +334,6 @@ the actual column names present in the data.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V285888…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Rural Health Ce…     <span style="text-decoration: underline;">1</span>006 Emergency Ca… KY_Madison      40390        V511888…</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 170 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   region &lt;chr&gt;, zip_code &lt;chr&gt;, sex &lt;chr&gt;, c_patient_age &lt;int&gt;</span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Deduplicate by patient identifier (MRN-equivalent in ESSENCE)</span></span></span>
-<span class="r-in"><span><span class="va">essence_raw</span> <span class="op">|&gt;</span> <span class="fu">dedupe</span><span class="op">(</span>visit_col <span class="op">=</span> <span class="va">C_Unique_Patient_ID</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 183 × 18</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V138461…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V892704…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Metro Health Sy…     <span style="text-decoration: underline;">1</span>005 Emergency Ca… KY_Fayette      40507        V853599…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V379196…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V908652…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V642291…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Hillside FSED        <span style="text-decoration: underline;">1</span>007 Urgent Care   KY_Jefferson    40202        V787824…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Central Medical…     <span style="text-decoration: underline;">1</span>001 Emergency Ca… KY_Jefferson    40201        V229451…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> North County Ho…     <span style="text-decoration: underline;">1</span>002 Emergency Ca… KY_Kenton       41011        V285888…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Rural Health Ce…     <span style="text-decoration: underline;">1</span>006 Emergency Ca… KY_Madison      40390        V511888…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 173 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 12 more variables: c_bio_sense_id &lt;chr&gt;, c_unique_patient_id &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   date &lt;date&gt;, c_visit_date_time &lt;dttm&gt;, arrived_date_time &lt;dttm&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   has_been_e &lt;int&gt;, has_been_admitted &lt;int&gt;, c_patient_class &lt;chr&gt;,</span></span>

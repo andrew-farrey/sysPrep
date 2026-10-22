@@ -11,7 +11,12 @@ on raw or minimally processed ESSENCE data before
 ## Usage
 
 ``` r
-summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
+summarize_duplicates(
+  data,
+  facility_col = NULL,
+  visit_col = Visit_ID,
+  verbose = TRUE
+)
 
 # S3 method for class 'essence_dup_summary'
 format(x, ...)
@@ -39,11 +44,23 @@ print(x, ...)
 - visit_col:
 
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
-  Common alternatives include `MedicalRecordNumber`, `MRN`,
-  `VisitNumber`, and `C_Unique_Patient_ID`. Accepts both raw ESSENCE
-  names and
+  Use another column only if it identifies a single visit within a
+  facility (for example a site-specific visit or encounter number). Do
+  not use a patient-level identifier such as `C_Unique_Patient_ID`, an
+  MRN, or `MedicalRecordNumber`: those are shared by all of a patient's
+  visits, so every repeat visit by the same patient would be collapsed
+  into one row. An identifier has no numeric meaning: values are
+  compared as text (the number `100000` and the text `"100000"` are the
+  same visit), and the column is returned in the type it arrived in.
+  Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
+
+- verbose:
+
+  Logical. If `FALSE`, suppresses informational messages
+  ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 - x:
 

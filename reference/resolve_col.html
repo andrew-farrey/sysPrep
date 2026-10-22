@@ -74,9 +74,17 @@ have to know which form their data is in.</p>
 <span>  call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">capture_col_sym</span><span class="op">(</span><span class="va">col_quo</span>, arg <span class="op">=</span> <span class="st">"facility_col"</span>, call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">as_string_or_null</span><span class="op">(</span><span class="va">col_sym</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">clean_names_safe</span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">clean_names_safe</span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">input_name_map</span><span class="op">(</span><span class="va">original_names</span>, <span class="va">cleaned_names</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">restore_input_names</span><span class="op">(</span><span class="va">result</span>, <span class="va">name_map</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">finish_names</span><span class="op">(</span><span class="va">result</span>, <span class="va">clean_names</span>, <span class="va">name_map</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -110,6 +118,33 @@ or <code>NULL</code> when it was not supplied.</p></dd>
 <dd><p>Logical. <code>TRUE</code> when the caller did not supply
 <code>facility_col</code>, so the <code>Hospital</code>-preferring default applies.</p></dd>
 
+
+<dt id="arg-col-quo">col_quo<a class="anchor" aria-label="anchor" href="#arg-col-quo"></a></dt>
+<dd><p>The expression captured by <code><a href="https://rlang.r-lib.org/reference/enquo.html" class="external-link">rlang::enquo()</a></code> for an optional
+column argument.</p></dd>
+
+
+<dt id="arg-arg">arg<a class="anchor" aria-label="anchor" href="#arg-arg"></a></dt>
+<dd><p>The argument's name, used in the error message.</p></dd>
+
+
+<dt id="arg-original-names-cleaned-names">original_names, cleaned_names<a class="anchor" aria-label="anchor" href="#arg-original-names-cleaned-names"></a></dt>
+<dd><p>The column names of the input before
+and after <code>clean_names_safe()</code>, in the same order.</p></dd>
+
+
+<dt id="arg-result">result<a class="anchor" aria-label="anchor" href="#arg-result"></a></dt>
+<dd><p>The data frame about to be returned.</p></dd>
+
+
+<dt id="arg-name-map">name_map<a class="anchor" aria-label="anchor" href="#arg-name-map"></a></dt>
+<dd><p>The named character vector from <code>input_name_map()</code>: values
+are original names, names are their normalized forms.</p></dd>
+
+
+<dt id="arg-clean-names">clean_names<a class="anchor" aria-label="anchor" href="#arg-clean-names"></a></dt>
+<dd><p>Logical. The caller's <code>clean_names</code> argument.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -117,14 +152,22 @@ or <code>NULL</code> when it was not supplied.</p></dd>
 <code>resolve_facility_col()</code> return a symbol (<code>resolve_col_optional()</code>
 returns <code>NULL</code> when the column is absent). <code>resolve_col_str()</code> and
 <code>resolve_facility_col_str()</code> return a string. <code>as_string_or_null()</code>
-returns a string, or <code>NULL</code> for a <code>NULL</code> input. <code>clean_names_safe()</code>
-returns <code>data</code> with snake_case names and any leading-dot names kept.</p>
+returns a string, or <code>NULL</code> for a <code>NULL</code> input. <code>capture_col_sym()</code>
+returns a symbol, or <code>NULL</code>. <code>clean_names_safe()</code>
+returns <code>data</code> with snake_case names and any leading-dot names kept.
+<code>input_name_map()</code> returns the named character vector described above.
+<code>restore_input_names()</code> and <code>finish_names()</code> return <code>result</code> with its
+column names restored or normalized.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>resolve_col()</code> tries a direct match first, then normalizes both the
-supplied name and the data's names to snake_case and requires exactly one
-match. It aborts, attributed to <code>call</code>, when no unique match exists.
+supplied name and the data's names to snake_case and matches on that.
+<code><a href="https://sfirke.github.io/janitor/reference/make_clean_names.html" class="external-link">janitor::make_clean_names()</a></code> makes the names in a vector unique (two
+columns that would both be <code>visit_id</code> become <code>visit_id</code> and <code>visit_id_2</code>),
+so at most one column can match a given normalized name; because every
+exported function normalizes <code>data</code> first, this is always the case. It
+aborts, attributed to <code>call</code>, when nothing matches.
 <code>resolve_col_optional()</code> returns <code>NULL</code> instead of aborting, for functions
 that degrade gracefully when an optional column (for example
 <code>HospitalZip</code>) was not pulled. <code>resolve_col_str()</code> is <code>resolve_col()</code>
@@ -139,6 +182,13 @@ passes the result as <code>facility_col_missing</code>), it prefers the stable n
 <code>HospitalName</code> can silently split one facility's rows across a rename, or
 merge two different facilities that briefly share a display name. An
 explicitly supplied <code>facility_col</code> is always honored exactly as given.</p>
+<p><code>capture_col_sym()</code> turns an optional, <code>NULL</code>-defaulting column argument,
+captured by the exported function with <code><a href="https://rlang.r-lib.org/reference/enquo.html" class="external-link">rlang::enquo()</a></code>, into a symbol (or
+<code>NULL</code> when it was not supplied). Every function with a <code>facility_col</code>
+argument uses it, so the capture is written once; it aborts with a plain
+message, attributed to the caller, when given something other than a name
+(for example <code>c(a, b)</code>), where <code><a href="https://rlang.r-lib.org/reference/as_name.html" class="external-link">rlang::as_name()</a></code> alone fails with an
+error about a captured expression.</p>
 <p><code>clean_names_safe()</code> is <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> that preserves
 leading-dot prefixes. <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> strips leading dots (for
 example <code>.index_encounter</code> becomes <code>index_encounter</code>), which would break
@@ -146,6 +196,15 @@ references to the metadata columns that sysPrep itself adds
 (<code>.index_encounter</code>, <code>.out_of_state</code>, ...). A consequence is that a raw
 input column must never be given a leading-dot name: it would not
 normalize like other raw columns.</p>
+<p><code>input_name_map()</code>, <code>restore_input_names()</code> and <code>finish_names()</code> implement
+<code>clean_names = FALSE</code>. Every function normalizes its input names so column
+arguments resolve either way, which would otherwise make <code>clean_names = FALSE</code> a no-op on output. <code>input_name_map()</code> records which original name
+each normalized name came from (positionally, since normalization neither
+drops nor reorders columns); <code>restore_input_names()</code> renames the result's
+columns back through that map, leaving the columns the function itself
+added (<code>.index_encounter</code>, <code>region_hybrid</code>, ...) as they are; and
+<code>finish_names()</code> is the single exit that applies whichever of
+<code>clean_names_safe()</code> or the restore the caller asked for.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

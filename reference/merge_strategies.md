@@ -16,6 +16,8 @@ merge_field_value(values, patient_classes, primary_value, strategy, delimiter)
 
 merge_concat(values, primary_value)
 
+contains_whole(text, value)
+
 merge_union_delimited(values, delimiter)
 
 merge_union_ccdd(values, delimiter)
@@ -62,11 +64,16 @@ merge_prefer_admission(values, patient_classes, primary_value)
 
   The delimiter separating individual values within a field.
 
+- text, value:
+
+  Single strings: the text to search and the value to look for in it.
+
 ## Value
 
 `merge_strategies` is a character vector. `check_merge_fields()` returns
 `merge_fields` invisibly, or aborts. The `merge_*()` functions and
-`merge_field_value()` return a single merged value.
+`merge_field_value()` return a single merged value. `contains_whole()`
+returns a single logical.
 
 ## Details
 
@@ -81,7 +88,13 @@ The strategies are:
 - `concat`:
 
   Free-text merge: starting from `primary_value`, appends each other
-  non-empty value not already a substring of the accumulated result.
+  non-empty value unless the accumulated result already contains it as
+  whole words or whole codes (`contains_whole()`). Text or a code that
+  appears in one record but not the other is therefore kept, so extra
+  detail or context is preserved: `"fall"` is not found in
+  `"waterfall"`, the diagnosis code `"R10.9"` is not found in
+  `"R10.90"`, and a SNOMED code is matched only as the whole number.
+  Matching ignores case, punctuation, and spacing.
 
 - `union_delimited`:
 

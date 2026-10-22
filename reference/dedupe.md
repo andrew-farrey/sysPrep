@@ -15,7 +15,8 @@ dedupe(
   visit_col = Visit_ID,
   order_by = NULL,
   keep = c("first", "last", "most_complete"),
-  clean_names = TRUE
+  clean_names = TRUE,
+  verbose = TRUE
 )
 ```
 
@@ -37,9 +38,15 @@ dedupe(
 - visit_col:
 
   Unquoted column name identifying the visit. Defaults to `Visit_ID`.
-  Common alternatives include `MedicalRecordNumber`, `MRN`,
-  `VisitNumber`, and `C_Unique_Patient_ID`. Accepts both raw ESSENCE
-  names and
+  Use another column only if it identifies a single visit within a
+  facility (for example a site-specific visit or encounter number). Do
+  not use a patient-level identifier such as `C_Unique_Patient_ID`, an
+  MRN, or `MedicalRecordNumber`: those are shared by all of a patient's
+  visits, so every repeat visit by the same patient would be collapsed
+  into one row. An identifier has no numeric meaning: values are
+  compared as text (the number `100000` and the text `"100000"` are the
+  same visit), and the column is returned in the type it arrived in.
+  Accepts both raw ESSENCE names and
   post-[`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
   equivalents.
 
@@ -63,7 +70,17 @@ dedupe(
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names to snake_case on output.
+  to standardize column names to snake_case on output. If `FALSE`, the
+  input's own column names are restored on output (every function
+  normalizes names internally so that column arguments resolve either
+  way); any columns the function itself adds keep their snake_case or
+  dot-prefixed names.
+
+- verbose:
+
+  Logical. If `FALSE`, suppresses informational messages
+  ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 ## Value
 
@@ -131,7 +148,10 @@ always overrides this preference exactly as given.
   recently received record; appropriate when ESSENCE records are updated
   chronologically and later rows reflect corrected information. Use
   `Arrived_Date_Time` as `order_by` to retain the most recently
-  transmitted version of each record.
+  transmitted version of each record. A row with a missing `order_by`
+  value sorts after every row that has one, so `"last"` retains it over
+  the rows with a value; make sure `order_by` is populated, or filter
+  such rows first.
 
 - `"most_complete"`:
 
@@ -260,27 +280,6 @@ essence_raw |> dedupe(facility_col = Hospital)
 #>  9 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V285888…
 #> 10 Rural Health Ce…     1006 Emergency Ca… KY_Madison      40390        V511888…
 #> # ℹ 170 more rows
-#> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
-#> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
-#> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,
-#> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>
-
-# Deduplicate by patient identifier (MRN-equivalent in ESSENCE)
-essence_raw |> dedupe(visit_col = C_Unique_Patient_ID)
-#> # A tibble: 183 × 18
-#>    hospital_name    hospital facility_type hospital_region hospital_zip visit_id
-#>    <chr>               <int> <chr>         <chr>           <chr>        <chr>   
-#>  1 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V138461…
-#>  2 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V892704…
-#>  3 Metro Health Sy…     1005 Emergency Ca… KY_Fayette      40507        V853599…
-#>  4 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V379196…
-#>  5 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V908652…
-#>  6 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V642291…
-#>  7 Hillside FSED        1007 Urgent Care   KY_Jefferson    40202        V787824…
-#>  8 Central Medical…     1001 Emergency Ca… KY_Jefferson    40201        V229451…
-#>  9 North County Ho…     1002 Emergency Ca… KY_Kenton       41011        V285888…
-#> 10 Rural Health Ce…     1006 Emergency Ca… KY_Madison      40390        V511888…
-#> # ℹ 173 more rows
 #> # ℹ 12 more variables: c_bio_sense_id <chr>, c_unique_patient_id <chr>,
 #> #   date <date>, c_visit_date_time <dttm>, arrived_date_time <dttm>,
 #> #   has_been_e <int>, has_been_admitted <int>, c_patient_class <chr>,

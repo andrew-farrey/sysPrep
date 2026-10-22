@@ -67,10 +67,13 @@ assign_treating_geography(
 - new_region_col:
 
   Character string or `NULL`. Name of the column to write reassigned
-  region values to. Defaults to `"region_hybrid"`: a new column, leaving
-  `region_col` untouched. Pass `NULL` to skip region reassignment
-  entirely. Pass `region_col`'s own name (with `overwrite = TRUE`) to
-  overwrite it in place instead of writing a new column. See Details.
+  region values to. Unlike the unquoted arguments that point at columns
+  already in `data`, this is a quoted string, because it names a column
+  that usually does not exist yet. Defaults to `"region_hybrid"`: a new
+  column, leaving `region_col` untouched. Pass `NULL` to skip region
+  reassignment entirely. Pass `region_col`'s own name (with
+  `overwrite = TRUE`) to overwrite it in place instead of writing a new
+  column. See Details.
 
 - new_zip_col:
 
@@ -95,22 +98,28 @@ assign_treating_geography(
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names to snake_case on output.
+  to standardize column names to snake_case on output. If `FALSE`, the
+  input's own column names are restored on output (every function
+  normalizes names internally so that column arguments resolve either
+  way); any columns the function itself adds keep their snake_case or
+  dot-prefixed names.
 
 - verbose:
 
   Logical. If `FALSE`, suppresses informational messages
   ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
-  warnings and errors are always shown regardless.
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 ## Value
 
 The input data frame with reassigned region and/or zip code values
 written to `new_region_col`/`new_zip_col` (or to `region_col`/ `zip_col`
 in place, when `overwrite = TRUE`). A `.out_of_state` logical column is
-added indicating which rows were reassigned. When `overwrite = TRUE` and
-`preserve_original_geographies = TRUE`, `original_region` and/or
-`original_zip_code` columns are also present.
+added indicating which rows were reassigned. Despite its name it is
+`TRUE` for every row whose residence is not in `site`: another state,
+`"OTHER_REGION"`, `"{site}_UNKNOWN"`, and a missing `Region`. When
+`overwrite = TRUE` and `preserve_original_geographies = TRUE`,
+`original_region` and/or `original_zip_code` columns are also present.
 
 ## Details
 
@@ -125,26 +134,27 @@ summary table scoped to in-state values will silently exclude these rows
 without an explicit filter. EMS-based systems report incidence at the
 location of care rather than patient residence; this function brings
 ESSENCE data into that same frame. Assigning the treating facility's
-geography to these visits retains them in the analytic dataset while
-approximating both residence-based and incidence-based burden from a
-single geographic field.
+geography to these visits retains them in the analytic dataset. The cost
+is that one geographic field then holds residence for most rows and
+treating location for the reassigned ones; see "Hybrid geography
+assignment and cluster detection" below.
 
 ### Site prefix detection
 
 The `Region` field uses the format `{SITE}_{REGION}`, where `SITE` is
 the NSSP Site Short Name and `REGION` is the ESSENCE Region, a county
 name derived from a zip-code-to-county lookup table maintained by
-ESSENCE. Because some site names contain multiple underscores, the
-prefix is all characters before the **last** underscore. A visit is
-classified as out-of-state or unknown residence when its `Region` does
-not begin with `paste0(site, "_")`, or when `Region` is
-`"OTHER_REGION"`, `paste0(site, "_UNKNOWN")` (e.g. `"KY_UNKNOWN"`), or
-`NA`. Unlike `"OTHER_REGION"`, the `"{site}_UNKNOWN"` form carries the
-site prefix: ESSENCE uses it for a known-site record whose residential
-geography could not be determined, as distinct from a residence that is
-genuinely unmapped to any region, so it is checked explicitly rather
-than relying on the prefix mismatch below. For example, with
-`site = "KY"`:
+ESSENCE. The prefix is supplied by the caller as `site` (it is not
+parsed out of the data), so a site whose short name contains an
+underscore is passed whole. A visit is classified as out-of-state or
+unknown residence when its `Region` does not begin with
+`paste0(site, "_")`, or when `Region` is `"OTHER_REGION"`,
+`paste0(site, "_UNKNOWN")` (e.g. `"KY_UNKNOWN"`), or `NA`. Unlike
+`"OTHER_REGION"`, the `"{site}_UNKNOWN"` form carries the site prefix:
+ESSENCE uses it for a known-site record whose residential geography
+could not be determined, as distinct from a residence that is genuinely
+unmapped to any region, so it is checked explicitly rather than relying
+on the prefix mismatch below. For example, with `site = "KY"`:
 
 - `"KY_Jefferson"` -\> in-state, unchanged
 
@@ -169,9 +179,8 @@ that type is skipped with an informative message regardless of
 By default, results are written to new columns (`region_hybrid`/
 `zip_code_hybrid`), and `region_col`/`zip_col` are never modified; safe
 to call repeatedly without risk of losing the original values. To
-overwrite `region_col`/`zip_col` in place instead (the only behavior
-this function had before this parameter existed), pass their own name to
-`new_region_col`/`new_zip_col` and set `overwrite = TRUE`:
+overwrite `region_col`/`zip_col` in place instead, pass their own name
+to `new_region_col`/`new_zip_col` and set `overwrite = TRUE`:
 `assign_treating_geography(new_region_col = "region", overwrite = TRUE)`.
 `overwrite` guards **any** collision with an existing column, not just
 the source column: if `new_region_col`/`new_zip_col` names a column that
@@ -341,7 +350,7 @@ ed_clean |> assign_treating_geography(site = "OH")
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
 #> #   .out_of_state <lgl>, region_hybrid <chr>, zip_code_hybrid <chr>
 
-# Overwrite region/zip_code in place (the original behavior); requires
+# Overwrite region/zip_code in place; requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_treating_geography(

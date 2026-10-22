@@ -18,9 +18,9 @@ sort_for_dedupe(
   call = rlang::caller_env()
 )
 
-keep_group_rows(data, fac_col_str, visit_col_str, keep)
+keep_group_rows(data, fac_col_str, visit_col_str, keep, verbose = TRUE)
 
-count_visit_row_groups(data_clean, fac_col_str, visit_col_str)
+count_visit_row_groups(data_clean, fac_col_str, visit_col_str, verbose = TRUE)
 
 dup_summary_by_facility(data_clean, fac_col_str, dup_group_ids)
 
@@ -56,6 +56,10 @@ dup_summary_overall(data_clean, group_counts, dup_groups)
 - fac_col_str, visit_col_str:
 
   Names of the facility and visit columns.
+
+- verbose:
+
+  Logical. Whether to emit informational messages.
 
 - data_clean:
 
@@ -105,9 +109,9 @@ with
 which gives each NA-key row its own singleton group, and report how many
 rows were affected.
 
-For `keep = "most_complete"`, `dplyr::pick(dplyr::everything())` already
-excludes `.group_id`:
-[`dplyr::pick()`](https://dplyr.tidyverse.org/reference/pick.html) never
-includes the active grouping variable(s) among the columns it can pick,
-so no explicit exclusion is needed (or possible, since `pick()` errors
-if asked to exclude a column it never included).
+For `keep = "most_complete"`, the number of non-missing values in each
+row is counted once over the whole data frame, excluding the `.group_id`
+helper column, and each group then keeps its row with the highest count
+(the first, on a tie). Counting per group instead would repeat the same
+row-wise work once for each of the (often hundreds of thousands of)
+groups.

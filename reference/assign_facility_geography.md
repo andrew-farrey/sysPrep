@@ -88,13 +88,17 @@ assign_facility_geography(
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names to snake_case on output.
+  to standardize column names to snake_case on output. If `FALSE`, the
+  input's own column names are restored on output (every function
+  normalizes names internally so that column arguments resolve either
+  way); any columns the function itself adds keep their snake_case or
+  dot-prefixed names.
 
 - verbose:
 
   Logical. If `FALSE`, suppresses informational messages
   ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
-  warnings and errors are always shown regardless.
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 ## Value
 
@@ -118,11 +122,17 @@ universally: all visits, including in-state patients, receive the
 treating facility's geography. This produces a dataset scoped entirely
 to incidence-at-location rather than patient residence.
 
-This is functionally equivalent to renaming `HospitalRegion` to `Region`
-and `HospitalZip` to `ZipCode`, but operates on the existing data
-structure without column renaming or pipeline restructuring, preserving
+With `overwrite = TRUE` and
+`new_region_col = "region"`/`new_zip_col = "zip_code"`, this is
+functionally equivalent to renaming `HospitalRegion` to `Region` and
+`HospitalZip` to `ZipCode`, but operates on the existing data structure
+without column renaming or pipeline restructuring, preserving
 compatibility with downstream functions that expect `Region` and
-`ZipCode` by name.
+`ZipCode` by name. By default it instead writes the facility values to
+the new `region_facility`/`zip_code_facility` columns and leaves
+`Region` and `ZipCode` untouched. Because every row takes the facility
+value, the patient `Region` and `ZipCode` columns are not needed unless
+one of them is the output column.
 
 ### Incidence-at-location scoping and region-level cluster detection
 
@@ -149,10 +159,10 @@ two advantages over true hospital-level cluster detection:
 - **No Master Facility Table lookup required.** Hospital-level spatial
   clustering requires latitude/longitude coordinates sourced from the
   NSSP Master Facility Table, an additional logistical step outside the
-  standard ESSENCE data pull. Region-level binning achieves a close
-  approximation of hospital-level cluster detection using
-  `HospitalRegion`/`HospitalZip` instead, provided they're included in
-  the pull. Neither is guaranteed by default; both require being part of
+  standard ESSENCE data pull. Region-level binning is a coarser
+  alternative to hospital-level cluster detection that needs only
+  `HospitalRegion`/ `HospitalZip`, provided they're included in the
+  pull. Neither is guaranteed by default; both require being part of
   your site's default returned columns or explicitly requested via the
   API's `&field=` parameter.
 
@@ -161,7 +171,7 @@ it, out-of-state and unknown-residence visits treated at a facility
 either fall outside a region-scoped surveillance area entirely or bin to
 an unrelated region, silently understating exactly the facilities most
 likely to generate a true signal: border and mobile-population
-facilities. Region-level detection is only competitive with
+facilities. Region-level detection can only be compared with
 hospital-level detection, sensitivity-wise, once that gap is closed; see
 [`vignette("geography-assignment")`](https://andrew-farrey.github.io/sysPrep/articles/geography-assignment.md)
 for the full mechanism.
@@ -187,8 +197,9 @@ Kentucky, complementing the hybrid approach implemented in
 - Incidence-at-location burden estimation irrespective of patient
   origin.
 
-- Approximating hospital-level cluster detection without Master Facility
-  Table lookups or coordinate-based spatial methods.
+- A region-level alternative to hospital-level cluster detection that
+  needs no Master Facility Table lookups or coordinate-based spatial
+  methods.
 
 - Comparing total treated volume across urban and rural counties without
   differentiating which specific hospital saw each visit, useful when a
@@ -226,11 +237,10 @@ type are absent, that type is skipped with an informative message.
 
 By default, results are written to new columns (`region_facility`/
 `zip_code_facility`), and `region_col`/`zip_col` are never modified. To
-overwrite `region_col`/`zip_col` in place instead (the only behavior
-this function had before this parameter existed), pass their own name to
-`new_region_col`/`new_zip_col` and set `overwrite = TRUE`. `overwrite`
-guards **any** collision with an existing column, not just the source
-column; see
+overwrite `region_col`/`zip_col` in place instead, pass their own name
+to `new_region_col`/`new_zip_col` and set `overwrite = TRUE`.
+`overwrite` guards **any** collision with an existing column, not just
+the source column; see
 [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)'s
 documentation for the full behavior, which is identical here.
 
@@ -287,7 +297,7 @@ ed_clean |> assign_facility_geography()
 #> #   region <chr>, zip_code <chr>, sex <chr>, c_patient_age <int>,
 #> #   region_facility <chr>, zip_code_facility <chr>, .facility_geography <lgl>
 
-# Overwrite region/zip_code in place (the original behavior); requires
+# Overwrite region/zip_code in place; requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_facility_geography(

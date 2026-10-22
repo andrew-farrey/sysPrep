@@ -72,7 +72,22 @@ tested on its own.</p>
 <span></span>
 <span><span class="fu">long_from_has_been_flags</span><span class="op">(</span><span class="va">ed_data</span>, <span class="va">exclude_from_pivot</span>, <span class="va">verbose</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">bind_direct_admits</span><span class="op">(</span><span class="va">ed_long</span>, <span class="va">inpatient_admission_data</span>, <span class="va">verbose</span><span class="op">)</span></span>
+<span><span class="fu">bind_direct_admits</span><span class="op">(</span></span>
+<span>  <span class="va">ed_long</span>,</span>
+<span>  <span class="va">inpatient_admission_data</span>,</span>
+<span>  <span class="va">verbose</span>,</span>
+<span>  key_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  text_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">as_text_cols</span><span class="op">(</span><span class="va">data</span>, <span class="va">cols</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">check_linking_columns</span><span class="op">(</span></span>
+<span>  <span class="va">inpatient_admission_data</span>,</span>
+<span>  <span class="va">key_cols</span>,</span>
+<span>  call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">add_class_time</span><span class="op">(</span><span class="va">ed_long</span><span class="op">)</span></span>
 <span></span>
@@ -150,6 +165,26 @@ out of the pivot.</p></dd>
 built so far.</p></dd>
 
 
+<dt id="arg-key-cols">key_cols<a class="anchor" aria-label="anchor" href="#arg-key-cols"></a></dt>
+<dd><p>Character vector of the linking columns (facility, visit,
+and the fallback column if any) that must exist in
+<code>inpatient_admission_data</code>. Defaults to none.</p></dd>
+
+
+<dt id="arg-text-cols">text_cols<a class="anchor" aria-label="anchor" href="#arg-text-cols"></a></dt>
+<dd><p>Character vector of the linking identifier columns
+(<code>facility_col</code>, <code>visit_col</code>, and <code>fallback_visit_col</code>) to hold as text.
+Defaults to none.</p></dd>
+
+
+<dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
+<dd><p>A data frame. For <code>as_text_cols()</code>, one of the two pulls.</p></dd>
+
+
+<dt id="arg-cols">cols<a class="anchor" aria-label="anchor" href="#arg-cols"></a></dt>
+<dd><p>Character vector of column names in <code>data</code>.</p></dd>
+
+
 <dt id="arg-fac-col-str-visit-col-str">fac_col_str, visit_col_str<a class="anchor" aria-label="anchor" href="#arg-fac-col-str-visit-col-str"></a></dt>
 <dd><p>Names of the facility and visit columns
 in <code>ed_long</code>.</p></dd>
@@ -188,7 +223,9 @@ aborts. <code>detect_patient_class_source()</code> returns a list with <code>use
 <code>pc_list_str</code>, <code>use_mdt</code>, and <code>mdt_col_str</code>. <code>validate_has_been_flags()</code>
 returns the <code>HasBeen_</code> columns to exclude from the pivot. The remaining
 stages return the updated long-format data frame, except
-<code>build_episode_ids()</code>, which returns a character vector.</p>
+<code>build_episode_ids()</code>, which returns a character vector.
+<code>check_linking_columns()</code> returns <code>NULL</code> invisibly or aborts.
+<code>as_text_cols()</code> returns <code>data</code> with those columns as character.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -207,11 +244,14 @@ split each <code>C_Patient_Class_List</code> value into its classes and
 <code>pair_mdt_timestamps()</code> to attach <code>C_Patient_Class_MDT_Updates</code>
 timestamps to them.</p></li>
 <li><p><code>bind_direct_admits()</code> tags <code>inpatient_admission_data</code> as
-<code>"Direct Admit"</code> and appends it.</p></li>
+<code>"Direct Admit"</code> and appends it, after <code>check_linking_columns()</code> has
+confirmed the linking columns exist in it and <code>as_text_cols()</code> has
+converted the linking identifier columns to text.</p></li>
 <li><p><code>add_class_time()</code> fills the <code>.class_time</code> ordering column.</p></li>
 <li><p><code>build_episode_ids()</code> builds the <code>.episode_id</code> for every row.</p></li>
 <li><p><code>add_episode_metadata()</code> adds <code>.episode_id</code>,
-<code>.patient_class_sequence</code>, <code>.episode_n_rows</code>, and <code>.index_encounter</code>.</p></li>
+<code>.patient_class_sequence</code>, <code>.episode_n_rows</code>, and <code>.index_encounter</code>
+(<code>TRUE</code> on the one row per episode that the collapsed output keeps).</p></li>
 <li><p><code>collapse_episodes()</code> reduces each episode to one row
 (<code>return_format = "collapsed"</code> only).</p></li>
 </ol><p><code>long_from_has_been_flags()</code> pivots the <code>HasBeen_</code> flags to long format.
@@ -237,6 +277,10 @@ exception: a row missing <code>visit_col</code> can still be confirmed to match
 another row via a secondary identifier. The three candidate id strings are
 built as plain vectors, not inside a dplyr verb, so the fallback lookup is
 never attempted when no <code>fallback_visit_col</code> was supplied.</p>
+<p><code>add_episode_metadata()</code> computes its columns over whole vectors keyed by
+episode (<code><a href="parse_mdt_updates.html">episode_class_sequence()</a></code>, <code><a href="parse_mdt_updates.html">episode_primary_row()</a></code>), not per
+episode inside <code>dplyr</code>'s <code>.by =</code>: most episodes have a single row, and a
+per-episode R call for each of them dominated the run time.</p>
 <p><code>collapse_episodes()</code> deliberately avoids a per-episode helper applied
 through <code><a href="https://dplyr.tidyverse.org/reference/group_map.html" class="external-link">dplyr::group_modify()</a></code>: that slices out a full-width single-row
 data frame per episode and binds all of them back together, which is the

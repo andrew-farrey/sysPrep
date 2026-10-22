@@ -91,10 +91,16 @@ equivalents.</p></dd>
 
 <dt id="arg-visit-col">visit_col<a class="anchor" aria-label="anchor" href="#arg-visit-col"></a></dt>
 <dd><p>Unquoted
-column name identifying the visit. Defaults to <code>Visit_ID</code>. Common
-alternatives include <code>MedicalRecordNumber</code>, <code>MRN</code>, <code>VisitNumber</code>, and
-<code>C_Unique_Patient_ID</code>. Accepts both raw ESSENCE names and
-post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
+column name identifying the visit. Defaults to <code>Visit_ID</code>. Use another
+column only if it identifies a single visit within a facility (for
+example a site-specific visit or encounter number). Do not use a
+patient-level identifier such as <code>C_Unique_Patient_ID</code>, an MRN, or
+<code>MedicalRecordNumber</code>: those are shared by all of a patient's visits, so
+every repeat visit by the same patient would be collapsed into one row.
+An identifier has no numeric meaning: values are compared as text (the
+number <code>100000</code> and the text <code>"100000"</code> are the same visit), and the
+column is returned in the type it arrived in. Accepts both raw ESSENCE
+names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
 
 
 <dt id="arg-return-format">return_format<a class="anchor" aria-label="anchor" href="#arg-return-format"></a></dt>
@@ -104,7 +110,8 @@ post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html"
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
-(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.</p></dd>
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
@@ -126,15 +133,21 @@ more than one row.</p></dd>
 <dt><code>$visit_groups</code></dt>
 <dd><p>Tibble with one row per facility x visit_col
 containing <code>n_rows</code>, <code>n_biosense_ids</code>, <code>n_dates</code>, <code>n_pid</code>,
-<code>n_patient_classes</code> (if available), and <code>dup_type</code>.</p></dd>
+<code>n_patient_classes</code> (if available), and <code>dup_type</code>. The <code>n_*</code>
+columns count distinct values within the group;
+<code>n_biosense_ids</code> is reported for inspection and does not enter the
+classification.</p></dd>
 
 <dt><code>$by_facility</code></dt>
 <dd><p>Wide-format count of each <code>dup_type</code> per
 facility, sorted by total duplicated Visit IDs descending.</p></dd>
 
 <dt><code>$overall</code></dt>
-<dd><p>Dataset-level counts and proportions by <code>dup_type</code>
-via <code><a href="https://sfirke.github.io/janitor/reference/tabyl.html" class="external-link">janitor::tabyl()</a></code>.</p></dd>
+<dd><p>Counts by <code>dup_type</code> via <code><a href="https://sfirke.github.io/janitor/reference/tabyl.html" class="external-link">janitor::tabyl()</a></code>, with
+<code>percent</code> as each type's share of the <em>duplicated</em> visit groups
+(the groups with more than one row), not of all visits in the pull.
+For the share of all visits that are duplicated, see
+<code>pct_duplicated</code> in <code><a href="summarize_duplicates.html">summarize_duplicates()</a></code><code>$overall</code>.</p></dd>
 
 
 </dl><p>The <code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> method returns the printed report as a character vector;
@@ -176,8 +189,10 @@ syndrome definitions where a few inflated counts can trigger anomaly
 detection alerts that do not reflect genuine changes in incidence.
 The duplicate arises only at facilities whose systems continue to
 update <code>C_Visit_Date_Time</code> after initial registration. Detected by
-multiple distinct <code>C_BioSense_ID</code> values and <code>Date</code> values within a
-group.</p></dd>
+more than one distinct <code>Date</code> value within a group. (The recomputed
+<code>C_BioSense_ID</code> accompanies it, but the date change is what is tested:
+a group whose <code>C_BioSense_ID</code> varies with no change in <code>Date</code>, patient
+identifier, or patient class is <code>"type_unknown"</code>.)</p></dd>
 
 <dt><code>"pid_change"</code></dt>
 <dd><p><code>C_Unique_Patient_ID</code> (which maps to MRN in
@@ -203,10 +218,14 @@ standard ESSENCE API. See also <code><a href="link_encounters.html">link_encount
 estimation from multi-class episodes.</p></dd>
 
 <dt><code>"type_unknown"</code></dt>
-<dd><p>Multiple rows exist but all assessed fields
-are identical across rows. The differentiating field was not included
-in the pull. Consider adding <code>C_BioSense_ID</code>, <code>Date</code>, and
-<code>C_Unique_Patient_ID</code> to your ESSENCE pull fields.</p></dd>
+<dd><p>Multiple rows exist but the assessed fields
+(<code>Date</code>, <code>C_Unique_Patient_ID</code>, and <code>C_Patient_Class</code> when present) are
+identical across rows. Whatever differs between the rows is not one of
+the fields assessed here, for example a plain retransmission, or a
+field that was not included in the pull. <code>n_biosense_ids</code> in
+<code>$visit_groups</code> shows whether the rows at least carry different
+<code>C_BioSense_ID</code> values. To see what does differ, compare the rows of
+the groups in <code>$duplicate_ids</code> directly.</p></dd>
 
 <dt>Compound types</dt>
 <dd><p>Any combination of the above joined with <code>+</code>,
@@ -309,7 +328,7 @@ further analysis.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">ESSENCE Duplicate Classification</span> <span style="color: #00BBBB;">────────────────────────────────────────────</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">Overall</span> ──</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">Overall (percent of duplicated visit groups)</span> ──</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                      dup_type n percent</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                  type_unknown 5   38.5%</span>

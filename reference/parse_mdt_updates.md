@@ -12,9 +12,11 @@ parse_mdt_segment(seg, n_classes)
 
 safe_as_posixct(x)
 
-compute_patient_class_sequence(patient_class, class_time)
+episode_class_sequence(episode, patient_class, class_time)
 
 pick_primary_row_index(patient_classes)
+
+episode_primary_row(episode, patient_class)
 ```
 
 ## Arguments
@@ -38,6 +40,11 @@ pick_primary_row_index(patient_classes)
   [`as.character()`](https://rdrr.io/r/base/character.html). A `POSIXct`
   vector is returned unchanged.
 
+- episode:
+
+  Vector identifying the episode each row belongs to (for example
+  `.episode_id`); rows with equal values are one episode.
+
 - patient_class:
 
   Character vector of one episode's patient classes, one per row (so a
@@ -57,9 +64,12 @@ pick_primary_row_index(patient_classes)
 `parse_mdt_updates()` returns a character vector of length `n_classes`.
 `parse_mdt_segment()` returns a list with `idx` (an integer position)
 and `time` (a string), or `NULL`. `safe_as_posixct()` returns a
-`POSIXct` vector the length of `x`. `compute_patient_class_sequence()`
-returns a single string, or `NA_character_` when there is no non-missing
-patient class. `pick_primary_row_index()` returns a single integer.
+`POSIXct` vector the length of `x`. `episode_class_sequence()` returns a
+character vector the length of `episode`: each row's episode sequence,
+`NA` for an episode with no non-missing patient class.
+`pick_primary_row_index()` returns a single integer.
+`episode_primary_row()` returns a logical vector the length of
+`episode`, `TRUE` on each episode's primary row.
 
 ## Details
 
@@ -86,13 +96,18 @@ timestamps (with or without a trailing `Z`) and US-style
 `month/day/year` timestamps, trying each format against the whole vector
 at once and keeping the first format that parses each element.
 
-`compute_patient_class_sequence()` orders an episode's distinct patient
+`episode_class_sequence()` orders each episode's distinct patient
 classes by the earliest `class_time` each class occurs at, for example
 `"Direct Admit->ED"` when the direct-admit record's timestamp precedes
-the ED record's. It falls back to alphabetical order (matching legacy
-behavior) when no usable timestamp exists for the episode at all;
-classes with no timestamp sort after timed classes when some but not all
-classes in the episode have one.
+the ED record's, and returns that string for every row of the episode.
+It falls back to alphabetical order when no usable timestamp exists for
+the episode at all; classes with no timestamp sort after timed classes
+when some but not all classes in the episode have one. Classes with
+identical timestamps (every class derived from one record shares that
+record's timestamp) also fall back to alphabetical order. That is a
+tiebreak only: when the timestamps are missing or equal the true order
+cannot be determined from the data, so the alphabetical order carries no
+clinical meaning.
 
 `parse_mdt_segment()` parses one trimmed, non-empty
 `{position};timestamp;` segment into its position and timestamp string,
@@ -100,7 +115,9 @@ or returns `NULL` when the segment does not match this encoding or its
 position is not between 1 and `n_classes`.
 
 `pick_primary_row_index()` returns the index of the ED row in an episode
-if one exists, else `1` (the first row in original order). This matches
-the precedence
-[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
-has always given the ED row via `.index_encounter`.
+if one exists, else `1` (the first row in original order): the row whose
+values represent the episode when it is collapsed.
+`episode_primary_row()` marks that row in every episode of a long-format
+data frame, which is what `.index_encounter` records, so a long-format
+count of index encounters always equals the number of rows in the
+collapsed output.

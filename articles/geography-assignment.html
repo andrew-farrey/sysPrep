@@ -218,23 +218,24 @@ with.</p>
 where <code>SITE</code> is the NSSP Site Short Name (e.g.,
 <code>"KY"</code>) and <code>REGION</code> is the ESSENCE Region, a
 county name derived from a zip-code-to-county lookup table maintained by
-ESSENCE (e.g., <code>"Jefferson"</code>). Some site names contain
-additional underscores (e.g., multi-word state abbreviations used in
-certain NSSP configurations), so the site prefix is defined as all
-characters before the <strong>last</strong> underscore in the
-string.</p>
-<p>Both geography functions use the same detection logic: - A visit is
-classified as <strong>in-state</strong> when <code>Region</code> begins
-with <code>paste0(site, "_")</code> (e.g., <code>"KY_"</code> for
-<code>site = "KY"</code>) and is not the known-site unknown-residence
-placeholder below. - A visit is classified as <strong>out-of-state or
-unknown</strong> when <code>Region</code> begins with a different
-prefix, is exactly <code>"OTHER_REGION"</code>, is exactly
-<code>paste0(site, "_UNKNOWN")</code> (e.g., <code>"KY_UNKNOWN"</code>),
-or is <code>NA</code>. The <code>"{site}_UNKNOWN"</code> form is checked
-explicitly rather than relying on the prefix mismatch, since it carries
-the site prefix and would otherwise be (incorrectly) classified as
-in-state.</p>
+ESSENCE (e.g., <code>"Jefferson"</code>). The functions do not parse the
+prefix out of the data: <code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code> takes
+it as the <code>site</code> argument and tests whether
+<code>Region</code> begins with <code>paste0(site, "_")</code>. A site
+whose short name itself contains an underscore is therefore passed
+whole.</p>
+<p><code><a href="../reference/assign_treating_geography.html">assign_treating_geography()</a></code> uses this detection logic: -
+A visit is classified as <strong>in-state</strong> when
+<code>Region</code> begins with <code>paste0(site, "_")</code> (e.g.,
+<code>"KY_"</code> for <code>site = "KY"</code>) and is not the
+known-site unknown-residence placeholder below. - A visit is classified
+as <strong>out-of-state or unknown</strong> when <code>Region</code>
+begins with a different prefix, is exactly <code>"OTHER_REGION"</code>,
+is exactly <code>paste0(site, "_UNKNOWN")</code> (e.g.,
+<code>"KY_UNKNOWN"</code>), or is <code>NA</code>. The
+<code>"{site}_UNKNOWN"</code> form is checked explicitly rather than
+relying on the prefix mismatch, since it carries the site prefix and
+would otherwise be (incorrectly) classified as in-state.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Illustrate the detection logic on a few example values</span></span>
 <span><span class="va">region_examples</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"KY_Jefferson"</span>, <span class="st">"TN_Davidson"</span>, <span class="st">"OH_Hamilton"</span>,</span>
@@ -566,7 +567,7 @@ areas.</p>
 <p>A second advantage is logistical: hospital-level spatial clustering
 requires latitude/longitude coordinates from the NSSP Master Facility
 Table, an additional lookup outside the standard ESSENCE data pull.
-Region-level attribution achieves a close approximation of
+Region-level attribution offers a coarser, region-level alternative to
 hospital-level cluster detection using <code>HospitalRegion</code>, a
 field returned without any coordinate lookup, <strong>provided it’s
 included in the pull</strong>: <code>HospitalRegion</code> isn’t

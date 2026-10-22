@@ -48,7 +48,7 @@ exported function reads as a short pipeline.</p>
 <span>  call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">resolve_review_date_col</span><span class="op">(</span><span class="va">data</span>, <span class="va">date_col_quo</span><span class="op">)</span></span>
+<span><span class="fu">resolve_review_date_col</span><span class="op">(</span><span class="va">data</span>, <span class="va">date_col_quo</span>, call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">inform_review_defaults</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
@@ -78,6 +78,8 @@ exported function reads as a short pipeline.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">flag_outliers</span><span class="op">(</span><span class="va">facility_counts</span>, <span class="va">detect_col</span>, <span class="va">method</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">outlier_method_label</span><span class="op">(</span><span class="va">x</span>, <span class="va">pct_low</span>, <span class="va">pct_high</span>, <span class="va">iqr_low</span>, <span class="va">iqr_high</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">arrange_review_result</span><span class="op">(</span><span class="va">facility_counts</span>, <span class="va">detect_col</span>, <span class="va">return_format</span><span class="op">)</span></span>
 <span></span>
@@ -147,6 +149,12 @@ facility types.</p></dd>
 <dd><p>Non-negative number: the IQR fence multiplier.</p></dd>
 
 
+<dt id="arg-x-pct-low-pct-high-iqr-low-iqr-high">x, pct_low, pct_high, iqr_low, iqr_high<a class="anchor" aria-label="anchor" href="#arg-x-pct-low-pct-high-iqr-low-iqr-high"></a></dt>
+<dd><p>The detection column and the
+four thresholds, as parallel vectors. A threshold that is <code>NA</code> (the
+method was not requested) never fires.</p></dd>
+
+
 <dt id="arg-return-format">return_format<a class="anchor" aria-label="anchor" href="#arg-return-format"></a></dt>
 <dd><p>One of <code>"outliers_only"</code> or <code>"all"</code>.</p></dd>
 
@@ -157,7 +165,8 @@ facility types.</p></dd>
 <code>resolve_review_date_col()</code> returns a list with <code>use_time_norm</code> and
 <code>date_col_str</code>. <code>inform_review_defaults()</code> and <code>inform_review_summary()</code>
 are called for their messages. The remaining stages return the updated
-<code>facility_counts</code> data frame.</p>
+<code>facility_counts</code> data frame. <code>outlier_method_label()</code> returns a character
+vector the length of <code>x</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -168,14 +177,20 @@ warning and falling back to raw visit counts when it is absent.</p></li>
 <li><p><code>inform_review_defaults()</code> emits the informational messages about
 the defaults in effect.</p></li>
 <li><p><code>count_facility_visits()</code> counts visits per facility and facility
-type, normalized to visits per day when a date column is available.</p></li>
+type. When a date column is available it also reports <code>n_days</code> (the
+days the facility sent data) and <code>visits_per_day</code>, which divides by the
+number of distinct dates in the whole pull rather than by <code>n_days</code>, so
+a facility that stops sending partway through the pull scores lower
+instead of looking the same as one that sent every day.</p></li>
 <li><p><code>add_outlier_thresholds()</code> adds the percentile and/or IQR
 thresholds, optionally within facility types. Only the quantiles the
 chosen <code>method</code> actually uses are computed: the IQR quantiles would be
 wasted work (recomputed per group) under the default
 <code>method = "percentile"</code>, and vice versa.</p></li>
 <li><p><code>flag_outliers()</code> adds the <code>.outlier_*</code> columns and drops the
-threshold helper columns. <code>method</code> is a single scalar for the whole
+threshold helper columns. <code>.outlier_method</code> records the criterion that
+fired (<code>"percentile"</code>, <code>"iqr"</code>, or <code>"percentile+iqr"</code>), not the
+requested <code>method</code>. <code>method</code> is a single scalar for the whole
 call, so the comparison is chosen once with <code>if</code>/<code>else</code> rather than
 <code><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">dplyr::case_when()</a></code>, which is deprecated for a scalar condition as of
 dplyr 1.2.0.</p></li>

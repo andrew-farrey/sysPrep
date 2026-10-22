@@ -97,20 +97,26 @@ review_facility_ed_visits(
 
   Logical. If `TRUE` (default), applies
   [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-  to standardize column names to snake_case on output.
+  to standardize column names to snake_case on output. If `FALSE`, the
+  input's own column names are restored on output (every function
+  normalizes names internally so that column arguments resolve either
+  way); any columns the function itself adds keep their snake_case or
+  dot-prefixed names.
 
 - verbose:
 
   Logical. If `FALSE`, suppresses informational messages
   ([`rlang::inform()`](https://rlang.r-lib.org/reference/abort.html));
-  warnings and errors are always shown regardless.
+  warnings and errors are always shown regardless. Defaults to `TRUE`.
 
 ## Value
 
 A tibble with one row per facility containing facility identifier,
 facility type, `n_visits`, optionally `visits_per_day` and `n_days`, and
 outlier flag columns `.outlier_low`, `.outlier_high`, `.outlier_flag`,
-`.outlier_direction`, and `.outlier_method`.
+`.outlier_direction`, and `.outlier_method` (the criterion that flagged
+the facility: `"percentile"`, `"iqr"`, or `"percentile+iqr"`; `NA` for
+facilities that were not flagged).
 
 ## Details
 
@@ -131,29 +137,41 @@ decisions. Always review flagged facilities in context.
 - `"percentile"` (default):
 
   Flags facilities below `percentile_low` and above `percentile_high` of
-  the visit count distribution. Default thresholds of 5th and 95th
-  percentile are interpretable and robust to skewed count distributions.
+  the visit count distribution. This is a tail ranking, not a test for
+  unusual values: it flags roughly the most extreme
+  `percentile_low + (1 - percentile_high)` share of facilities whether
+  or not any of them is actually abnormal (with the default thresholds
+  and fewer than about 20 facilities it flags the lowest and the highest
+  facility every time). Use it to produce a short, ordered list to look
+  at; use `"iqr"` when you want only facilities that are unusual
+  relative to the spread of the rest.
 
 - `"iqr"`:
 
   Flags facilities below `Q1 - iqr_multiplier * IQR` and above
   `Q3 + iqr_multiplier * IQR`. Tukey fences with the default multiplier
-  of 1.5 are sensitive to data dropouts: a facility that abruptly stops
-  sending visits during a pull window will fall well below the lower
-  fence. Increase `iqr_multiplier` to reduce sensitivity.
+  of 1.5 flag nothing when facilities are similar, and are sensitive to
+  data dropouts when `date_col` is supplied: a facility that abruptly
+  stops sending visits during a pull window will fall well below the
+  lower fence. Increase `iqr_multiplier` to reduce sensitivity.
 
 - `"both"`:
 
   Applies both methods independently. A facility is flagged if it meets
-  either criterion. `.outlier_method` indicates which method triggered.
+  either criterion. `.outlier_method` records which criterion fired:
+  `"percentile"`, `"iqr"`, or `"percentile+iqr"`.
 
 ### Time normalization
 
 When `date_col` is supplied, visits per day is computed and outlier
-detection is applied to the normalized rate rather than raw counts. This
-makes pulls of different durations comparable and improves sensitivity
-to within-pull data dropouts (e.g., a facility that stops sending data
-mid-month).
+detection is applied to the normalized rate rather than raw counts.
+`visits_per_day` is a facility's `n_visits` divided by the number of
+distinct dates in the whole pull, not by the days that facility sent
+data (`n_days`, reported alongside for reference). A facility that sends
+data every day of a 30-day pull and one that sends the same daily volume
+for 10 days and then stops therefore get different rates, so a mid-pull
+dropout falls below the lower fence instead of being hidden. This also
+makes pulls of different durations comparable.
 
 ### Grouped detection
 
@@ -206,12 +224,13 @@ essence_clean |>
     date_col = Date
   )
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> 0 of 8 facilities flagged as outliers (0%) using `method = "iqr"`.
-#> # A tibble: 0 × 10
-#> # ℹ 10 variables: hospital <int>, facility_type <chr>, n_visits <int>,
-#> #   n_days <int>, visits_per_day <dbl>, .outlier_low <lgl>,
-#> #   .outlier_high <lgl>, .outlier_flag <lgl>, .outlier_direction <chr>,
-#> #   .outlier_method <chr>
+#> 1 of 8 facilities flagged as outliers (12.5%) using `method = "iqr"`.
+#> # A tibble: 1 × 10
+#>   hospital facility_type  n_visits n_days visits_per_day .outlier_low
+#>      <int> <chr>             <int>  <int>          <dbl> <lgl>       
+#> 1     1001 Emergency Care       38     38          0.286 FALSE       
+#> # ℹ 4 more variables: .outlier_high <lgl>, .outlier_flag <lgl>,
+#> #   .outlier_direction <chr>, .outlier_method <chr>
 
 # Both methods, grouped by facility type
 essence_clean |>

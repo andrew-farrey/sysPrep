@@ -9,10 +9,10 @@ deduplication with mechanism classification, care setting filtering with
 facility type correction, emergency department to inpatient encounter
 linkage for accurate burden estimation, and geographic attribution for
 out-of-state and non-residential visits. Methods were developed through
-applied drug overdose surveillance and cluster detection. Functions have
-been validated against records pulled from the NSSP ESSENCE 'va_er'
-(Patient Location, Full Details) and 'va_hosp' (Facility Location, Full
-Details) data sources.
+applied drug overdose surveillance and cluster detection. Designed for
+ESSENCE 'dataDetails' pulls from the 'va_er' (Patient Location, Full
+Details) and 'va_hosp' (Facility Location, Full Details) data sources,
+which it was developed and tested against.
 
 ## Package Options
 

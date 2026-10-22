@@ -85,8 +85,10 @@ so information present on only one source row isn't discarded.</p>
 <dd><p>Required. A deduplicated data frame of
 inpatient visits queried with <code>HasBeenAdmitted = 1</code> or <code>HasBeenI = 1</code>.
 Rows with <code>HasBeenE = 1</code> are automatically removed to prevent duplicate
-rows for the same underlying record. <code>link_encounters()</code> aborts if this
-is <code>NULL</code>; see Details.</p></dd>
+rows for the same underlying record. It must contain the same linking
+columns as <code>ed_data</code> (<code>facility_col</code>, <code>visit_col</code>, and
+<code>fallback_visit_col</code> if used), or <code>link_encounters()</code> aborts.
+<code>link_encounters()</code> also aborts if this is <code>NULL</code>; see Details.</p></dd>
 
 
 <dt id="arg-facility-col">facility_col<a class="anchor" aria-label="anchor" href="#arg-facility-col"></a></dt>
@@ -101,13 +103,19 @@ post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html"
 <dt id="arg-visit-col">visit_col<a class="anchor" aria-label="anchor" href="#arg-visit-col"></a></dt>
 <dd><p>Unquoted
 column name identifying the visit. Defaults to <code>Visit_ID</code>. Accepts
-both raw ESSENCE names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
+both raw ESSENCE names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.
+Linking keys are identifiers with no numeric meaning, so <code>facility_col</code>
+(e.g. <code>Hospital</code>), this column, and <code>fallback_visit_col</code> are all held as
+text in the output, whatever type each pull delivered them in (the
+ESSENCE <code>dataDetails</code> API returns them as text; a CSV read may not).
+Numbers are written in full, without scientific notation, so <code>100000</code>
+becomes <code>"100000"</code>. Convert back after the call if you need numbers.</p></dd>
 
 
 <dt id="arg-fallback-visit-col">fallback_visit_col<a class="anchor" aria-label="anchor" href="#arg-fallback-visit-col"></a></dt>
 <dd><p>Optional. Unquoted column name of a secondary identifier (e.g.
-<code>C_BioSense_ID</code>) used to match two rows into one episode when
-<code>visit_col</code> is missing on the row being matched. Defaults to <code>NULL</code>,
+<code>C_BioSense_ID</code>) that matches two rows into one episode when
+<code>visit_col</code> is missing on both rows. Defaults to <code>NULL</code>,
 which preserves the default behavior of never merging rows solely
 because they share a missing <code>visit_col</code>; see Details.</p></dd>
 
@@ -137,12 +145,16 @@ within-half structure of <code>CCDD</code>/<code>CCDDParsed</code>.</p></dd>
 <dt id="arg-clean-names">clean_names<a class="anchor" aria-label="anchor" href="#arg-clean-names"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), applies
 <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> to standardize column names to snake_case on
-output.</p></dd>
+output. If <code>FALSE</code>, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
-(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.</p></dd>
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -162,21 +174,19 @@ and <code>.index_encounter</code>.</p>
 <h3 id="why-this-matters-for-case-counts">Why this matters for case counts<a class="anchor" aria-label="anchor" href="#why-this-matters-for-case-counts"></a></h3>
 
 
-<p>Querying the inpatient pull with <code>HasBeenE = 0</code> added on purpose,
-specifically to exclude anything already captured by the
-<code>HasBeenE = 1</code> pull, looks like a safe way to avoid double-counting.
-By the API's own field semantics it should be: <code>HasBeenE = 0</code> means no
-ED encounter appears anywhere in that record's history. It isn't. Some
-records that correctly show <code>HasBeenE = 0</code> were, clinically, discharged
-from the ED and immediately readmitted; the ED encounter lives
-entirely on a separate record already captured in the first pull, so
-the exclusion filter never catches it. If you don't know this and want
-to include inpatient admissions in your burden counts, summing the two
-pulls double-counts that proportion of ED visits a second time. This is
-the same problem <code><a href="dedupe.html">dedupe()</a></code> solves for retransmitted or split ESSENCE
-rows: the duplicate here doesn't share a flag value that would mark
-it as related. <code>link_encounters()</code> finds the relationship directly, by
-checking for a matching ED record under the same <code>facility_col</code> x
+<p>Adding <code>HasBeenE = 0</code> to the inpatient query does not stop an ED visit
+from being counted twice when you add inpatient admissions to ED counts.
+It looks like a safe exclusion, and by the API's own field semantics it
+should be: <code>HasBeenE = 0</code> means no ED encounter appears anywhere in that
+record's history. But some records that correctly show <code>HasBeenE = 0</code>
+were, clinically, discharged from the ED and immediately readmitted. The
+ED encounter lives entirely on a separate record already captured in the
+<code>HasBeenE = 1</code> pull, so the exclusion filter never catches it, and
+summing the two pulls counts that share of ED visits a second time. This
+is the same problem <code><a href="dedupe.html">dedupe()</a></code> solves for retransmitted or split ESSENCE
+rows, except that the duplicate here doesn't share a flag value that would
+mark it as related. <code>link_encounters()</code> finds the relationship directly,
+by checking for a matching ED record under the same <code>facility_col</code> x
 <code>visit_col</code> key, instead of trusting <code>HasBeenE</code> alone.</p>
 </div>
 
@@ -227,8 +237,11 @@ direct-admit row has <code>HasBeenAdmitted = 1</code>, the merged row correctly 
 <p>Columns named in <code>merge_fields</code> are reconciled using the strategy assigned
 to them:</p><dl><dt><code>"concat"</code></dt>
 <dd><p>Starting from the primary row's value, appends each
-other row's non-empty value if it is not already a substring of the
-accumulated text (<code>"; "</code>-separated). Generic free text.</p></dd>
+other row's non-empty value unless the accumulated text (<code>"; "</code>-
+separated) already contains it as whole words or whole codes, so
+complaint text or a diagnosis or SNOMED code present in one record but
+not the other is kept (<code>"fall"</code> is not found in <code>"waterfall"</code>, nor
+<code>"R10.9"</code> in <code>"R10.90"</code>). Generic free text.</p></dd>
 
 <dt><code>"union_delimited"</code></dt>
 <dd><p>Splits each row's value on <code>merge_delimiter</code>,
@@ -371,9 +384,12 @@ two-pull approach).</p></li>
 when neither field above is present.</p></li>
 </ol><p>If none of these fields are present (or none can be parsed) anywhere in
 the data, <code>link_encounters()</code> warns once and <code>.patient_class_sequence</code>
-falls back to alphabetical order for every episode. Within a single
-episode, if only some classes have a usable timestamp, timed classes are
-ordered first and untimed classes are appended last.</p>
+falls back to alphabetical order for every episode. Classes whose
+timestamps are identical (every class derived from one record shares that
+record's timestamp) are likewise listed alphabetically: the data cannot
+say which came first, so that order carries no clinical meaning. Within a
+single episode, if only some classes have a usable timestamp, timed classes
+are ordered first and untimed classes are appended last.</p>
 </div>
 
 <div class="section">
@@ -394,13 +410,17 @@ episode's ED and direct-admit rows even when <code>Visit_ID</code> is missing on
 both, which is exactly the case <code>visit_col</code> alone cannot resolve.
 <code>fallback_visit_col</code> lets you name that secondary identifier: whenever
 a row is missing <code>visit_col</code>, <code>link_encounters()</code> matches it to
-another row sharing the same <code>facility_col</code> and the same
-<code>fallback_visit_col</code> value instead of treating it as unmatchable.
+another row that is also missing <code>visit_col</code> and shares the same
+<code>facility_col</code> and <code>fallback_visit_col</code> value, instead of treating it as
+unmatchable. It does not link a row missing <code>visit_col</code> to a row that has
+one: a secondary identifier such as <code>C_BioSense_ID</code> can change over a
+visit's life (it is recomputed when the visit date changes), so it is only
+trusted to pair two rows that both lack the primary key.
 Rows with a non-missing <code>visit_col</code> are never affected, and a row
 missing both <code>visit_col</code> and <code>fallback_visit_col</code> (or missing
 <code>facility_col</code>) still gets its own unique episode, exactly as when
-<code>fallback_visit_col</code> isn't supplied at all: the default <code>NULL</code>
-preserves that original behavior precisely.</p>
+<code>fallback_visit_col</code> isn't supplied at all, which is the default
+(<code>NULL</code>).</p>
 </div>
 
 <div class="section">
@@ -429,9 +449,12 @@ when the direct admit occurred first; see Details.</p></dd>
 from before merging.</p></dd>
 
 <dt><code>.index_encounter</code></dt>
-<dd><p>In long format, <code>TRUE</code> on the row that
-survives filtering to one row per episode. In collapsed format, always
-<code>TRUE</code> (retained for schema consistency with long format).</p></dd>
+<dd><p>In long format, <code>TRUE</code> on exactly one row per
+episode: the row the collapsed output is built from, which is the
+episode's first <code>"ED"</code> row if it has one, else its first row. Summing
+it therefore equals the number of rows in the collapsed output. In
+collapsed format, always <code>TRUE</code> (retained for schema consistency with
+long format).</p></dd>
 
 
 </dl></div>

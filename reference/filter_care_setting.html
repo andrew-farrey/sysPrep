@@ -78,9 +78,10 @@ output of <code><a href="dedupe.html">dedupe()</a></code>.</p></dd>
 
 <dt id="arg-facility-col">facility_col<a class="anchor" aria-label="anchor" href="#arg-facility-col"></a></dt>
 <dd><p>Unquoted
-column name identifying the facility. Defaults to <code>HospitalName</code>.
-Accepts both raw ESSENCE names and post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code>
-equivalents.</p></dd>
+column name identifying the facility. Defaults to <code>HospitalName</code>, and
+unlike other functions does not prefer <code>Hospital</code>; see "Facility name
+column" in Details. Accepts both raw ESSENCE names and
+post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents.</p></dd>
 
 
 <dt id="arg-facility-type-col">facility_type_col<a class="anchor" aria-label="anchor" href="#arg-facility-type-col"></a></dt>
@@ -151,12 +152,16 @@ data. Defaults to <code>FALSE</code>.</p></dd>
 <dt id="arg-clean-names">clean_names<a class="anchor" aria-label="anchor" href="#arg-clean-names"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), applies
 <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> to standardize column names to snake_case on
-output.</p></dd>
+output. If <code>FALSE</code>, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. If <code>FALSE</code>, suppresses informational messages
-(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.</p></dd>
+(<code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform()</a></code>); warnings and errors are always shown regardless.
+Defaults to <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -218,14 +223,28 @@ applied.</p>
 </div>
 
 <div class="section">
-<h3 id="kentucky-data-structure">Kentucky data structure<a class="anchor" aria-label="anchor" href="#kentucky-data-structure"></a></h3>
+<h3 id="default-keep-types">Default <code>keep_types</code><a class="anchor" aria-label="anchor" href="#default-keep-types"></a></h3>
 
 
-<p>In Kentucky, inpatient admission data are transmitted through the
-corresponding ED hospital feeds and share the same <code>FacilityType</code>. The
-default <code>keep_types</code> of <code>c("Emergency Care", "Inpatient Practice Setting")</code>
-reflects this structure. Sites pulling ED visits only should set
-<code>keep_types = "Emergency Care"</code>.</p>
+<p>The default <code>keep_types</code> of <code>c("Emergency Care", "Inpatient Practice Setting")</code> keeps both facility types that identify hospitals with emergency
+or inpatient capacity, so a pull that mixes ED and inpatient records is not
+silently narrowed. In Kentucky, inpatient admission data are transmitted
+through the corresponding ED hospital feeds and carry the ED
+<code>FacilityType</code>, so Kentucky pulls do not depend on the second value; sites
+whose inpatient feeds are onboarded under <code>"Inpatient Practice Setting"</code>
+do. Sites pulling ED visits only should set <code>keep_types = "Emergency Care"</code>.</p>
+</div>
+
+<div class="section">
+<h3 id="facility-name-column">Facility name column<a class="anchor" aria-label="anchor" href="#facility-name-column"></a></h3>
+
+
+<p>Unlike the duplicate and review functions, <code>filter_care_setting()</code> does not
+prefer <code>Hospital</code> over <code>HospitalName</code> for <code>facility_col</code>: its name-based
+corrections (<code>fix_facility_type_vector</code>, <code>fix_facility_type_regex</code>) match
+facility <em>names</em>, so the column must hold names. The ID-based route
+(<code>fix_facility_id_vector</code>, matched on <code>facility_id_col</code>) is the one that
+uses the stable identifier.</p>
 </div>
 
 <div class="section">
