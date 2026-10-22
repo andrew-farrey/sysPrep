@@ -36,9 +36,14 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
+      # Pull requests from Dependabot and from forks are not given repository
+      # secrets, so Codecov receives no token and rejects the upload. Only a
+      # push to the default branch, which does have the token, must succeed;
+      # on a pull request the tests and coverage run still report, and a
+      # failed upload does not fail the check.
       - uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' || !secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: ${{ github.event_name == 'push' }}
           files: ./cobertura.xml
           plugins: noop
           disable_search: true
