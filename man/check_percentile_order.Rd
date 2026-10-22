@@ -7,6 +7,7 @@
 \alias{count_facility_visits}
 \alias{add_outlier_thresholds}
 \alias{flag_outliers}
+\alias{outlier_method_label}
 \alias{arrange_review_result}
 \alias{inform_review_summary}
 \title{Stages of review_facility_ed_visits()}
@@ -17,7 +18,7 @@ check_percentile_order(
   call = rlang::caller_env()
 )
 
-resolve_review_date_col(data, date_col_quo)
+resolve_review_date_col(data, date_col_quo, call = rlang::caller_env())
 
 inform_review_defaults(
   data,
@@ -47,6 +48,8 @@ add_outlier_thresholds(
 )
 
 flag_outliers(facility_counts, detect_col, method)
+
+outlier_method_label(x, pct_low, pct_high, iqr_low, iqr_high)
 
 arrange_review_result(facility_counts, detect_col, return_format)
 
@@ -86,6 +89,10 @@ facility types.}
 
 \item{iqr_multiplier}{Non-negative number: the IQR fence multiplier.}
 
+\item{x, pct_low, pct_high, iqr_low, iqr_high}{The detection column and the
+four thresholds, as parallel vectors. A threshold that is \code{NA} (the
+method was not requested) never fires.}
+
 \item{return_format}{One of \code{"outliers_only"} or \code{"all"}.}
 }
 \value{
@@ -93,7 +100,8 @@ facility types.}
 \code{resolve_review_date_col()} returns a list with \code{use_time_norm} and
 \code{date_col_str}. \code{inform_review_defaults()} and \code{inform_review_summary()}
 are called for their messages. The remaining stages return the updated
-\code{facility_counts} data frame.
+\code{facility_counts} data frame. \code{outlier_method_label()} returns a character
+vector the length of \code{x}.
 }
 \description{
 Internal helpers that \code{\link[=review_facility_ed_visits]{review_facility_ed_visits()}} runs in order, so the
@@ -109,14 +117,20 @@ warning and falling back to raw visit counts when it is absent.
 \item \code{inform_review_defaults()} emits the informational messages about
 the defaults in effect.
 \item \code{count_facility_visits()} counts visits per facility and facility
-type, normalized to visits per day when a date column is available.
+type. When a date column is available it also reports \code{n_days} (the
+days the facility sent data) and \code{visits_per_day}, which divides by the
+number of distinct dates in the whole pull rather than by \code{n_days}, so
+a facility that stops sending partway through the pull scores lower
+instead of looking the same as one that sent every day.
 \item \code{add_outlier_thresholds()} adds the percentile and/or IQR
 thresholds, optionally within facility types. Only the quantiles the
 chosen \code{method} actually uses are computed: the IQR quantiles would be
 wasted work (recomputed per group) under the default
 \code{method = "percentile"}, and vice versa.
 \item \code{flag_outliers()} adds the \verb{.outlier_*} columns and drops the
-threshold helper columns. \code{method} is a single scalar for the whole
+threshold helper columns. \code{.outlier_method} records the criterion that
+fired (\code{"percentile"}, \code{"iqr"}, or \code{"percentile+iqr"}), not the
+requested \code{method}. \code{method} is a single scalar for the whole
 call, so the comparison is chosen once with \code{if}/\verb{else} rather than
 \code{dplyr::case_when()}, which is deprecated for a scalar condition as of
 dplyr 1.2.0.

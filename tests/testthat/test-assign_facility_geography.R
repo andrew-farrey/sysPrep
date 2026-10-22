@@ -113,19 +113,34 @@ test_that("assign_facility_geography() skips zip gracefully when HospitalZip abs
   expect_equal(result$region_facility, data_clean$hospital_region)
 })
 
-test_that("assign_facility_geography() clean_names = FALSE returns data frame with expected columns", {
+test_that("assign_facility_geography() clean_names = FALSE keeps the input's column names", {
   data   <- make_essence_data(n = 5L)
   result <- suppressMessages(assign_facility_geography(data, clean_names = FALSE))
   expect_s3_class(result, "data.frame")
   expect_true(".facility_geography" %in% names(result))
+  expect_true(all(c("HospitalName", "Region", "HospitalRegion") %in% names(result)))
+  expect_false("hospital_region" %in% names(result))
+  # columns the function adds keep their own (snake_case) names
+  expect_true("region_facility" %in% names(result))
 })
 
-test_that("assign_facility_geography() informs when Region column absent", {
+test_that("assign_facility_geography() does not need the patient Region column", {
   data <- make_essence_data(n = 5L) |> dplyr::select(-Region)
-  expect_message(
-    assign_facility_geography(data),
-    "Region geography skipped"
+  expect_no_message(assign_facility_geography(data, verbose = FALSE))
+  result <- suppressMessages(assign_facility_geography(data))
+  expect_equal(result$region_facility, janitor::clean_names(data)$hospital_region)
+})
+
+test_that("assign_facility_geography() overwrite = TRUE still works with the patient Region present", {
+  data   <- make_essence_data(n = 5L)
+  result <- suppressMessages(
+    assign_facility_geography(
+      data, new_region_col = "region", overwrite = TRUE,
+      preserve_original_geographies = TRUE
+    )
   )
+  expect_equal(result$region, janitor::clean_names(data)$hospital_region)
+  expect_equal(result$original_region, janitor::clean_names(data)$region)
 })
 
 test_that("assign_facility_geography() informs when HospitalRegion absent", {
@@ -136,17 +151,15 @@ test_that("assign_facility_geography() informs when HospitalRegion absent", {
   )
 })
 
-test_that("assign_facility_geography() informs when ZipCode absent", {
-  data <- make_essence_data(n = 5L) |> dplyr::select(-ZipCode)
-  expect_message(
-    assign_facility_geography(data),
-    "ZipCode"
-  )
+test_that("assign_facility_geography() does not need the patient ZipCode column", {
+  data   <- make_essence_data(n = 5L) |> dplyr::select(-ZipCode)
+  result <- suppressMessages(assign_facility_geography(data))
+  expect_equal(result$zip_code_facility, janitor::clean_names(data)$hospital_zip)
 })
 
 test_that("assign_facility_geography() warns when no geography can be processed", {
   data <- make_essence_data(n = 5L) |>
-    dplyr::select(-Region, -ZipCode)
+    dplyr::select(-HospitalRegion, -HospitalZip)
   expect_warning(
     suppressMessages(assign_facility_geography(data)),
     "No geography types could be processed"
@@ -168,7 +181,7 @@ test_that("assign_facility_geography() verbose = FALSE suppresses informational 
 
 test_that("assign_facility_geography() warns on no geography processed regardless of verbose", {
   data <- make_essence_data(n = 5L) |>
-    dplyr::select(-Region, -ZipCode)
+    dplyr::select(-HospitalRegion, -HospitalZip)
   expect_warning(
     suppressMessages(assign_facility_geography(data, verbose = FALSE)),
     "No geography types could be processed"

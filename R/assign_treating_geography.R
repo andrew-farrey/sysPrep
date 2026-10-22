@@ -23,16 +23,18 @@
 #' without an explicit filter. EMS-based systems report incidence at the
 #' location of care rather than patient residence; this function brings
 #' ESSENCE data into that same frame. Assigning the treating facility's
-#' geography to these visits retains them in the analytic dataset while
-#' approximating both residence-based and incidence-based burden from a
-#' single geographic field.
+#' geography to these visits retains them in the analytic dataset. The cost
+#' is that one geographic field then holds residence for most rows and
+#' treating location for the reassigned ones; see "Hybrid geography
+#' assignment and cluster detection" below.
 #'
 #' ## Site prefix detection
 #' The `Region` field uses the format `{SITE}_{REGION}`, where `SITE` is
 #' the NSSP Site Short Name and `REGION` is the ESSENCE Region, a county
 #' name derived from a zip-code-to-county lookup table maintained by
-#' ESSENCE. Because some site names contain multiple underscores, the
-#' prefix is all characters before the **last** underscore. A visit is
+#' ESSENCE. The prefix is supplied by the caller as `site` (it is not
+#' parsed out of the data), so a site whose short name contains an underscore
+#' is passed whole. A visit is
 #' classified as out-of-state or unknown residence when its `Region` does
 #' not begin with `paste0(site, "_")`, or when `Region` is `"OTHER_REGION"`,
 #' `paste0(site, "_UNKNOWN")` (e.g. `"KY_UNKNOWN"`), or `NA`. Unlike
@@ -58,8 +60,7 @@
 #' By default, results are written to new columns (`region_hybrid`/
 #' `zip_code_hybrid`), and `region_col`/`zip_col` are never modified; safe
 #' to call repeatedly without risk of losing the original values. To
-#' overwrite `region_col`/`zip_col` in place instead (the only behavior this
-#' function had before this parameter existed), pass their own name to
+#' overwrite `region_col`/`zip_col` in place instead, pass their own name to
 #' `new_region_col`/`new_zip_col` and set `overwrite = TRUE`:
 #' `assign_treating_geography(new_region_col = "region", overwrite = TRUE)`.
 #' `overwrite` guards **any** collision with an existing column, not just
@@ -153,7 +154,10 @@
 #'   Unquoted column name for the hospital zip code field. Defaults to
 #'   `HospitalZip`. Required when `new_zip_col` is not `NULL`.
 #' @param new_region_col Character string or `NULL`. Name of the column to
-#'   write reassigned region values to. Defaults to `"region_hybrid"`: a
+#'   write reassigned region values to. Unlike the unquoted arguments that
+#'   point at columns already in `data`, this is a quoted string, because it
+#'   names a column that usually does not exist yet. Defaults to
+#'   `"region_hybrid"`: a
 #'   new column, leaving `region_col` untouched. Pass `NULL` to skip region
 #'   reassignment entirely. Pass `region_col`'s own name (with
 #'   `overwrite = TRUE`) to overwrite it in place instead of writing a new
@@ -173,7 +177,9 @@
 #' @return The input data frame with reassigned region and/or zip code
 #'   values written to `new_region_col`/`new_zip_col` (or to `region_col`/
 #'   `zip_col` in place, when `overwrite = TRUE`). A `.out_of_state` logical
-#'   column is added indicating which rows were reassigned. When
+#'   column is added indicating which rows were reassigned. Despite its name
+#'   it is `TRUE` for every row whose residence is not in `site`: another
+#'   state, `"OTHER_REGION"`, `"{site}_UNKNOWN"`, and a missing `Region`. When
 #'   `overwrite = TRUE` and `preserve_original_geographies = TRUE`,
 #'   `original_region` and/or `original_zip_code` columns are also present.
 #'
@@ -195,7 +201,7 @@
 #' # Non-Kentucky site
 #' ed_clean |> assign_treating_geography(site = "OH")
 #'
-#' # Overwrite region/zip_code in place (the original behavior); requires
+#' # Overwrite region/zip_code in place; requires
 #' # naming the source columns explicitly and opting in with overwrite
 #' ed_clean |>
 #'   assign_treating_geography(
@@ -235,7 +241,9 @@ assign_treating_geography <- function(data,
   check_flag(verbose)
 
   # Normalize names ----
-  data <- clean_names_safe(data)
+  original_names <- names(data)
+  data           <- clean_names_safe(data)
+  name_map       <- input_name_map(original_names, names(data))
 
   # Resolve source columns gracefully ----
   sources <- resolve_geography_sources(
@@ -256,8 +264,7 @@ assign_treating_geography <- function(data,
     region_col_str      = sources$region,
     hosp_region_col_str = sources$hosp_region,
     zip_col_str         = sources$zip,
-    hosp_zip_col_str    = sources$hosp_zip,
-    check_region_col    = FALSE
+    hosp_zip_col_str    = sources$hosp_zip
   )
 
   # Region column required for out-of-state detection ----
@@ -274,7 +281,7 @@ assign_treating_geography <- function(data,
     rlang::warn(
       "No geography types could be processed. Returning data unchanged."
     )
-    return(if (clean_names) clean_names_safe(data) else data)
+    return(finish_names(data, clean_names, name_map))
   }
 
   outputs <- resolve_geography_outputs(
@@ -292,5 +299,5 @@ assign_treating_geography <- function(data,
 
   inform_treating_result(data, outputs, verbose)
 
-  if (clean_names) clean_names_safe(data) else data
+  finish_names(data, clean_names, name_map)
 }

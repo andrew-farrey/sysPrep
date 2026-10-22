@@ -58,7 +58,9 @@
 apply_type_correction <- function(data, type_col_str, mask, fix_to) {
   dplyr::mutate(
     data,
-    "{type_col_str}" := dplyr::if_else(mask, fix_to, .data[[type_col_str]])
+    "{type_col_str}" := dplyr::if_else(
+      mask %in% TRUE, fix_to, .data[[type_col_str]]
+    )
   )
 }
 
@@ -151,12 +153,15 @@ correct_by_facility_regex <- function(data, fac_col_str, type_col_str,
                                       already_corrected, fix_to) {
   if (is.null(fix_facility_type_regex)) return(data)
 
-  regex_matched <- unique(
-    data[[fac_col_str]][
-      !data[[fac_col_str]] %in% already_corrected &
-        stringr::str_detect(data[[fac_col_str]], fix_facility_type_regex)
-    ]
-  )
+  # `str_detect()` returns NA for a missing facility name; `%in% TRUE` turns
+  # that into "not matched", so such rows keep their original type instead of
+  # having it overwritten with NA (and no NA is listed as a matched name) ----
+  to_correct <- (
+    !data[[fac_col_str]] %in% already_corrected &
+      stringr::str_detect(data[[fac_col_str]], fix_facility_type_regex)
+  ) %in% TRUE
+
+  regex_matched <- unique(data[[fac_col_str]][to_correct])
 
   if (length(regex_matched) == 0L) return(data)
 
@@ -171,12 +176,7 @@ correct_by_facility_regex <- function(data, fac_col_str, type_col_str,
     )
   )
 
-  apply_type_correction(
-    data, type_col_str,
-    stringr::str_detect(data[[fac_col_str]], fix_facility_type_regex) &
-      !data[[fac_col_str]] %in% already_corrected,
-    fix_to
-  )
+  apply_type_correction(data, type_col_str, to_correct, fix_to)
 }
 
 #' @rdname apply_type_correction

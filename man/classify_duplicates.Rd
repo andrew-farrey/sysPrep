@@ -29,16 +29,23 @@ Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor
 equivalents.}
 
 \item{visit_col}{Unquoted
-column name identifying the visit. Defaults to \code{Visit_ID}. Common
-alternatives include \code{MedicalRecordNumber}, \code{MRN}, \code{VisitNumber}, and
-\code{C_Unique_Patient_ID}. Accepts both raw ESSENCE names and
-post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+column name identifying the visit. Defaults to \code{Visit_ID}. Use another
+column only if it identifies a single visit within a facility (for
+example a site-specific visit or encounter number). Do not use a
+patient-level identifier such as \code{C_Unique_Patient_ID}, an MRN, or
+\code{MedicalRecordNumber}: those are shared by all of a patient's visits, so
+every repeat visit by the same patient would be collapsed into one row.
+An identifier has no numeric meaning: values are compared as text (the
+number \code{100000} and the text \code{"100000"} are the same visit), and the
+column is returned in the type it arrived in. Accepts both raw ESSENCE
+names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{return_format}{Character string. One of \code{"list"} (default) or
 \code{"tibble"}. See Details.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
-(\code{rlang::inform()}); warnings and errors are always shown regardless.}
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 
 \item{x}{An \code{essence_dup_classified} object, as returned by
 \code{classify_duplicates()} with \code{return_format = "list"}.}
@@ -53,11 +60,17 @@ When \code{return_format = "list"}, a named list of class
 more than one row.}
 \item{\verb{$visit_groups}}{Tibble with one row per facility x visit_col
 containing \code{n_rows}, \code{n_biosense_ids}, \code{n_dates}, \code{n_pid},
-\code{n_patient_classes} (if available), and \code{dup_type}.}
+\code{n_patient_classes} (if available), and \code{dup_type}. The \verb{n_*}
+columns count distinct values within the group;
+\code{n_biosense_ids} is reported for inspection and does not enter the
+classification.}
 \item{\verb{$by_facility}}{Wide-format count of each \code{dup_type} per
 facility, sorted by total duplicated Visit IDs descending.}
-\item{\verb{$overall}}{Dataset-level counts and proportions by \code{dup_type}
-via \code{\link[janitor:tabyl]{janitor::tabyl()}}.}
+\item{\verb{$overall}}{Counts by \code{dup_type} via \code{\link[janitor:tabyl]{janitor::tabyl()}}, with
+\code{percent} as each type's share of the \emph{duplicated} visit groups
+(the groups with more than one row), not of all visits in the pull.
+For the share of all visits that are duplicated, see
+\code{pct_duplicated} in \code{\link[=summarize_duplicates]{summarize_duplicates()}}\verb{$overall}.}
 }
 
 The \code{format()} method returns the printed report as a character vector;
@@ -103,8 +116,10 @@ syndrome definitions where a few inflated counts can trigger anomaly
 detection alerts that do not reflect genuine changes in incidence.
 The duplicate arises only at facilities whose systems continue to
 update \code{C_Visit_Date_Time} after initial registration. Detected by
-multiple distinct \code{C_BioSense_ID} values and \code{Date} values within a
-group.}
+more than one distinct \code{Date} value within a group. (The recomputed
+\code{C_BioSense_ID} accompanies it, but the date change is what is tested:
+a group whose \code{C_BioSense_ID} varies with no change in \code{Date}, patient
+identifier, or patient class is \code{"type_unknown"}.)}
 \item{\code{"pid_change"}}{\code{C_Unique_Patient_ID} (which maps to MRN in
 Kentucky) is also one of the three fields concatenated into
 \code{C_BioSense_ID}, so updating it mid-visit recomputes \code{C_BioSense_ID}
@@ -124,10 +139,14 @@ configuration issue or a concurrent triggering event. Requires
 \code{c_patient_class} to be present in the data; available via the
 standard ESSENCE API. See also \code{\link[=link_encounters]{link_encounters()}} for burden
 estimation from multi-class episodes.}
-\item{\code{"type_unknown"}}{Multiple rows exist but all assessed fields
-are identical across rows. The differentiating field was not included
-in the pull. Consider adding \code{C_BioSense_ID}, \code{Date}, and
-\code{C_Unique_Patient_ID} to your ESSENCE pull fields.}
+\item{\code{"type_unknown"}}{Multiple rows exist but the assessed fields
+(\code{Date}, \code{C_Unique_Patient_ID}, and \code{C_Patient_Class} when present) are
+identical across rows. Whatever differs between the rows is not one of
+the fields assessed here, for example a plain retransmission, or a
+field that was not included in the pull. \code{n_biosense_ids} in
+\verb{$visit_groups} shows whether the rows at least carry different
+\code{C_BioSense_ID} values. To see what does differ, compare the rows of
+the groups in \verb{$duplicate_ids} directly.}
 \item{Compound types}{Any combination of the above joined with \code{+},
 e.g., \code{"visit_date_change+pid_change"}. Indicates multiple mechanisms
 acting simultaneously on the same visit. All possible combinations

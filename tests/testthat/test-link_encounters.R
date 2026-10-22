@@ -670,7 +670,13 @@ test_that("safe_as_posixct() handles a mix of valid and unparseable values in on
   expect_true(is.na(result[2]))
 })
 
-# compute_patient_class_sequence() ----
+# episode_class_sequence() for a single episode ----
+
+compute_patient_class_sequence <- function(patient_class, class_time) {
+  episode_class_sequence(
+    rep(1L, length(patient_class)), patient_class, class_time
+  )[1L]
+}
 
 test_that("compute_patient_class_sequence() orders classes by ascending class_time", {
   result <- compute_patient_class_sequence(
@@ -860,4 +866,458 @@ test_that("link_encounters() aborts on an invalid merge strategy", {
     ),
     "Invalid merge strategy"
   )
+})
+
+# link_encounters() contract: link, never drop ----
+# 1. an ED row with no inpatient counterpart, and a standalone inpatient
+#    admission with no ED counterpart, are neither touched nor dropped;
+# 2. only a HasBeenE = 1 row and a HasBeenE = 0 row sharing hospital x
+#    visit_id are combined;
+# 3. the combined row carries every HasBeen_ flag that is 1 on either side,
+#    and no HasBeen_ value is ever NA.
+
+make_contract_pulls <- function() {
+  ed <- tibble::tibble(
+    Hospital = c(1001L, 1001L, 1001L, 1002L),
+    Visit_ID = c("V1", "V2", "V3", "V1"),
+    HasBeenE = 1L,
+    HasBeenAdmitted = c(0L, 1L, 0L, 0L),
+    CCDD = c("cc_a|dd_a", "cc_b|dd_b", "cc_c|dd_c", "cc_d|dd_d"),
+    C_Death = "No",
+    Discharge_Disposition = "Discharged",
+    C_Visit_Date_Time = c(
+      "2026-01-01 08:00:00", "2026-01-02 08:00:00",
+      "2026-01-03 08:00:00", "2026-01-04 08:00:00"
+    )
+  )
+  ip <- tibble::tibble(
+    Hospital = c(1001L, 1001L, 1001L, 1001L),
+    # V2 is also in the ED pull (HasBeenE = 1): a duplicate to remove.
+    # V3 continues an ED visit: to be linked. V4/V5 are standalone.
+    Visit_ID = c("V2", "V3", "V4", "V5"),
+    HasBeenE = c(1L, 0L, 0L, 0L),
+    HasBeenAdmitted = 1L,
+    CCDD = c("cc_b|dd_b", "cc_x|dd_x", "cc_y|dd_y", "cc_z|dd_z"),
+    C_Death = c("No", "Yes", "No", "No"),
+    Discharge_Disposition = c("Discharged", "Expired", "Home", "Home"),
+    C_Visit_Date_Time = c(
+      "2026-01-02 08:00:00", "2026-01-03 20:00:00",
+      "2026-01-05 08:00:00", "2026-01-06 08:00:00"
+    )
+  )
+  list(ed = ed, ip = ip)
+}
+
+test_that("an ED row with no inpatient counterpart is neither changed nor dropped", {
+  pulls  <- make_contract_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+
+  v1 <- dplyr::filter(result, hospital == 1001L, visit_id == "V1")
+  expect_equal(nrow(v1), 1L)
+  expect_equal(v1$patient_class, "ED")
+  expect_equal(v1$.episode_n_rows, 1L)
+  expect_equal(v1$ccdd, "cc_a|dd_a")
+  expect_equal(v1$c_death, "No")
+  expect_equal(v1$discharge_disposition, "Discharged")
+  expect_equal(c(v1$has_been_e, v1$has_been_admitted), c(1L, 0L))
+  # same Visit_ID at a different hospital is a different visit
+  v1_other <- dplyr::filter(result, hospital == 1002L, visit_id == "V1")
+  expect_equal(nrow(v1_other), 1L)
+  expect_equal(v1_other$ccdd, "cc_d|dd_d")
+})
+
+test_that("an ED row that escalated within the ED pull is kept once with both flags", {
+  pulls  <- make_contract_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+  v2 <- dplyr::filter(result, hospital == 1001L, visit_id == "V2")
+  expect_equal(nrow(v2), 1L)
+  expect_equal(c(v2$has_been_e, v2$has_been_admitted), c(1L, 1L))
+})
+
+test_that("standalone inpatient admissions are neither changed nor dropped", {
+  pulls  <- make_contract_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+  for (v in c("V4", "V5")) {
+    row <- dplyr::filter(result, hospital == 1001L, visit_id == v)
+    src <- dplyr::filter(pulls$ip, Visit_ID == v)
+    expect_equal(nrow(row), 1L)
+    expect_equal(row$patient_class, "Direct Admit")
+    expect_equal(row$.episode_n_rows, 1L)
+    expect_equal(row$ccdd, src$CCDD)
+    expect_equal(row$c_death, src$C_Death)
+    expect_equal(row$discharge_disposition, src$Discharge_Disposition)
+    expect_equal(c(row$has_been_e, row$has_been_admitted), c(0L, 1L))
+  }
+})
+
+test_that("only hospital x visit_id matches are linked, from HasBeenE = 1 and HasBeenE = 0 rows", {
+  pulls  <- make_contract_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+
+  # 4 distinct ED visits + 2 standalone admissions; the HasBeenE = 1 copy of
+  # V2 in the inpatient pull is a duplicate and does not add a row
+  expect_equal(nrow(result), 6L)
+  # V2's ED + Admitted classes (one record) and V3's ED + Direct Admit
+  # records are the multi-row episodes; V1 (x2), V4 and V5 are single-row
+  expect_equal(sort(result$visit_id[result$.episode_n_rows > 1L]), c("V2", "V3"))
+  expect_equal(sum(result$patient_class == "Direct Admit"), 2L)
+
+  v3 <- dplyr::filter(result, hospital == 1001L, visit_id == "V3")
+  expect_equal(nrow(v3), 1L)
+  expect_equal(v3$.episode_n_rows, 2L)
+  expect_equal(v3$patient_class, "ED")
+  expect_equal(v3$.patient_class_sequence, "ED->Direct Admit")
+})
+
+test_that("a linked row combines clinical information and carries every flag that is 1", {
+  pulls  <- make_contract_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+  v3 <- dplyr::filter(result, hospital == 1001L, visit_id == "V3")
+
+  # ED row had HasBeenAdmitted = 0, the admission row 1: the link carries 1
+  expect_equal(c(v3$has_been_e, v3$has_been_admitted), c(1L, 1L))
+  expect_equal(v3$ccdd, "cc_c;cc_x|dd_c;dd_x")
+  expect_equal(v3$c_death, "Yes")
+  expect_equal(v3$discharge_disposition, "Expired")
+})
+
+test_that("a HasBeen_ flag is never NA, and a 1 on either side is never lost", {
+  pulls  <- make_contract_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+  flags  <- result[grepl("^has_been_", names(result))]
+  expect_false(anyNA(flags))
+  expect_true(all(unlist(flags) %in% c(0L, 1L)))
+})
+
+test_that("HasBeenAdmitted is preferred over HasBeenI when both are in the ED pull", {
+  pulls <- make_contract_pulls()
+  # HasBeenI = 1 where HasBeenAdmitted = 0 would add a second 'Admitted' row
+  # per record if HasBeenI were used alongside HasBeenAdmitted
+  pulls$ed$HasBeenI <- pulls$ed$HasBeenAdmitted
+  pulls$ip$HasBeenI <- pulls$ip$HasBeenAdmitted
+  expect_message(
+    result <- link_encounters(pulls$ed, pulls$ip),
+    "will be used preferentially"
+  )
+  expect_equal(nrow(result), 6L)
+  expect_false(anyNA(result$has_been_i))
+})
+
+test_that("link_encounters() never drops or invents a visit across random pulls", {
+  set.seed(7)
+  for (i in 1:25) {
+    n_keys <- 40L
+    keys <- tibble::tibble(
+      Hospital = sample(1001:1003, n_keys, replace = TRUE),
+      Visit_ID = sprintf("V%03d", sample(500, n_keys))
+    ) |>
+      dplyr::distinct()
+    pick <- function(p) keys[stats::runif(nrow(keys)) < p, ]
+    ed <- pick(0.6)
+    ed$HasBeenE <- 1L
+    ed$HasBeenAdmitted <- sample(0:1, nrow(ed), replace = TRUE)
+    ed$C_Visit_Date_Time <- "2026-01-01 08:00:00"
+    ip <- pick(0.5)
+    ip$HasBeenE <- sample(0:1, nrow(ip), replace = TRUE, prob = c(0.8, 0.2))
+    ip$HasBeenAdmitted <- 1L
+    ip$C_Visit_Date_Time <- "2026-01-02 08:00:00"
+    if (nrow(ed) == 0L || nrow(ip) == 0L) next
+
+    result <- suppressMessages(link_encounters(ed, ip))
+    ip_kept <- ip[ip$HasBeenE == 0L, ]
+    expected_keys <- unique(rbind(
+      ed[c("Hospital", "Visit_ID")], ip_kept[c("Hospital", "Visit_ID")]
+    ))
+
+    expect_equal(nrow(result), nrow(expected_keys))
+    expect_equal(anyDuplicated(result[c("hospital", "visit_id")]), 0L)
+
+    flags <- result[grepl("^has_been_", names(result))]
+    expect_false(anyNA(flags))
+
+    # every flag that is 1 on any input row of a visit is 1 on its output row
+    all_rows <- dplyr::bind_rows(ed, ip_kept)
+    for (f in c("HasBeenE", "HasBeenAdmitted")) {
+      expected <- tapply(
+        all_rows[[f]], paste(all_rows$Hospital, all_rows$Visit_ID), max
+      )
+      got <- stats::setNames(
+        result[[janitor::make_clean_names(f)]],
+        paste(result$hospital, result$visit_id)
+      )
+      expect_equal(unname(got[names(expected)]), unname(as.integer(expected)))
+    }
+  }
+})
+
+# kept regression tests ----
+
+make_review_pulls <- function() {
+  list(
+    ed = tibble::tibble(
+      Hospital = 1001L, Visit_ID = c("V1", "V2"),
+      HasBeenE = 1L, HasBeenAdmitted = c(0L, 0L),
+      C_Visit_Date_Time = c("2026-01-01 08:00:00", "2026-01-02 08:00:00")
+    ),
+    ip = tibble::tibble(
+      Hospital = 1001L, Visit_ID = c("V3", "V3"),
+      HasBeenE = 0L, HasBeenAdmitted = 1L,
+      C_Visit_Date_Time = c("2026-01-03 08:00:00", "2026-01-04 08:00:00")
+    )
+  )
+}
+
+test_that("long-format .index_encounter marks exactly one row per episode, even with no ED row", {
+  pulls <- make_review_pulls()
+  result <- suppressMessages(
+    link_encounters(pulls$ed, pulls$ip, return_format = "long")
+  )
+  per_episode <- tapply(result$.index_encounter, result$.episode_id, sum)
+  expect_true(all(per_episode == 1L))
+  expect_equal(
+    sum(result$.index_encounter),
+    nrow(suppressMessages(link_encounters(pulls$ed, pulls$ip)))
+  )
+})
+
+test_that("long-format .index_encounter marks only the first of two ED rows in an episode", {
+  ed <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = "V1", HasBeenE = 1L, HasBeenAdmitted = 0L,
+    C_Visit_Date_Time = c("2026-01-01 08:00:00", "2026-01-01 09:00:00")
+  )
+  result <- suppressMessages(
+    link_encounters(ed, ed[0L, ], return_format = "long")
+  )
+  expect_equal(result$.index_encounter, c(TRUE, FALSE))
+})
+
+test_that("link_encounters() aborts when inpatient_admission_data lacks a linking column", {
+  pulls <- make_review_pulls()
+  expect_error(
+    suppressMessages(
+      link_encounters(pulls$ed, dplyr::select(pulls$ip, -Hospital))
+    ),
+    "missing the linking column.*hospital"
+  )
+})
+
+test_that("clean_names = FALSE restores the input's column names and keeps added columns", {
+  pulls <- make_review_pulls()
+  result <- suppressMessages(
+    link_encounters(pulls$ed, pulls$ip, clean_names = FALSE)
+  )
+  expect_true(all(c("Hospital", "Visit_ID", "HasBeenE") %in% names(result)))
+  expect_false("hospital" %in% names(result))
+  expect_true(all(
+    c(".episode_id", ".index_encounter", "patient_class") %in% names(result)
+  ))
+})
+
+test_that("episode_class_sequence() computes each episode independently", {
+  result <- episode_class_sequence(
+    episode       = c("a", "a", "b", "b", "c"),
+    patient_class = c("ED", "Direct Admit", "Inpatient", "ED", NA),
+    class_time    = as.POSIXct(c(
+      "2023-01-01 08:00:00", "2023-01-01 06:00:00",
+      "2023-01-02 08:00:00", "2023-01-02 06:00:00", NA
+    ), tz = "UTC")
+  )
+  expect_equal(
+    result,
+    c("Direct Admit->ED", "Direct Admit->ED", "ED->Inpatient", "ED->Inpatient",
+      NA_character_)
+  )
+})
+
+test_that("episode_class_sequence() gives a row with an NA class its episode's sequence", {
+  result <- episode_class_sequence(
+    episode       = c("a", "a"),
+    patient_class = c("ED", NA),
+    class_time    = as.POSIXct(c("2023-01-01 08:00:00", NA), tz = "UTC")
+  )
+  expect_equal(result, c("ED", "ED"))
+})
+
+test_that("episode_primary_row() marks the first ED row, else the first row, of each episode", {
+  result <- episode_primary_row(
+    episode       = c("a", "a", "b", "b", "c", "c"),
+    patient_class = c("Direct Admit", "ED", "Direct Admit", "Inpatient", "ED", "ED")
+  )
+  expect_equal(result, c(FALSE, TRUE, TRUE, FALSE, TRUE, FALSE))
+})
+
+# identifiers are text ----
+
+test_that("link_encounters() links a numeric Visit_ID in one pull to the same text value in the other", {
+  ed <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = c(100000, 200), HasBeenE = 1L,
+    HasBeenAdmitted = 0L, C_Visit_Date_Time = "2026-01-01 08:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = c("100000", "300"), HasBeenE = 0L,
+    HasBeenAdmitted = 1L, C_Visit_Date_Time = "2026-01-02 08:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+
+  expect_type(result$visit_id, "character")
+  # 100000 must match "100000", not as.character()'s "1e+05"
+  linked <- dplyr::filter(result, visit_id == "100000")
+  expect_equal(nrow(linked), 1L)
+  expect_equal(linked$.episode_n_rows, 2L)
+  expect_equal(sort(result$visit_id), c("100000", "200", "300"))
+})
+
+test_that("link_encounters() holds Visit_ID as text when both pulls deliver numbers, and keeps NA", {
+  ed <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = c(1, NA), HasBeenE = 1L,
+    HasBeenAdmitted = 0L, C_Visit_Date_Time = "2026-01-01 08:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = 2, HasBeenE = 0L, HasBeenAdmitted = 1L,
+    C_Visit_Date_Time = "2026-01-02 08:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+  expect_type(result$visit_id, "character")
+  expect_equal(sum(is.na(result$visit_id)), 1L)
+  expect_true(all(c("1", "2") %in% result$visit_id))
+})
+
+test_that("fallback_visit_col is held as text in both pulls too", {
+  ed <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = NA_character_, C_BioSense_ID = 555,
+    HasBeenE = 1L, HasBeenAdmitted = 0L,
+    C_Visit_Date_Time = "2026-01-01 08:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = 1001L, Visit_ID = NA_character_, C_BioSense_ID = "555",
+    HasBeenE = 0L, HasBeenAdmitted = 1L,
+    C_Visit_Date_Time = "2026-01-02 08:00:00"
+  )
+  result <- suppressMessages(
+    link_encounters(ed, ip, fallback_visit_col = C_BioSense_ID)
+  )
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$.episode_n_rows, 2L)
+  expect_type(result$c_bio_sense_id, "character")
+})
+
+test_that("as_text_cols() converts factors and leaves text and other columns alone", {
+  d <- tibble::tibble(
+    a = factor(c("x", "y")), b = c("p", "q"), c = c(1.5, 100000), d = 1:2
+  )
+  result <- as_text_cols(d, c("a", "b", "c"))
+  expect_identical(result$a, c("x", "y"))
+  expect_identical(result$b, c("p", "q"))
+  expect_identical(result$c, c("1.5", "100000"))
+  expect_identical(result$d, 1:2)
+})
+
+test_that("dedupe() compares Visit_ID as text and returns its type unchanged", {
+  as_num <- tibble::tibble(
+    Hospital = 1L, Visit_ID = c(100000, 100000, 7), x = 1:3
+  )
+  as_txt <- dplyr::mutate(as_num, Visit_ID = c("100000", "100000", "7"))
+  expect_equal(nrow(dedupe(as_num)), nrow(dedupe(as_txt)))
+  expect_type(dedupe(as_num)$visit_id, "double")
+  expect_type(dedupe(as_txt)$visit_id, "character")
+})
+
+# verbose on dedupe() and summarize_duplicates() ----
+
+test_that("dedupe() verbose = FALSE silences the missing-key message", {
+  data <- tibble::tibble(Hospital = 1L, Visit_ID = c(NA, NA, "V1"), x = 1:3)
+  expect_message(dedupe(data), "missing")
+  expect_no_message(dedupe(data, verbose = FALSE))
+  expect_equal(nrow(suppressMessages(dedupe(data))), 3L)
+  expect_error(dedupe(data, verbose = NA), "verbose")
+})
+
+test_that("summarize_duplicates() verbose = FALSE silences the missing-key message", {
+  data <- tibble::tibble(Hospital = 1L, Visit_ID = c(NA, NA, "V1"), x = 1:3)
+  expect_message(summarize_duplicates(data), "missing")
+  expect_no_message(summarize_duplicates(data, verbose = FALSE))
+  expect_error(summarize_duplicates(data, verbose = "yes"), "verbose")
+})
+
+# linking keys (facility, visit, fallback) are held as text ----
+
+test_that("link_encounters() links a numeric Hospital in one pull to the same text value in the other", {
+  ed <- tibble::tibble(
+    Hospital = c(1001L, 1002L), Visit_ID = c("V1", "V2"), HasBeenE = 1L,
+    HasBeenAdmitted = 0L, C_Visit_Date_Time = "2026-01-01 08:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = c("1001", "1003"), Visit_ID = c("V1", "V9"), HasBeenE = 0L,
+    HasBeenAdmitted = 1L, C_Visit_Date_Time = "2026-01-02 08:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+
+  expect_type(result$hospital, "character")
+  expect_equal(nrow(result), 3L)
+  linked <- dplyr::filter(result, hospital == "1001", visit_id == "V1")
+  expect_equal(nrow(linked), 1L)
+  expect_equal(linked$.episode_n_rows, 2L)
+  # the episode id is unchanged by the type conversion
+  expect_equal(linked$.episode_id, "1001_V1")
+})
+
+test_that("link_encounters() holds a numeric Hospital as text even when both pulls agree", {
+  pulls <- make_review_pulls()
+  result <- suppressMessages(link_encounters(pulls$ed, pulls$ip))
+  expect_type(pulls$ed$Hospital, "integer")
+  expect_type(result$hospital, "character")
+  expect_true(all(result$hospital == "1001"))
+})
+
+test_that("as_text_cols() writes large numbers in full and keeps NA", {
+  d <- tibble::tibble(h = c(1e5, 1234567890123, NA))
+  expect_identical(as_text_cols(d, "h")$h, c("100000", "1234567890123", NA))
+})
+
+# concat: whole words and whole codes ----
+
+test_that("contains_whole() matches whole words, phrases, and codes only", {
+  expect_true(contains_whole("seen in ED today", "ED"))
+  expect_true(contains_whole("fall from bed.", "bed"))
+  expect_false(contains_whole("waterfall", "fall"))
+  expect_false(contains_whole("needed oxygen", "need"))
+  # diagnosis codes: the dot belongs to the code
+  expect_true(contains_whole("dx R10.9; K35.80", "R10.9"))
+  expect_false(contains_whole("dx R10.90", "R10.9"))
+  expect_false(contains_whole("dx R10.9", "R10"))
+  expect_true(contains_whole("dx 789.00", "789.00"))
+  expect_false(contains_whole("dx 789.001", "789.00"))
+  # SNOMED codes are whole numbers
+  expect_true(contains_whole("snomed 29857009 pain", "29857009"))
+  expect_false(contains_whole("snomed 298570091", "29857009"))
+  # multi-word phrases match as a run of whole words, ignoring case/spacing
+  expect_true(contains_whole("Chest  Pain, nausea", "chest pain"))
+  expect_false(contains_whole("chest wall pain", "chest pain"))
+  # a value with no letters or digits is matched literally
+  expect_true(contains_whole("a --- b", "---"))
+  expect_false(contains_whole("a -- b", "---"))
+  # a value longer than the text cannot be contained in it
+  expect_false(contains_whole("chest", "chest pain"))
+})
+
+test_that("merge_concat() keeps text and codes found in one record but not the other", {
+  expect_identical(merge_concat(c("needed", "ed"), "needed"), "needed; ed")
+  expect_identical(
+    merge_concat(c("fell from waterfall", "fall"), "fell from waterfall"),
+    "fell from waterfall; fall"
+  )
+  expect_identical(merge_concat(c("R10.90", "R10.9"), "R10.90"), "R10.90; R10.9")
+  expect_identical(
+    merge_concat(c("abdominal pain", "abdominal pain, vomiting"), "abdominal pain"),
+    "abdominal pain; abdominal pain, vomiting"
+  )
+})
+
+test_that("merge_concat() does not repeat a value already present as whole words or codes", {
+  expect_identical(merge_concat(c("seen in ED", "ED"), "seen in ED"), "seen in ED")
+  expect_identical(
+    merge_concat(c("dx R10.9; K35.80", "K35.80"), "dx R10.9; K35.80"),
+    "dx R10.9; K35.80"
+  )
+  expect_identical(merge_concat(c("Chest Pain", "chest pain"), "Chest Pain"), "Chest Pain")
 })

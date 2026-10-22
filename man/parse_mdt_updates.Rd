@@ -4,8 +4,9 @@
 \alias{parse_mdt_updates}
 \alias{parse_mdt_segment}
 \alias{safe_as_posixct}
-\alias{compute_patient_class_sequence}
+\alias{episode_class_sequence}
 \alias{pick_primary_row_index}
+\alias{episode_primary_row}
 \title{Patient class timing helpers for link_encounters()}
 \usage{
 parse_mdt_updates(mdt_str, n_classes)
@@ -14,9 +15,11 @@ parse_mdt_segment(seg, n_classes)
 
 safe_as_posixct(x)
 
-compute_patient_class_sequence(patient_class, class_time)
+episode_class_sequence(episode, patient_class, class_time)
 
 pick_primary_row_index(patient_classes)
+
+episode_primary_row(episode, patient_class)
 }
 \arguments{
 \item{mdt_str}{A single \code{C_Patient_Class_MDT_Updates} string (may be \code{NA}
@@ -30,6 +33,9 @@ segment.}
 
 \item{x}{A vector of timestamps, as character or anything coercible with
 \code{as.character()}. A \code{POSIXct} vector is returned unchanged.}
+
+\item{episode}{Vector identifying the episode each row belongs to (for
+example \code{.episode_id}); rows with equal values are one episode.}
 
 \item{patient_class}{Character vector of one episode's patient classes, one
 per row (so a class can repeat).}
@@ -45,9 +51,11 @@ one per row.}
 \code{n_classes}. \code{parse_mdt_segment()} returns a list with \code{idx} (an integer
 position) and \code{time} (a string), or \code{NULL}. \code{safe_as_posixct()} returns
 a \code{POSIXct} vector the length of \code{x}.
-\code{compute_patient_class_sequence()} returns a single string, or
-\code{NA_character_} when there is no non-missing patient class.
-\code{pick_primary_row_index()} returns a single integer.
+\code{episode_class_sequence()} returns a character vector the length of
+\code{episode}: each row's episode sequence, \code{NA} for an episode with no
+non-missing patient class. \code{pick_primary_row_index()} returns a single
+integer. \code{episode_primary_row()} returns a logical vector the length of
+\code{episode}, \code{TRUE} on each episode's primary row.
 }
 \description{
 Internal helpers that decide the chronological order of an episode's
@@ -74,13 +82,17 @@ ISO 8601-style timestamps (with or without a trailing \code{Z}) and US-style
 \code{month/day/year} timestamps, trying each format against the whole vector at
 once and keeping the first format that parses each element.
 
-\code{compute_patient_class_sequence()} orders an episode's distinct patient
-classes by the earliest \code{class_time} each class occurs at, for example
+\code{episode_class_sequence()} orders each episode's distinct patient classes
+by the earliest \code{class_time} each class occurs at, for example
 \code{"Direct Admit->ED"} when the direct-admit record's timestamp precedes the
-ED record's. It falls back to alphabetical order (matching legacy behavior)
-when no usable timestamp exists for the episode at all; classes with no
-timestamp sort after timed classes when some but not all classes in the
-episode have one.
+ED record's, and returns that string for every row of the episode. It falls
+back to alphabetical order when no usable timestamp exists for the episode
+at all; classes with no timestamp sort after timed classes when some but
+not all classes in the episode have one. Classes with identical timestamps
+(every class derived from one record shares that record's timestamp) also
+fall back to alphabetical order. That is a tiebreak only: when the
+timestamps are missing or equal the true order cannot be determined from
+the data, so the alphabetical order carries no clinical meaning.
 
 \code{parse_mdt_segment()} parses one trimmed, non-empty \verb{\{position\};timestamp;}
 segment into its position and timestamp string, or returns \code{NULL} when the
@@ -88,8 +100,10 @@ segment does not match this encoding or its position is not between 1 and
 \code{n_classes}.
 
 \code{pick_primary_row_index()} returns the index of the ED row in an episode
-if one exists, else \code{1} (the first row in original order). This matches
-the precedence \code{\link[=link_encounters]{link_encounters()}} has always given the ED row via
-\code{.index_encounter}.
+if one exists, else \code{1} (the first row in original order): the row whose
+values represent the episode when it is collapsed. \code{episode_primary_row()}
+marks that row in every episode of a long-format data frame, which is what
+\code{.index_encounter} records, so a long-format count of index encounters
+always equals the number of rows in the collapsed output.
 }
 \keyword{internal}

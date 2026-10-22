@@ -21,11 +21,11 @@
 #' with [na_safe_group_id()], which gives each NA-key row its own singleton
 #' group, and report how many rows were affected.
 #'
-#' For `keep = "most_complete"`, `dplyr::pick(dplyr::everything())` already
-#' excludes `.group_id`: `dplyr::pick()` never includes the active grouping
-#' variable(s) among the columns it can pick, so no explicit exclusion is
-#' needed (or possible, since `pick()` errors if asked to exclude a column it
-#' never included).
+#' For `keep = "most_complete"`, the number of non-missing values in each row
+#' is counted once over the whole data frame, excluding the `.group_id` helper
+#' column, and each group then keeps its row with the highest count (the
+#' first, on a tie). Counting per group instead would repeat the same
+#' row-wise work once for each of the (often hundreds of thousands of) groups.
 #'
 #' @param data A data frame already passed through [clean_names_safe()].
 #' @param facility_col,visit_col Symbols for the resolved facility and visit
@@ -35,6 +35,7 @@
 #' @param keep One of `"first"`, `"last"`, or `"most_complete"`.
 #' @param call The environment errors are attributed to; see
 #'   [resolve_col()].
+#' @param verbose Logical. Whether to emit informational messages.
 #' @param fac_col_str,visit_col_str Names of the facility and visit columns.
 #' @param data_clean A data frame already passed through [clean_names_safe()].
 #' @param dup_group_ids The `.group_id` values of the groups with more than
@@ -52,8 +53,9 @@ sort_for_dedupe <- function(data, facility_col, visit_col, order_by_quo, keep,
                             call = rlang::caller_env()) {
   if (rlang::quo_is_null(order_by_quo)) return(data)
 
-  order_by_str <- rlang::as_name(order_by_quo)
-  order_col    <- resolve_col(data, rlang::sym(order_by_str), call = call)
+  order_col <- resolve_col(
+    data, capture_col_sym(order_by_quo, "order_by", call), call = call
+  )
 
   if (keep == "most_complete") {
     rlang::warn(
@@ -74,12 +76,23 @@ sort_for_dedupe <- function(data, facility_col, visit_col, order_by_quo, keep,
 }
 
 #' @rdname sort_for_dedupe
-keep_group_rows <- function(data, fac_col_str, visit_col_str, keep) {
+keep_group_rows <- function(data, fac_col_str, visit_col_str, keep,
+                            verbose = TRUE) {
   n_na_key <- sum(key_has_na_mask(data, c(fac_col_str, visit_col_str)))
-  inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, rlang::inform)
+  inform_na_key_rows(
+    n_na_key, fac_col_str, visit_col_str,
+    function(...) inform_if(verbose, ...)
+  )
 
   data$.group_id <- na_safe_group_id(data, c(fac_col_str, visit_col_str))
-  grouped        <- dplyr::group_by(data, .group_id)
+
+  # Completeness is a per-row count, so it is computed once over the whole
+  # frame (before `.group_id` and the count itself exist as columns) rather
+  # than once per group ----
+  if (keep == "most_complete") {
+    data$.n_complete <- rowSums(!is.na(data[setdiff(names(data), ".group_id")]))
+  }
+  grouped <- dplyr::group_by(data, .group_id)
 
   deduped <- switch(
     keep,
@@ -91,9 +104,6 @@ keep_group_rows <- function(data, fac_col_str, visit_col_str, keep) {
     },
     "most_complete" = {
       grouped |>
-        dplyr::mutate(
-          .n_complete = rowSums(!is.na(dplyr::pick(dplyr::everything())))
-        ) |>
         dplyr::slice_max(.n_complete, n = 1L, with_ties = FALSE) |>
         dplyr::select(-.n_complete)
     }
@@ -103,9 +113,13 @@ keep_group_rows <- function(data, fac_col_str, visit_col_str, keep) {
 }
 
 #' @rdname sort_for_dedupe
-count_visit_row_groups <- function(data_clean, fac_col_str, visit_col_str) {
+count_visit_row_groups <- function(data_clean, fac_col_str, visit_col_str,
+                                   verbose = TRUE) {
   n_na_key <- sum(key_has_na_mask(data_clean, c(fac_col_str, visit_col_str)))
-  inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, rlang::inform)
+  inform_na_key_rows(
+    n_na_key, fac_col_str, visit_col_str,
+    function(...) inform_if(verbose, ...)
+  )
 
   data_clean$.group_id <- na_safe_group_id(
     data_clean, c(fac_col_str, visit_col_str)

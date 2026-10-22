@@ -26,25 +26,35 @@
 #' \describe{
 #'   \item{`"percentile"` (default)}{Flags facilities below
 #'     `percentile_low` and above `percentile_high` of the visit count
-#'     distribution. Default thresholds of 5th and 95th percentile are
-#'     interpretable and robust to skewed count distributions.}
+#'     distribution. This is a tail ranking, not a test for unusual values: it
+#'     flags roughly the most extreme `percentile_low + (1 - percentile_high)`
+#'     share of facilities whether or not any of them is actually abnormal
+#'     (with the default thresholds and fewer than about 20 facilities it
+#'     flags the lowest and the highest facility every time). Use it to
+#'     produce a short, ordered list to look at; use `"iqr"` when you want
+#'     only facilities that are unusual relative to the spread of the rest.}
 #'   \item{`"iqr"`}{Flags facilities below `Q1 - iqr_multiplier * IQR` and
 #'     above `Q3 + iqr_multiplier * IQR`. Tukey fences with the default
-#'     multiplier of 1.5 are sensitive to data dropouts: a facility that
+#'     multiplier of 1.5 flag nothing when facilities are similar, and are
+#'     sensitive to data dropouts when `date_col` is supplied: a facility that
 #'     abruptly stops sending visits during a pull window will fall well
 #'     below the lower fence. Increase `iqr_multiplier` to reduce
 #'     sensitivity.}
 #'   \item{`"both"`}{Applies both methods independently. A facility is
-#'     flagged if it meets either criterion. `.outlier_method` indicates
-#'     which method triggered.}
+#'     flagged if it meets either criterion. `.outlier_method` records which
+#'     criterion fired: `"percentile"`, `"iqr"`, or `"percentile+iqr"`.}
 #' }
 #'
 #' ## Time normalization
 #' When `date_col` is supplied, visits per day is computed and outlier
 #' detection is applied to the normalized rate rather than raw counts.
-#' This makes pulls of different durations comparable and improves
-#' sensitivity to within-pull data dropouts (e.g., a facility that stops
-#' sending data mid-month).
+#' `visits_per_day` is a facility's `n_visits` divided by the number of
+#' distinct dates in the whole pull, not by the days that facility sent data
+#' (`n_days`, reported alongside for reference). A facility that sends data
+#' every day of a 30-day pull and one that sends the same daily volume for 10
+#' days and then stops therefore get different rates, so a mid-pull dropout
+#' falls below the lower fence instead of being hidden. This also makes pulls
+#' of different durations comparable.
 #'
 #' ## Grouped detection
 #' When `group_by_type = TRUE`, outlier thresholds are computed separately
@@ -78,7 +88,9 @@
 #' @return A tibble with one row per facility containing facility identifier,
 #'   facility type, `n_visits`, optionally `visits_per_day` and `n_days`,
 #'   and outlier flag columns `.outlier_low`, `.outlier_high`,
-#'   `.outlier_flag`, `.outlier_direction`, and `.outlier_method`.
+#'   `.outlier_flag`, `.outlier_direction`, and `.outlier_method` (the
+#'   criterion that flagged the facility: `"percentile"`, `"iqr"`, or
+#'   `"percentile+iqr"`; `NA` for facilities that were not flagged).
 #'
 #' @examples
 #' # Default: percentile method, outliers only
@@ -130,19 +142,16 @@ review_facility_ed_visits <- function(data,
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
   # below as a plain HospitalName default ----
-  facility_col_quo     <- rlang::enquo(facility_col)
-  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
-  facility_col_sym     <- if (facility_col_missing) {
-    NULL
-  } else {
-    rlang::sym(rlang::as_name(facility_col_quo))
-  }
+  facility_col_sym     <- capture_col_sym(rlang::enquo(facility_col))
+  facility_col_missing <- is.null(facility_col_sym)
 
   method        <- rlang::arg_match(method)
   return_format <- rlang::arg_match(return_format)
 
   # Normalize names and resolve the columns ----
-  data <- clean_names_safe(data)
+  original_names <- names(data)
+  data           <- clean_names_safe(data)
+  name_map       <- input_name_map(original_names, names(data))
 
   fac_col_str  <- resolve_facility_col_str(
     data, facility_col_sym, facility_col_missing
@@ -177,5 +186,5 @@ review_facility_ed_visits <- function(data,
 
   inform_review_summary(facility_counts, method, group_by_type, verbose)
 
-  if (clean_names) clean_names_safe(result) else result
+  finish_names(result, clean_names, name_map)
 }

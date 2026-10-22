@@ -24,13 +24,17 @@
 #' `month/day/year` timestamps, trying each format against the whole vector at
 #' once and keeping the first format that parses each element.
 #'
-#' `compute_patient_class_sequence()` orders an episode's distinct patient
-#' classes by the earliest `class_time` each class occurs at, for example
+#' `episode_class_sequence()` orders each episode's distinct patient classes
+#' by the earliest `class_time` each class occurs at, for example
 #' `"Direct Admit->ED"` when the direct-admit record's timestamp precedes the
-#' ED record's. It falls back to alphabetical order (matching legacy behavior)
-#' when no usable timestamp exists for the episode at all; classes with no
-#' timestamp sort after timed classes when some but not all classes in the
-#' episode have one.
+#' ED record's, and returns that string for every row of the episode. It falls
+#' back to alphabetical order when no usable timestamp exists for the episode
+#' at all; classes with no timestamp sort after timed classes when some but
+#' not all classes in the episode have one. Classes with identical timestamps
+#' (every class derived from one record shares that record's timestamp) also
+#' fall back to alphabetical order. That is a tiebreak only: when the
+#' timestamps are missing or equal the true order cannot be determined from
+#' the data, so the alphabetical order carries no clinical meaning.
 #'
 #' `parse_mdt_segment()` parses one trimmed, non-empty `{position};timestamp;`
 #' segment into its position and timestamp string, or returns `NULL` when the
@@ -38,9 +42,11 @@
 #' `n_classes`.
 #'
 #' `pick_primary_row_index()` returns the index of the ED row in an episode
-#' if one exists, else `1` (the first row in original order). This matches
-#' the precedence [link_encounters()] has always given the ED row via
-#' `.index_encounter`.
+#' if one exists, else `1` (the first row in original order): the row whose
+#' values represent the episode when it is collapsed. `episode_primary_row()`
+#' marks that row in every episode of a long-format data frame, which is what
+#' `.index_encounter` records, so a long-format count of index encounters
+#' always equals the number of rows in the collapsed output.
 #'
 #' @param mdt_str A single `C_Patient_Class_MDT_Updates` string (may be `NA`
 #'   or empty).
@@ -56,14 +62,18 @@
 #'   each row's class occurred (`NA` where unknown).
 #' @param patient_classes Character vector of an episode's patient classes,
 #'   one per row.
+#' @param episode Vector identifying the episode each row belongs to (for
+#'   example `.episode_id`); rows with equal values are one episode.
 #'
 #' @return `parse_mdt_updates()` returns a character vector of length
 #'   `n_classes`. `parse_mdt_segment()` returns a list with `idx` (an integer
 #'   position) and `time` (a string), or `NULL`. `safe_as_posixct()` returns
 #'   a `POSIXct` vector the length of `x`.
-#'   `compute_patient_class_sequence()` returns a single string, or
-#'   `NA_character_` when there is no non-missing patient class.
-#'   `pick_primary_row_index()` returns a single integer.
+#'   `episode_class_sequence()` returns a character vector the length of
+#'   `episode`: each row's episode sequence, `NA` for an episode with no
+#'   non-missing patient class. `pick_primary_row_index()` returns a single
+#'   integer. `episode_primary_row()` returns a logical vector the length of
+#'   `episode`, `TRUE` on each episode's primary row.
 #' @keywords internal
 parse_mdt_updates <- function(mdt_str, n_classes) {
   out <- rep(NA_character_, n_classes)
@@ -124,23 +134,34 @@ safe_as_posixct <- function(x) {
 }
 
 #' @rdname parse_mdt_updates
-compute_patient_class_sequence <- function(patient_class, class_time) {
-  classes <- unique(patient_class)
-  classes <- classes[!is.na(classes)]
-  if (length(classes) == 0L) return(NA_character_)
+episode_class_sequence <- function(episode, patient_class, class_time) {
+  ep   <- match(episode, unique(episode))
+  keep <- !is.na(patient_class)
+  if (!any(keep)) return(rep(NA_character_, length(episode)))
 
-  min_time <- do.call(c, lapply(classes, function(cl) {
-    times <- class_time[!is.na(patient_class) & patient_class == cl]
-    if (all(is.na(times))) return(as.POSIXct(NA))
-    min(times, na.rm = TRUE)
-  }))
+  # One row per episode x class, holding the earliest time that class occurs
+  # at (NA when none of its rows has a time). Sorting by time with NAs last
+  # and keeping the first row of each pair does this without a per-episode
+  # R-level loop ----
+  d <- data.frame(
+    episode = ep[keep],
+    class   = patient_class[keep],
+    time    = class_time[keep],
+    stringsAsFactors = FALSE
+  )
+  d <- d[order(d$episode, d$class, d$time, na.last = TRUE), ]
+  d <- d[!duplicated(d[c("episode", "class")]), ]
 
-  if (all(is.na(min_time))) {
-    return(paste(sort(classes), collapse = "->"))
-  }
+  # Within an episode: timed classes in time order, then untimed ones, with
+  # ties (and an episode with no timestamps at all) in alphabetical order ----
+  d <- d[order(d$episode, is.na(d$time), d$time, d$class), ]
 
-  ord <- order(min_time, classes, na.last = TRUE)
-  paste(classes[ord], collapse = "->")
+  # Every row of an episode shares its sequence, including a row whose own
+  # class is NA; an episode with no class at all gets NA ----
+  sequences <- vapply(
+    split(d$class, d$episode), paste, character(1L), collapse = "->"
+  )
+  unname(sequences[match(as.character(ep), names(sequences))])
 }
 
 #' @rdname parse_mdt_updates
@@ -148,6 +169,18 @@ pick_primary_row_index <- function(patient_classes) {
   ed_idx <- which(patient_classes == "ED")
   if (length(ed_idx) > 0L) return(ed_idx[1])
   1L
+}
+
+#' @rdname parse_mdt_updates
+episode_primary_row <- function(episode, patient_class) {
+  ep        <- match(episode, unique(episode))
+  first_row <- match(seq_len(max(ep, 0L)), ep)
+
+  ed_rows  <- which(patient_class == "ED")
+  first_ed <- ed_rows[!duplicated(ep[ed_rows])]
+  first_row[ep[first_ed]] <- first_ed
+
+  seq_along(ep) == first_row[ep]
 }
 
 #' Merge strategies for link_encounters()
@@ -165,8 +198,13 @@ pick_primary_row_index <- function(patient_classes) {
 #' The strategies are:
 #' \describe{
 #'   \item{`concat`}{Free-text merge: starting from `primary_value`, appends
-#'     each other non-empty value not already a substring of the accumulated
-#'     result.}
+#'     each other non-empty value unless the accumulated result already
+#'     contains it as whole words or whole codes (`contains_whole()`). Text or
+#'     a code that appears in one record but not the other is therefore
+#'     kept, so extra detail or context is preserved: `"fall"` is not found in
+#'     `"waterfall"`, the diagnosis code `"R10.9"` is not found in `"R10.90"`,
+#'     and a SNOMED code is matched only as the whole number. Matching ignores
+#'     case, punctuation, and spacing.}
 #'   \item{`union_delimited`}{Splits each value on `delimiter`, trims
 #'     whitespace, and returns the union of unique parts (in order of first
 #'     appearance) rejoined with the same delimiter.}
@@ -199,10 +237,13 @@ pick_primary_row_index <- function(patient_classes) {
 #' @param strategy A single strategy name from `merge_strategies`.
 #' @param delimiter The delimiter separating individual values within a
 #'   field.
+#' @param text,value Single strings: the text to search and the value to look
+#'   for in it.
 #'
 #' @return `merge_strategies` is a character vector. `check_merge_fields()`
 #'   returns `merge_fields` invisibly, or aborts. The `merge_*()` functions
 #'   and `merge_field_value()` return a single merged value.
+#'   `contains_whole()` returns a single logical.
 #' @format `merge_strategies` is a character vector of the valid strategy
 #'   names.
 #' @keywords internal
@@ -279,12 +320,35 @@ merge_concat <- function(values, primary_value) {
   }
 
   for (v in values) {
-    if (!identical(v, base) && !grepl(v, base, fixed = TRUE)) {
+    if (!identical(v, base) && !contains_whole(base, v)) {
       base <- paste0(base, "; ", v)
     }
   }
 
   base
+}
+
+#' @rdname merge_strategies
+contains_whole <- function(text, value) {
+  # A word or code is a run of letters and digits, with a "." kept inside it
+  # when digits or letters follow (R10.9, 789.00), so a trailing full stop
+  # does not become part of the last word ----
+  tokenize <- function(x) {
+    tolower(regmatches(x, gregexpr("[[:alnum:]]+([.][[:alnum:]]+)*", x))[[1]])
+  }
+  value_tokens <- tokenize(value)
+  if (length(value_tokens) == 0L) return(grepl(value, text, fixed = TRUE))
+
+  text_tokens <- tokenize(text)
+  width       <- length(value_tokens)
+  if (length(text_tokens) < width) return(FALSE)
+
+  starts <- seq_len(length(text_tokens) - width + 1L)
+  any(vapply(
+    starts,
+    function(i) all(text_tokens[i + seq_len(width) - 1L] == value_tokens),
+    logical(1L)
+  ))
 }
 
 #' @rdname merge_strategies

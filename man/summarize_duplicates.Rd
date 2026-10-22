@@ -6,7 +6,12 @@
 \alias{print.essence_dup_summary}
 \title{Summarize duplicate records in an ESSENCE data pull}
 \usage{
-summarize_duplicates(data, facility_col = NULL, visit_col = Visit_ID)
+summarize_duplicates(
+  data,
+  facility_col = NULL,
+  visit_col = Visit_ID,
+  verbose = TRUE
+)
 
 \method{format}{essence_dup_summary}(x, ...)
 
@@ -23,10 +28,20 @@ Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor
 equivalents.}
 
 \item{visit_col}{Unquoted
-column name identifying the visit. Defaults to \code{Visit_ID}. Common
-alternatives include \code{MedicalRecordNumber}, \code{MRN}, \code{VisitNumber}, and
-\code{C_Unique_Patient_ID}. Accepts both raw ESSENCE names and
-post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+column name identifying the visit. Defaults to \code{Visit_ID}. Use another
+column only if it identifies a single visit within a facility (for
+example a site-specific visit or encounter number). Do not use a
+patient-level identifier such as \code{C_Unique_Patient_ID}, an MRN, or
+\code{MedicalRecordNumber}: those are shared by all of a patient's visits, so
+every repeat visit by the same patient would be collapsed into one row.
+An identifier has no numeric meaning: values are compared as text (the
+number \code{100000} and the text \code{"100000"} are the same visit), and the
+column is returned in the type it arrived in. Accepts both raw ESSENCE
+names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+
+\item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 
 \item{x}{An \code{essence_dup_summary} object, as returned by
 \code{summarize_duplicates()}.}

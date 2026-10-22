@@ -23,11 +23,14 @@
 #'     `pair_mdt_timestamps()` to attach `C_Patient_Class_MDT_Updates`
 #'     timestamps to them.
 #'   \item `bind_direct_admits()` tags `inpatient_admission_data` as
-#'     `"Direct Admit"` and appends it.
+#'     `"Direct Admit"` and appends it, after `check_linking_columns()` has
+#'     confirmed the linking columns exist in it and `as_text_cols()` has
+#'     converted the linking identifier columns to text.
 #'   \item `add_class_time()` fills the `.class_time` ordering column.
 #'   \item `build_episode_ids()` builds the `.episode_id` for every row.
 #'   \item `add_episode_metadata()` adds `.episode_id`,
-#'     `.patient_class_sequence`, `.episode_n_rows`, and `.index_encounter`.
+#'     `.patient_class_sequence`, `.episode_n_rows`, and `.index_encounter`
+#'     (`TRUE` on the one row per episode that the collapsed output keeps).
 #'   \item `collapse_episodes()` reduces each episode to one row
 #'     (`return_format = "collapsed"` only).
 #' }
@@ -57,6 +60,11 @@
 #' built as plain vectors, not inside a dplyr verb, so the fallback lookup is
 #' never attempted when no `fallback_visit_col` was supplied.
 #'
+#' `add_episode_metadata()` computes its columns over whole vectors keyed by
+#' episode (`episode_class_sequence()`, `episode_primary_row()`), not per
+#' episode inside `dplyr`'s `.by =`: most episodes have a single row, and a
+#' per-episode R call for each of them dominated the run time.
+#'
 #' `collapse_episodes()` deliberately avoids a per-episode helper applied
 #' through `dplyr::group_modify()`: that slices out a full-width single-row
 #' data frame per episode and binds all of them back together, which is the
@@ -67,6 +75,14 @@
 #'
 #' @param inpatient_admission_data A data frame of inpatient admissions. For
 #'   `bind_direct_admits()`, the raw (not yet normalized) data frame.
+#' @param key_cols Character vector of the linking columns (facility, visit,
+#'   and the fallback column if any) that must exist in
+#'   `inpatient_admission_data`. Defaults to none.
+#' @param text_cols Character vector of the linking identifier columns
+#'   (`facility_col`, `visit_col`, and `fallback_visit_col`) to hold as text.
+#'   Defaults to none.
+#' @param data A data frame. For `as_text_cols()`, one of the two pulls.
+#' @param cols Character vector of column names in `data`.
 #' @param is_missing Logical. Whether `inpatient_admission_data` was omitted
 #'   from the call.
 #' @param call The environment errors are attributed to; see
@@ -102,6 +118,8 @@
 #'   returns the `HasBeen_` columns to exclude from the pivot. The remaining
 #'   stages return the updated long-format data frame, except
 #'   `build_episode_ids()`, which returns a character vector.
+#'   `check_linking_columns()` returns `NULL` invisibly or aborts.
+#'   `as_text_cols()` returns `data` with those columns as character.
 #' @keywords internal
 check_inpatient_admission_data <- function(inpatient_admission_data,
                                            is_missing,
@@ -198,12 +216,11 @@ validate_has_been_flags <- function(ed_data, verbose,
   # Prefer HasBeenAdmitted over HasBeenI when both present ----
   # `HasBeenI` is excluded from the pivot (so it doesn't contribute a
   # second, redundant "Admitted" row for the same admission) but its column
-  # and true 0/1 values are left in `ed_data` untouched; an earlier version
-  # of this code dropped the `HasBeenI` column outright, which discarded its
-  # real values for every `ed_data` row and surfaced as `has_been_i = NA` on
-  # all of them after `bind_rows()` with `inpatient_admission_data` (whose
-  # own `HasBeenI` column, untouched, supplied the only non-NA values in the
-  # output) ----
+  # and true 0/1 values are left in `ed_data` untouched. Dropping the
+  # column instead would discard its real values for every `ed_data` row,
+  # leaving `has_been_i = NA` on all of them after `bind_rows()` with
+  # `inpatient_admission_data` (whose own `HasBeenI` column would supply the
+  # only non-NA values in the output) ----
   exclude_from_pivot <- character(0)
   if (has_been_admitted && has_been_i) {
     inform_if(
@@ -405,8 +422,13 @@ long_from_has_been_flags <- function(ed_data, exclude_from_pivot, verbose) {
 }
 
 #' @rdname check_inpatient_admission_data
-bind_direct_admits <- function(ed_long, inpatient_admission_data, verbose) {
+bind_direct_admits <- function(ed_long, inpatient_admission_data, verbose,
+                               key_cols = character(0),
+                               text_cols = character(0),
+                               call = rlang::caller_env()) {
   inpatient_admission_data <- clean_names_safe(inpatient_admission_data)
+  check_linking_columns(inpatient_admission_data, key_cols, call)
+  inpatient_admission_data <- as_text_cols(inpatient_admission_data, text_cols)
 
   # Remove HasBeenE = 1 rows: already in ed_data ----
   ip_hbe_col <- resolve_col_optional(
@@ -444,6 +466,51 @@ bind_direct_admits <- function(ed_long, inpatient_admission_data, verbose) {
   )
 
   dplyr::bind_rows(ed_long, inpatient_admission_data)
+}
+
+#' @rdname check_inpatient_admission_data
+as_text_cols <- function(data, cols) {
+  # An identifier such as Visit_ID or Hospital has no numeric meaning, but a
+  # CSV read can return it as numbers in one pull and text in the other,
+  # which makes bind_rows() fail. Both pulls are therefore held as text.
+  # Numbers are written without scientific notation, so 100000 becomes
+  # "100000" (not as.character()'s "1e+05"), and NA stays NA ----
+  for (col in cols) {
+    v <- data[[col]]
+    if (is.character(v)) next
+    if (is.numeric(v)) {
+      text <- sprintf("%.15g", as.numeric(v))
+      text[is.na(v)] <- NA_character_
+      data[[col]] <- text
+    } else {
+      data[[col]] <- as.character(v)
+    }
+  }
+  data
+}
+
+#' @rdname check_inpatient_admission_data
+check_linking_columns <- function(inpatient_admission_data, key_cols,
+                                  call = rlang::caller_env()) {
+  # A key absent from the inpatient pull would bind as NA, give every
+  # inpatient row its own episode, and quietly defeat the linkage ----
+  missing_keys <- setdiff(key_cols, names(inpatient_admission_data))
+  if (length(missing_keys) == 0L) return(invisible(NULL))
+
+  rlang::abort(
+    c(
+      paste0(
+        "`inpatient_admission_data` is missing the linking column(s) ",
+        paste0("`", missing_keys, "`", collapse = ", "),
+        " that `ed_data` is linked on."
+      ),
+      "i" = paste0(
+        "Without them no inpatient row can be matched to an ED row. ",
+        "Include the field(s) in the inpatient ESSENCE pull."
+      )
+    ),
+    call = call
+  )
 }
 
 #' @rdname check_inpatient_admission_data
@@ -553,19 +620,21 @@ build_episode_ids <- function(ed_long, fac_col_str, visit_col_str,
 
 #' @rdname check_inpatient_admission_data
 add_episode_metadata <- function(ed_long, episode_id_vec) {
-  # `.by =` groups only for the duration of this one mutate() call, without
-  # materializing a separate grouped-tibble object the way group_by() +
-  # ungroup() does; cheaper to keep alive across a year of rows ----
+  # Computed as whole-column operations over the episode id, not per episode
+  # through `.by =`: a per-episode R call for each of ~10^5 mostly one-row
+  # episodes dominated the run time on a full year of data ----
+  episode_code <- match(episode_id_vec, unique(episode_id_vec))
+
   ed_long |>
-    dplyr::mutate(.episode_id = episode_id_vec) |>
     dplyr::mutate(
-      .patient_class_sequence = compute_patient_class_sequence(
-        patient_class, .class_time
+      .episode_id             = episode_id_vec,
+      .patient_class_sequence = episode_class_sequence(
+        episode_code, patient_class, .class_time
       ),
-      .episode_n_rows  = dplyr::n(),
-      .index_encounter = patient_class == "ED" |
-        (patient_class != "ED" & dplyr::n() == 1L),
-      .by = .episode_id
+      .episode_n_rows         = tabulate(episode_code)[episode_code],
+      .index_encounter        = episode_primary_row(
+        episode_code, patient_class
+      )
     ) |>
     dplyr::select(-.class_time)
 }

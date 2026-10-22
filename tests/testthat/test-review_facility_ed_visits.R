@@ -162,3 +162,96 @@ test_that("review_facility_ed_visits() .outlier_flag is TRUE iff .outlier_low or
   expected_flag <- result$.outlier_low | result$.outlier_high
   expect_equal(result$.outlier_flag, expected_flag)
 })
+test_that("review_facility_ed_visits() clean_names = FALSE keeps the input's column names", {
+  data <- make_essence_data(n = 20L)
+  result <- suppressMessages(
+    review_facility_ed_visits(
+      data, return_format = "all", clean_names = FALSE
+    )
+  )
+  expect_true("Hospital" %in% names(result))
+  expect_true("FacilityType" %in% names(result))
+  expect_false("facility_type" %in% names(result))
+  expect_true(".outlier_flag" %in% names(result))
+})
+
+make_dropout_data <- function() {
+  steady <- tibble::tibble(
+    HospitalName = "Steady", Hospital = 1L, FacilityType = "Emergency Care",
+    Date = rep(as.Date("2026-01-01") + 0:29, each = 10L)
+  )
+  dropout <- tibble::tibble(
+    HospitalName = "Dropout", Hospital = 2L, FacilityType = "Emergency Care",
+    Date = rep(as.Date("2026-01-01") + 0:9, each = 10L)
+  )
+  others <- lapply(3:6, function(i) {
+    tibble::tibble(
+      HospitalName = paste0("Other", i), Hospital = i,
+      FacilityType = "Emergency Care",
+      Date = rep(as.Date("2026-01-01") + 0:29, each = 10L)
+    )
+  })
+  dplyr::bind_rows(c(list(steady, dropout), others))
+}
+
+test_that("visits_per_day divides by the pull's days, so a mid-pull dropout scores lower", {
+  result <- suppressMessages(
+    review_facility_ed_visits(
+      make_dropout_data(), date_col = Date, return_format = "all"
+    )
+  )
+  steady  <- dplyr::filter(result, hospital == 1L)
+  dropout <- dplyr::filter(result, hospital == 2L)
+  expect_equal(steady$visits_per_day, 10)
+  expect_equal(dropout$visits_per_day, 100 / 30)
+  # the days the facility actually sent data are still reported
+  expect_equal(dropout$n_days, 10L)
+})
+
+test_that("a mid-pull dropout is flagged as a low outlier under method = 'iqr'", {
+  result <- suppressMessages(
+    review_facility_ed_visits(
+      make_dropout_data(), date_col = Date, method = "iqr"
+    )
+  )
+  expect_equal(result$hospital, 2L)
+  expect_equal(result$.outlier_direction, "low")
+})
+
+test_that(".outlier_method records which criterion fired, not the requested method", {
+  # One facility far above 19 near-identical ones is caught by both criteria
+  counts <- c(rep(100L, 19L), 400L)
+  data <- dplyr::bind_rows(lapply(seq_along(counts), function(i) {
+    tibble::tibble(
+      HospitalName = paste0("F", i), Hospital = i,
+      FacilityType = "Emergency Care", Date = as.Date("2026-01-01")
+    )[rep(1L, counts[i]), ]
+  }))
+  result <- suppressMessages(
+    review_facility_ed_visits(data, method = "both", return_format = "all")
+  )
+  flagged <- dplyr::filter(result, .outlier_flag)
+  expect_true(all(
+    flagged$.outlier_method %in% c("percentile", "iqr", "percentile+iqr")
+  ))
+  expect_equal(
+    dplyr::filter(result, hospital == 20L)$.outlier_method, "percentile+iqr"
+  )
+  only_pct <- suppressMessages(
+    review_facility_ed_visits(data, method = "percentile", return_format = "all")
+  )
+  expect_true(all(
+    only_pct$.outlier_method[only_pct$.outlier_flag] == "percentile"
+  ))
+  expect_true(all(is.na(only_pct$.outlier_method[!only_pct$.outlier_flag])))
+})
+
+test_that("outlier_method_label() treats a missing threshold as not firing", {
+  expect_equal(
+    outlier_method_label(
+      x = c(1, 50, 100), pct_low = 5, pct_high = 90,
+      iqr_low = NA_real_, iqr_high = NA_real_
+    ),
+    c("percentile", NA, "percentile")
+  )
+})

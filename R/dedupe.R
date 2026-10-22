@@ -55,7 +55,10 @@
 #'     retains the most recently received record; appropriate when ESSENCE
 #'     records are updated chronologically and later rows reflect corrected
 #'     information. Use `Arrived_Date_Time` as `order_by` to retain the most
-#'     recently transmitted version of each record.}
+#'     recently transmitted version of each record. A row with a missing
+#'     `order_by` value sorts after every row that has one, so `"last"`
+#'     retains it over the rows with a value; make sure `order_by` is
+#'     populated, or filter such rows first.}
 #'   \item{`"most_complete"`}{Retains the row with the fewest `NA` values
 #'     across all columns. Useful when records vary in completeness due to
 #'     late-arriving lab or disposition fields. `order_by` is ignored and a
@@ -77,10 +80,16 @@
 #'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
 #'   equivalents.
 #' @param visit_col Unquoted
-#'   column name identifying the visit. Defaults to `Visit_ID`. Common
-#'   alternatives include `MedicalRecordNumber`, `MRN`, `VisitNumber`, and
-#'   `C_Unique_Patient_ID`. Accepts both raw ESSENCE names and
-#'   post-[janitor::clean_names()] equivalents.
+#'   column name identifying the visit. Defaults to `Visit_ID`. Use another
+#'   column only if it identifies a single visit within a facility (for
+#'   example a site-specific visit or encounter number). Do not use a
+#'   patient-level identifier such as `C_Unique_Patient_ID`, an MRN, or
+#'   `MedicalRecordNumber`: those are shared by all of a patient's visits, so
+#'   every repeat visit by the same patient would be collapsed into one row.
+#'   An identifier has no numeric meaning: values are compared as text (the
+#'   number `100000` and the text `"100000"` are the same visit), and the
+#'   column is returned in the type it arrived in. Accepts both raw ESSENCE
+#'   names and post-[janitor::clean_names()] equivalents.
 #' @param order_by Optional.
 #'   Unquoted column name to sort by within each facility x visit group
 #'   before applying `keep`. Ignored when `keep = "most_complete"` (a warning
@@ -93,7 +102,13 @@
 #'   `"most_complete"`. See Details.
 #' @param clean_names Logical. If `TRUE` (default), applies
 #'   [janitor::clean_names()] to standardize column names to snake_case on
-#'   output.
+#'   output. If `FALSE`, the input's own column names are restored on output
+#'   (every function normalizes names internally so that column arguments
+#'   resolve either way); any columns the function itself adds keep their
+#'   snake_case or dot-prefixed names.
+#' @param verbose Logical. If `FALSE`, suppresses informational messages
+#'   (`rlang::inform()`); warnings and errors are always shown regardless.
+#'   Defaults to `TRUE`.
 #' @return A deduplicated data frame with one row per `facility_col` x
 #'   `visit_col` combination.
 #'
@@ -114,9 +129,6 @@
 #' # Use numeric facility ID instead of name
 #' essence_raw |> dedupe(facility_col = Hospital)
 #'
-#' # Deduplicate by patient identifier (MRN-equivalent in ESSENCE)
-#' essence_raw |> dedupe(visit_col = C_Unique_Patient_ID)
-#'
 #' # Works with post-clean_names() column names too
 #' essence_raw |>
 #'   janitor::clean_names() |>
@@ -136,21 +148,18 @@ dedupe <- function(data,
                    visit_col    = Visit_ID,
                    order_by     = NULL,
                    keep         = c("first", "last", "most_complete"),
-                   clean_names  = TRUE) {
+                   clean_names  = TRUE,
+                   verbose      = TRUE) {
 
   check_data_frame(data)
   check_flag(clean_names)
+  check_flag(verbose)
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
   # below as a plain HospitalName default ----
-  facility_col_quo     <- rlang::enquo(facility_col)
-  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
-  facility_col_sym     <- if (facility_col_missing) {
-    NULL
-  } else {
-    rlang::sym(rlang::as_name(facility_col_quo))
-  }
+  facility_col_sym     <- capture_col_sym(rlang::enquo(facility_col))
+  facility_col_missing <- is.null(facility_col_sym)
 
   keep <- rlang::arg_match(keep)
 
@@ -169,7 +178,8 @@ dedupe <- function(data,
   )
 
   deduped <- keep_group_rows(
-    data, rlang::as_string(facility_col), rlang::as_string(visit_col), keep
+    data, rlang::as_string(facility_col), rlang::as_string(visit_col), keep,
+    verbose
   )
 
   if (clean_names) {

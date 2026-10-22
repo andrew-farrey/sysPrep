@@ -62,16 +62,22 @@ or \code{"all"}. \code{"outliers_only"} returns only flagged facilities.
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
-output.}
+output. If \code{FALSE}, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
-(\code{rlang::inform()}); warnings and errors are always shown regardless.}
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 }
 \value{
 A tibble with one row per facility containing facility identifier,
 facility type, \code{n_visits}, optionally \code{visits_per_day} and \code{n_days},
 and outlier flag columns \code{.outlier_low}, \code{.outlier_high},
-\code{.outlier_flag}, \code{.outlier_direction}, and \code{.outlier_method}.
+\code{.outlier_flag}, \code{.outlier_direction}, and \code{.outlier_method} (the
+criterion that flagged the facility: \code{"percentile"}, \code{"iqr"}, or
+\code{"percentile+iqr"}; \code{NA} for facilities that were not flagged).
 }
 \description{
 Computes visit counts per facility and flags statistical outliers:
@@ -101,17 +107,23 @@ flagged facilities in context.
 \describe{
 \item{\code{"percentile"} (default)}{Flags facilities below
 \code{percentile_low} and above \code{percentile_high} of the visit count
-distribution. Default thresholds of 5th and 95th percentile are
-interpretable and robust to skewed count distributions.}
+distribution. This is a tail ranking, not a test for unusual values: it
+flags roughly the most extreme \code{percentile_low + (1 - percentile_high)}
+share of facilities whether or not any of them is actually abnormal
+(with the default thresholds and fewer than about 20 facilities it
+flags the lowest and the highest facility every time). Use it to
+produce a short, ordered list to look at; use \code{"iqr"} when you want
+only facilities that are unusual relative to the spread of the rest.}
 \item{\code{"iqr"}}{Flags facilities below \code{Q1 - iqr_multiplier * IQR} and
 above \code{Q3 + iqr_multiplier * IQR}. Tukey fences with the default
-multiplier of 1.5 are sensitive to data dropouts: a facility that
+multiplier of 1.5 flag nothing when facilities are similar, and are
+sensitive to data dropouts when \code{date_col} is supplied: a facility that
 abruptly stops sending visits during a pull window will fall well
 below the lower fence. Increase \code{iqr_multiplier} to reduce
 sensitivity.}
 \item{\code{"both"}}{Applies both methods independently. A facility is
-flagged if it meets either criterion. \code{.outlier_method} indicates
-which method triggered.}
+flagged if it meets either criterion. \code{.outlier_method} records which
+criterion fired: \code{"percentile"}, \code{"iqr"}, or \code{"percentile+iqr"}.}
 }
 }
 
@@ -119,9 +131,13 @@ which method triggered.}
 
 When \code{date_col} is supplied, visits per day is computed and outlier
 detection is applied to the normalized rate rather than raw counts.
-This makes pulls of different durations comparable and improves
-sensitivity to within-pull data dropouts (e.g., a facility that stops
-sending data mid-month).
+\code{visits_per_day} is a facility's \code{n_visits} divided by the number of
+distinct dates in the whole pull, not by the days that facility sent data
+(\code{n_days}, reported alongside for reference). A facility that sends data
+every day of a 30-day pull and one that sends the same daily volume for 10
+days and then stops therefore get different rates, so a mid-pull dropout
+falls below the lower fence instead of being hidden. This also makes pulls
+of different durations comparable.
 }
 
 \subsection{Grouped detection}{

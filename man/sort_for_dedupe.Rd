@@ -17,9 +17,9 @@ sort_for_dedupe(
   call = rlang::caller_env()
 )
 
-keep_group_rows(data, fac_col_str, visit_col_str, keep)
+keep_group_rows(data, fac_col_str, visit_col_str, keep, verbose = TRUE)
 
-count_visit_row_groups(data_clean, fac_col_str, visit_col_str)
+count_visit_row_groups(data_clean, fac_col_str, visit_col_str, verbose = TRUE)
 
 dup_summary_by_facility(data_clean, fac_col_str, dup_group_ids)
 
@@ -40,6 +40,8 @@ columns.}
 \code{\link[=resolve_col]{resolve_col()}}.}
 
 \item{fac_col_str, visit_col_str}{Names of the facility and visit columns.}
+
+\item{verbose}{Logical. Whether to emit informational messages.}
 
 \item{data_clean}{A data frame already passed through \code{\link[=clean_names_safe]{clean_names_safe()}}.}
 
@@ -79,10 +81,10 @@ unknown, not confirmed to match. Both exported functions therefore group
 with \code{\link[=na_safe_group_id]{na_safe_group_id()}}, which gives each NA-key row its own singleton
 group, and report how many rows were affected.
 
-For \code{keep = "most_complete"}, \code{dplyr::pick(dplyr::everything())} already
-excludes \code{.group_id}: \code{dplyr::pick()} never includes the active grouping
-variable(s) among the columns it can pick, so no explicit exclusion is
-needed (or possible, since \code{pick()} errors if asked to exclude a column it
-never included).
+For \code{keep = "most_complete"}, the number of non-missing values in each row
+is counted once over the whole data frame, excluding the \code{.group_id} helper
+column, and each group then keeps its row with the highest count (the
+first, on a tie). Counting per group instead would repeat the same
+row-wise work once for each of the (often hundreds of thousands of) groups.
 }
 \keyword{internal}

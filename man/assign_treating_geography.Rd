@@ -41,7 +41,10 @@ Required when \code{new_zip_col} is not \code{NULL}.}
 \code{HospitalZip}. Required when \code{new_zip_col} is not \code{NULL}.}
 
 \item{new_region_col}{Character string or \code{NULL}. Name of the column to
-write reassigned region values to. Defaults to \code{"region_hybrid"}: a
+write reassigned region values to. Unlike the unquoted arguments that
+point at columns already in \code{data}, this is a quoted string, because it
+names a column that usually does not exist yet. Defaults to
+\code{"region_hybrid"}: a
 new column, leaving \code{region_col} untouched. Pass \code{NULL} to skip region
 reassignment entirely. Pass \code{region_col}'s own name (with
 \code{overwrite = TRUE}) to overwrite it in place instead of writing a new
@@ -64,16 +67,22 @@ pre-overwrite values before reassignment. Only has an effect when
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
-output.}
+output. If \code{FALSE}, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
-(\code{rlang::inform()}); warnings and errors are always shown regardless.}
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 }
 \value{
 The input data frame with reassigned region and/or zip code
 values written to \code{new_region_col}/\code{new_zip_col} (or to \code{region_col}/
 \code{zip_col} in place, when \code{overwrite = TRUE}). A \code{.out_of_state} logical
-column is added indicating which rows were reassigned. When
+column is added indicating which rows were reassigned. Despite its name
+it is \code{TRUE} for every row whose residence is not in \code{site}: another
+state, \code{"OTHER_REGION"}, \code{"{site}_UNKNOWN"}, and a missing \code{Region}. When
 \code{overwrite = TRUE} and \code{preserve_original_geographies = TRUE},
 \code{original_region} and/or \code{original_zip_code} columns are also present.
 }
@@ -100,9 +109,10 @@ summary table scoped to in-state values will silently exclude these rows
 without an explicit filter. EMS-based systems report incidence at the
 location of care rather than patient residence; this function brings
 ESSENCE data into that same frame. Assigning the treating facility's
-geography to these visits retains them in the analytic dataset while
-approximating both residence-based and incidence-based burden from a
-single geographic field.
+geography to these visits retains them in the analytic dataset. The cost
+is that one geographic field then holds residence for most rows and
+treating location for the reassigned ones; see "Hybrid geography
+assignment and cluster detection" below.
 }
 
 \subsection{Site prefix detection}{
@@ -110,8 +120,9 @@ single geographic field.
 The \code{Region} field uses the format \verb{\{SITE\}_\{REGION\}}, where \code{SITE} is
 the NSSP Site Short Name and \code{REGION} is the ESSENCE Region, a county
 name derived from a zip-code-to-county lookup table maintained by
-ESSENCE. Because some site names contain multiple underscores, the
-prefix is all characters before the \strong{last} underscore. A visit is
+ESSENCE. The prefix is supplied by the caller as \code{site} (it is not
+parsed out of the data), so a site whose short name contains an underscore
+is passed whole. A visit is
 classified as out-of-state or unknown residence when its \code{Region} does
 not begin with \code{paste0(site, "_")}, or when \code{Region} is \code{"OTHER_REGION"},
 \code{paste0(site, "_UNKNOWN")} (e.g. \code{"KY_UNKNOWN"}), or \code{NA}. Unlike
@@ -141,8 +152,7 @@ that type is skipped with an informative message regardless of
 By default, results are written to new columns (\code{region_hybrid}/
 \code{zip_code_hybrid}), and \code{region_col}/\code{zip_col} are never modified; safe
 to call repeatedly without risk of losing the original values. To
-overwrite \code{region_col}/\code{zip_col} in place instead (the only behavior this
-function had before this parameter existed), pass their own name to
+overwrite \code{region_col}/\code{zip_col} in place instead, pass their own name to
 \code{new_region_col}/\code{new_zip_col} and set \code{overwrite = TRUE}:
 \code{assign_treating_geography(new_region_col = "region", overwrite = TRUE)}.
 \code{overwrite} guards \strong{any} collision with an existing column, not just
@@ -242,7 +252,7 @@ ed_clean |> assign_treating_geography(new_zip_col = NULL)
 # Non-Kentucky site
 ed_clean |> assign_treating_geography(site = "OH")
 
-# Overwrite region/zip_code in place (the original behavior); requires
+# Overwrite region/zip_code in place; requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_treating_geography(

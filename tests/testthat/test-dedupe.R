@@ -126,3 +126,12 @@ test_that("dedupe() groups by Hospital, not HospitalName, when a facility rename
   expect_equal(nrow(result), 1L)
   expect_equal(result$hospital_name, "New Facility Name")
 })
+
+test_that("dedupe(keep = 'most_complete') keeps the most complete row, the first on a tie", {
+  data <- tibble::tibble(
+    Hospital = 1L, Visit_ID = c("V1", "V1", "V1", "V2", "V2"),
+    a = c(NA, 1, 1, 1, 2), b = c(NA, NA, 2, NA, NA), id = 1:5
+  )
+  result <- dedupe(data, keep = "most_complete")
+  expect_equal(sort(result$id), c(3L, 4L))
+})

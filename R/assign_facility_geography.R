@@ -20,10 +20,16 @@
 #' receive the treating facility's geography. This produces a dataset scoped
 #' entirely to incidence-at-location rather than patient residence.
 #'
-#' This is functionally equivalent to renaming `HospitalRegion` to `Region`
-#' and `HospitalZip` to `ZipCode`, but operates on the existing data structure
-#' without column renaming or pipeline restructuring, preserving compatibility
-#' with downstream functions that expect `Region` and `ZipCode` by name.
+#' With `overwrite = TRUE` and `new_region_col = "region"`/`new_zip_col =
+#' "zip_code"`, this is functionally equivalent to renaming `HospitalRegion`
+#' to `Region` and `HospitalZip` to `ZipCode`, but operates on the existing
+#' data structure without column renaming or pipeline restructuring,
+#' preserving compatibility with downstream functions that expect `Region`
+#' and `ZipCode` by name. By default it instead writes the facility values to
+#' the new `region_facility`/`zip_code_facility` columns and leaves `Region`
+#' and `ZipCode` untouched. Because every row takes the facility value, the
+#' patient `Region` and `ZipCode` columns are not needed unless one of them is
+#' the output column.
 #'
 #' ## Incidence-at-location scoping and region-level cluster detection
 #' Assigning facility geography to all visits bins every visit to the region
@@ -48,9 +54,9 @@
 #' - **No Master Facility Table lookup required.** Hospital-level spatial
 #'   clustering requires latitude/longitude coordinates sourced from the NSSP
 #'   Master Facility Table, an additional logistical step outside the standard
-#'   ESSENCE data pull. Region-level binning achieves a close approximation of
-#'   hospital-level cluster detection using `HospitalRegion`/`HospitalZip`
-#'   instead, provided they're included in the pull. Neither is guaranteed
+#'   ESSENCE data pull. Region-level binning is a coarser alternative to
+#'   hospital-level cluster detection that needs only `HospitalRegion`/
+#'   `HospitalZip`, provided they're included in the pull. Neither is guaranteed
 #'   by default; both require being part of your site's default returned
 #'   columns or explicitly requested via the API's `&field=` parameter.
 #'
@@ -59,7 +65,7 @@
 #' fall outside a region-scoped surveillance area entirely or bin to an
 #' unrelated region, silently understating exactly the facilities most
 #' likely to generate a true signal: border and mobile-population
-#' facilities. Region-level detection is only competitive with hospital-level
+#' facilities. Region-level detection can only be compared with hospital-level
 #' detection, sensitivity-wise, once that gap is closed; see
 #' `vignette("geography-assignment")` for the full mechanism.
 #'
@@ -80,8 +86,9 @@
 #' - Spatial cluster detection scoped to where patients received care rather
 #'   than where they live.
 #' - Incidence-at-location burden estimation irrespective of patient origin.
-#' - Approximating hospital-level cluster detection without Master Facility
-#'   Table lookups or coordinate-based spatial methods.
+#' - A region-level alternative to hospital-level cluster detection that
+#'   needs no Master Facility Table lookups or coordinate-based spatial
+#'   methods.
 #' - Comparing total treated volume across urban and rural counties without
 #'   differentiating which specific hospital saw each visit, useful when a
 #'   facility-to-county lookup table isn't available but `HospitalRegion`/
@@ -114,8 +121,7 @@
 #'
 #' By default, results are written to new columns (`region_facility`/
 #' `zip_code_facility`), and `region_col`/`zip_col` are never modified. To
-#' overwrite `region_col`/`zip_col` in place instead (the only behavior this
-#' function had before this parameter existed), pass their own name to
+#' overwrite `region_col`/`zip_col` in place instead, pass their own name to
 #' `new_region_col`/`new_zip_col` and set `overwrite = TRUE`. `overwrite`
 #' guards **any** collision with an existing column, not just the source
 #' column; see [assign_treating_geography()]'s documentation for the full
@@ -159,7 +165,7 @@
 #' # region/zip_code themselves are never touched
 #' ed_clean |> assign_facility_geography()
 #'
-#' # Overwrite region/zip_code in place (the original behavior); requires
+#' # Overwrite region/zip_code in place; requires
 #' # naming the source columns explicitly and opting in with overwrite
 #' ed_clean |>
 #'   assign_facility_geography(
@@ -199,7 +205,9 @@ assign_facility_geography <- function(data,
   check_flag(verbose)
 
   # Normalize names ----
-  data <- clean_names_safe(data)
+  original_names <- names(data)
+  data           <- clean_names_safe(data)
+  name_map       <- input_name_map(original_names, names(data))
 
   # Resolve source columns gracefully ----
   sources <- resolve_geography_sources(
@@ -217,14 +225,15 @@ assign_facility_geography <- function(data,
     region_col_str      = sources$region,
     hosp_region_col_str = sources$hosp_region,
     zip_col_str         = sources$zip,
-    hosp_zip_col_str    = sources$hosp_zip
+    hosp_zip_col_str    = sources$hosp_zip,
+    check_zip_col       = FALSE
   )
 
   if (!flags$do_region && !flags$do_zip) {
     rlang::warn(
       "No geography types could be processed. Returning data unchanged."
     )
-    return(if (clean_names) clean_names_safe(data) else data)
+    return(finish_names(data, clean_names, name_map))
   }
 
   outputs <- resolve_geography_outputs(
@@ -243,5 +252,5 @@ assign_facility_geography <- function(data,
 
   inform_facility_result(data, outputs, verbose)
 
-  if (clean_names) clean_names_safe(data) else data
+  finish_names(data, clean_names, name_map)
 }

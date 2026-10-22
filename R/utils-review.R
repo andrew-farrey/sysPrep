@@ -13,14 +13,20 @@
 #'   \item `inform_review_defaults()` emits the informational messages about
 #'     the defaults in effect.
 #'   \item `count_facility_visits()` counts visits per facility and facility
-#'     type, normalized to visits per day when a date column is available.
+#'     type. When a date column is available it also reports `n_days` (the
+#'     days the facility sent data) and `visits_per_day`, which divides by the
+#'     number of distinct dates in the whole pull rather than by `n_days`, so
+#'     a facility that stops sending partway through the pull scores lower
+#'     instead of looking the same as one that sent every day.
 #'   \item `add_outlier_thresholds()` adds the percentile and/or IQR
 #'     thresholds, optionally within facility types. Only the quantiles the
 #'     chosen `method` actually uses are computed: the IQR quantiles would be
 #'     wasted work (recomputed per group) under the default
 #'     `method = "percentile"`, and vice versa.
 #'   \item `flag_outliers()` adds the `.outlier_*` columns and drops the
-#'     threshold helper columns. `method` is a single scalar for the whole
+#'     threshold helper columns. `.outlier_method` records the criterion that
+#'     fired (`"percentile"`, `"iqr"`, or `"percentile+iqr"`), not the
+#'     requested `method`. `method` is a single scalar for the whole
 #'     call, so the comparison is chosen once with `if`/`else` rather than
 #'     `dplyr::case_when()`, which is deprecated for a scalar condition as of
 #'     dplyr 1.2.0.
@@ -49,13 +55,17 @@
 #'   `"visits_per_day"` or `"n_visits"`.
 #' @param method One of `"percentile"`, `"iqr"`, or `"both"`.
 #' @param iqr_multiplier Non-negative number: the IQR fence multiplier.
+#' @param x,pct_low,pct_high,iqr_low,iqr_high The detection column and the
+#'   four thresholds, as parallel vectors. A threshold that is `NA` (the
+#'   method was not requested) never fires.
 #' @param return_format One of `"outliers_only"` or `"all"`.
 #'
 #' @return `check_percentile_order()` returns `NULL` invisibly or aborts.
 #'   `resolve_review_date_col()` returns a list with `use_time_norm` and
 #'   `date_col_str`. `inform_review_defaults()` and `inform_review_summary()`
 #'   are called for their messages. The remaining stages return the updated
-#'   `facility_counts` data frame.
+#'   `facility_counts` data frame. `outlier_method_label()` returns a character
+#'   vector the length of `x`.
 #' @keywords internal
 check_percentile_order <- function(percentile_low, percentile_high,
                                    call = rlang::caller_env()) {
@@ -75,13 +85,15 @@ check_percentile_order <- function(percentile_low, percentile_high,
 }
 
 #' @rdname check_percentile_order
-resolve_review_date_col <- function(data, date_col_quo) {
+resolve_review_date_col <- function(data, date_col_quo,
+                                    call = rlang::caller_env()) {
   use_time_norm <- !rlang::quo_is_null(date_col_quo)
   date_col_str  <- NULL
 
   if (use_time_norm) {
-    date_col_str <- rlang::as_name(date_col_quo)
-    date_col_sym <- resolve_col_optional(data, rlang::sym(date_col_str))
+    date_col_sym <- capture_col_sym(date_col_quo, "date_col", call)
+    date_col_str <- rlang::as_string(date_col_sym)
+    date_col_sym <- resolve_col_optional(data, date_col_sym)
     if (is.null(date_col_sym)) {
       rlang::warn(
         paste0(
@@ -151,10 +163,15 @@ count_facility_visits <- function(data, fac_col_str, type_col_str,
       .groups = "drop"
     )
 
+  # Normalize by the pull's own date span, not by each facility's active
+  # days: dividing by the days a facility actually sent data would give a
+  # facility that went silent after day 10 the same rate as one that sent
+  # every day, hiding exactly the dropout this rate exists to expose ----
   if (use_time_norm) {
+    n_pull_days <- dplyr::n_distinct(data[[date_col_str]], na.rm = TRUE)
     facility_counts <- dplyr::mutate(
       facility_counts,
-      visits_per_day = n_visits / n_days
+      visits_per_day = n_visits / n_pull_days
     )
   }
 
@@ -230,10 +247,13 @@ flag_outliers <- function(facility_counts, detect_col, method) {
         .outlier_high                 ~ "high",
         TRUE                          ~ NA_character_
       ),
-      .outlier_method = dplyr::if_else(
-        .outlier_flag,
-        method,
-        NA_character_
+      # Which criterion fired, not which `method` was requested; the unused
+      # method's thresholds are NA, so it can never fire under a single
+      # method ----
+      .outlier_method = outlier_method_label(
+        .data[[detect_col]],
+        .data[[".pct_low"]], .data[[".pct_high"]],
+        .data[[".iqr_low"]], .data[[".iqr_high"]]
       )
     ) |>
     dplyr::select(
@@ -241,6 +261,18 @@ flag_outliers <- function(facility_counts, detect_col, method) {
       -dplyr::starts_with(".q"),
       -dplyr::starts_with(".iqr")
     )
+}
+
+#' @rdname check_percentile_order
+outlier_method_label <- function(x, pct_low, pct_high, iqr_low, iqr_high) {
+  by_percentile <- (x < pct_low | x > pct_high) %in% TRUE
+  by_iqr        <- (x < iqr_low | x > iqr_high) %in% TRUE
+
+  label <- rep(NA_character_, length(x))
+  label[by_iqr] <- "iqr"
+  label[by_percentile] <- "percentile"
+  label[by_percentile & by_iqr] <- "percentile+iqr"
+  label
 }
 
 #' @rdname check_percentile_order

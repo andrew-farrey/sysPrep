@@ -66,3 +66,40 @@ test_that("resolve_facility_col_str() returns a string, preferring Hospital when
   )
   expect_identical(result, "Hospital")
 })
+
+test_that("restore_input_names() renames normalized columns back and leaves added columns", {
+  original <- c("Hospital Name", "Visit_ID")
+  cleaned  <- c("hospital_name", "visit_id")
+  result <- restore_input_names(
+    tibble::tibble(hospital_name = "A", visit_id = "V1", .episode_id = "x"),
+    input_name_map(original, cleaned)
+  )
+  expect_identical(names(result), c("Hospital Name", "Visit_ID", ".episode_id"))
+})
+
+test_that("finish_names() normalizes with clean_names = TRUE and restores with FALSE", {
+  map <- input_name_map(c("Visit_ID"), c("visit_id"))
+  expect_identical(
+    names(finish_names(tibble::tibble(Visit_ID = 1), TRUE, map)), "visit_id"
+  )
+  expect_identical(
+    names(finish_names(tibble::tibble(visit_id = 1), FALSE, map)), "Visit_ID"
+  )
+})
+
+test_that("capture_col_sym() returns NULL, a symbol, or aborts on anything else", {
+  f <- function(col = NULL) capture_col_sym(rlang::enquo(col))
+  expect_null(f())
+  expect_null(f(NULL))
+  expect_identical(f(Hospital), rlang::sym("Hospital"))
+  expect_identical(f("Hospital"), rlang::sym("Hospital"))
+  expect_error(f(c(a, b)), "must be an unquoted column name")
+})
+
+test_that("dedupe() and summarize_duplicates() abort clearly on a non-name facility_col", {
+  expect_error(dedupe(essence_raw, facility_col = c(a, b)), "unquoted column name")
+  expect_error(
+    summarize_duplicates(essence_raw, facility_col = Hospital + 1),
+    "unquoted column name"
+  )
+})

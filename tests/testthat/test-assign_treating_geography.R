@@ -220,3 +220,24 @@ test_that("assign_treating_geography() warns on no geography processed regardles
     "No geography types could be processed"
   )
 })
+
+test_that("assign_treating_geography() clean_names = FALSE keeps the input's column names", {
+  data   <- make_essence_data(n = 5L)
+  result <- suppressMessages(assign_treating_geography(data, clean_names = FALSE))
+  expect_true(all(c("HospitalName", "Region", "HospitalRegion") %in% names(result)))
+  expect_false("hospital_region" %in% names(result))
+  expect_true(all(c(".out_of_state", "region_hybrid") %in% names(result)))
+})
+
+test_that("assign_treating_geography() informs when ZipCode absent but HospitalZip present, and still reassigns region", {
+  # Unlike the facility function, the treating function keeps a row's own
+  # ZipCode for in-state visits, so it needs the column for zip geography
+  data <- make_essence_data(n = 5L) |>
+    dplyr::select(-ZipCode)
+  expect_message(
+    result <- assign_treating_geography(data),
+    "Zip geography skipped: `ZipCode` not found"
+  )
+  expect_true("region_hybrid" %in% names(result))
+  expect_false("zip_code_hybrid" %in% names(result))
+})

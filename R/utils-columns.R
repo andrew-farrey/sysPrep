@@ -9,8 +9,12 @@
 #'
 #' @details
 #' `resolve_col()` tries a direct match first, then normalizes both the
-#' supplied name and the data's names to snake_case and requires exactly one
-#' match. It aborts, attributed to `call`, when no unique match exists.
+#' supplied name and the data's names to snake_case and matches on that.
+#' `janitor::make_clean_names()` makes the names in a vector unique (two
+#' columns that would both be `visit_id` become `visit_id` and `visit_id_2`),
+#' so at most one column can match a given normalized name; because every
+#' exported function normalizes `data` first, this is always the case. It
+#' aborts, attributed to `call`, when nothing matches.
 #' `resolve_col_optional()` returns `NULL` instead of aborting, for functions
 #' that degrade gracefully when an optional column (for example
 #' `HospitalZip`) was not pulled. `resolve_col_str()` is `resolve_col()`
@@ -27,6 +31,14 @@
 #' merge two different facilities that briefly share a display name. An
 #' explicitly supplied `facility_col` is always honored exactly as given.
 #'
+#' `capture_col_sym()` turns an optional, `NULL`-defaulting column argument,
+#' captured by the exported function with `rlang::enquo()`, into a symbol (or
+#' `NULL` when it was not supplied). Every function with a `facility_col`
+#' argument uses it, so the capture is written once; it aborts with a plain
+#' message, attributed to the caller, when given something other than a name
+#' (for example `c(a, b)`), where `rlang::as_name()` alone fails with an
+#' error about a captured expression.
+#'
 #' `clean_names_safe()` is [janitor::clean_names()] that preserves
 #' leading-dot prefixes. `janitor::clean_names()` strips leading dots (for
 #' example `.index_encounter` becomes `index_encounter`), which would break
@@ -35,11 +47,31 @@
 #' input column must never be given a leading-dot name: it would not
 #' normalize like other raw columns.
 #'
+#' `input_name_map()`, `restore_input_names()` and `finish_names()` implement
+#' `clean_names = FALSE`. Every function normalizes its input names so column
+#' arguments resolve either way, which would otherwise make `clean_names =
+#' FALSE` a no-op on output. `input_name_map()` records which original name
+#' each normalized name came from (positionally, since normalization neither
+#' drops nor reorders columns); `restore_input_names()` renames the result's
+#' columns back through that map, leaving the columns the function itself
+#' added (`.index_encounter`, `region_hybrid`, ...) as they are; and
+#' `finish_names()` is the single exit that applies whichever of
+#' `clean_names_safe()` or the restore the caller asked for.
+#'
 #' @param data A data frame, normally already passed through
 #'   `clean_names_safe()`.
+#' @param original_names,cleaned_names The column names of the input before
+#'   and after `clean_names_safe()`, in the same order.
+#' @param name_map The named character vector from `input_name_map()`: values
+#'   are original names, names are their normalized forms.
+#' @param result The data frame about to be returned.
+#' @param clean_names Logical. The caller's `clean_names` argument.
 #' @param col_sym A symbol naming a column, in raw ESSENCE or snake_case form.
 #'   For `as_string_or_null()`, a symbol returned by `resolve_col_optional()`,
 #'   or `NULL`.
+#' @param col_quo The expression captured by `rlang::enquo()` for an optional
+#'   column argument.
+#' @param arg The argument's name, used in the error message.
 #' @param facility_col_sym A symbol naming the user-supplied `facility_col`,
 #'   or `NULL` when it was not supplied.
 #' @param facility_col_missing Logical. `TRUE` when the caller did not supply
@@ -53,8 +85,12 @@
 #'   `resolve_facility_col()` return a symbol (`resolve_col_optional()`
 #'   returns `NULL` when the column is absent). `resolve_col_str()` and
 #'   `resolve_facility_col_str()` return a string. `as_string_or_null()`
-#'   returns a string, or `NULL` for a `NULL` input. `clean_names_safe()`
+#'   returns a string, or `NULL` for a `NULL` input. `capture_col_sym()`
+#'   returns a symbol, or `NULL`. `clean_names_safe()`
 #'   returns `data` with snake_case names and any leading-dot names kept.
+#'   `input_name_map()` returns the named character vector described above.
+#'   `restore_input_names()` and `finish_names()` return `result` with its
+#'   column names restored or normalized.
 #' @keywords internal
 resolve_col <- function(data, col_sym, call = rlang::caller_env()) {
 
@@ -119,6 +155,24 @@ resolve_facility_col_str <- function(data, facility_col_sym,
 }
 
 #' @rdname resolve_col
+capture_col_sym <- function(col_quo, arg = "facility_col",
+                            call = rlang::caller_env()) {
+  if (rlang::quo_is_null(col_quo)) return(NULL)
+
+  expr <- rlang::quo_get_expr(col_quo)
+  if (rlang::is_symbol(expr)) return(expr)
+  if (rlang::is_string(expr)) return(rlang::sym(expr))
+
+  rlang::abort(
+    c(
+      paste0("`", arg, "` must be an unquoted column name."),
+      "x" = paste0("Got `", rlang::as_label(expr), "`.")
+    ),
+    call = call
+  )
+}
+
+#' @rdname resolve_col
 as_string_or_null <- function(col_sym) {
   if (is.null(col_sym)) NULL else rlang::as_string(col_sym)
 }
@@ -133,9 +187,31 @@ clean_names_safe <- function(data) {
     present   <- intersect(clean_stripped, names(data))
     if (length(present) > 0L) {
       restore   <- paste0(".", present)
-      rename_map <- setNames(present, restore)
+      rename_map <- stats::setNames(present, restore)
       data <- dplyr::rename(data, dplyr::all_of(rename_map))
     }
   }
   data
+}
+
+#' @rdname resolve_col
+input_name_map <- function(original_names, cleaned_names) {
+  stats::setNames(original_names, cleaned_names)
+}
+
+#' @rdname resolve_col
+restore_input_names <- function(result, name_map) {
+  idx <- match(names(result), names(name_map))
+  hit <- !is.na(idx)
+  names(result)[hit] <- unname(name_map)[idx[hit]]
+  result
+}
+
+#' @rdname resolve_col
+finish_names <- function(result, clean_names, name_map) {
+  if (clean_names) {
+    clean_names_safe(result)
+  } else {
+    restore_input_names(result, name_map)
+  }
 }

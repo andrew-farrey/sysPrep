@@ -24,9 +24,10 @@ filter_care_setting(
 output of \code{\link[=dedupe]{dedupe()}}.}
 
 \item{facility_col}{Unquoted
-column name identifying the facility. Defaults to \code{HospitalName}.
-Accepts both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
-equivalents.}
+column name identifying the facility. Defaults to \code{HospitalName}, and
+unlike other functions does not prefer \code{Hospital}; see "Facility name
+column" in Details. Accepts both raw ESSENCE names and
+post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{facility_type_col}{Unquoted column name identifying the facility type. Defaults to
 \code{FacilityType}. Accepts both raw ESSENCE names and
@@ -79,10 +80,14 @@ data. Defaults to \code{FALSE}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
-output.}
+output. If \code{FALSE}, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
-(\code{rlang::inform()}); warnings and errors are always shown regardless.}
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 }
 \value{
 When \code{dry_run = FALSE} (default), a filtered data frame retaining
@@ -143,13 +148,25 @@ facilities to a specified \code{fix_to} value before the \code{keep_types} filte
 applied.
 }
 
-\subsection{Kentucky data structure}{
+\subsection{Default \code{keep_types}}{
 
-In Kentucky, inpatient admission data are transmitted through the
-corresponding ED hospital feeds and share the same \code{FacilityType}. The
-default \code{keep_types} of \code{c("Emergency Care", "Inpatient Practice Setting")}
-reflects this structure. Sites pulling ED visits only should set
-\code{keep_types = "Emergency Care"}.
+The default \code{keep_types} of \code{c("Emergency Care", "Inpatient Practice Setting")} keeps both facility types that identify hospitals with emergency
+or inpatient capacity, so a pull that mixes ED and inpatient records is not
+silently narrowed. In Kentucky, inpatient admission data are transmitted
+through the corresponding ED hospital feeds and carry the ED
+\code{FacilityType}, so Kentucky pulls do not depend on the second value; sites
+whose inpatient feeds are onboarded under \code{"Inpatient Practice Setting"}
+do. Sites pulling ED visits only should set \code{keep_types = "Emergency Care"}.
+}
+
+\subsection{Facility name column}{
+
+Unlike the duplicate and review functions, \code{filter_care_setting()} does not
+prefer \code{Hospital} over \code{HospitalName} for \code{facility_col}: its name-based
+corrections (\code{fix_facility_type_vector}, \code{fix_facility_type_regex}) match
+facility \emph{names}, so the column must hold names. The ID-based route
+(\code{fix_facility_id_vector}, matched on \code{facility_id_col}) is the one that
+uses the stable identifier.
 }
 
 \subsection{Processing order}{

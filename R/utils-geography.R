@@ -6,12 +6,17 @@
 #' @details
 #' `validate_geography_cols()` downgrades `do_region`/`do_zip` to `FALSE`
 #' (with an informational message) when a column required for that geography
-#' type is absent. `check_region_col` controls whether `region_col_str`
-#' itself is validated here: [assign_treating_geography()] validates it
-#' separately afterward, since it is unconditionally required there for
-#' out-of-state detection regardless of which geography types are requested,
-#' whereas [assign_facility_geography()] has no such separate requirement and
-#' validates it as part of this check.
+#' type is absent. The facility columns (`HospitalRegion`, `HospitalZip`) are
+#' always required for their type. The patient columns (`Region`, `ZipCode`)
+#' are only the "leave this row alone" values of a selective reassignment, so
+#' whether they are required depends on the caller. This function never
+#' validates `Region`: [assign_treating_geography()] checks it separately
+#' afterward, since it is unconditionally required there for out-of-state
+#' detection regardless of which geography types are requested, and
+#' [assign_facility_geography()] never reads it. `check_zip_col` says whether
+#' to validate `ZipCode` here: [assign_treating_geography()] needs it, while
+#' [assign_facility_geography()] reassigns every row, so it never reads the
+#' patient columns (unless `overwrite = TRUE` names one as its output).
 #'
 #' `resolve_geography_output_col()` resolves a `new_region_col`/`new_zip_col`
 #' argument (a plain string naming the output column, or `NULL` to skip that
@@ -69,9 +74,11 @@
 #' @param region_col_str,hosp_region_col_str,zip_col_str,hosp_zip_col_str
 #'   Resolved column names (strings), or `NULL` when the optional column is
 #'   absent.
-#' @param check_region_col Logical. Whether to validate `region_col_str` here.
+#' @param check_zip_col Logical. Whether to validate `zip_col_str` (the
+#'   patient zip column) here.
 #' @param new_col The user-supplied output column name, or `NULL`.
 #' @param data A data frame.
+#' @param col_str A resolved column name, or `NULL` when the column is absent.
 #' @param overwrite Logical. Whether an existing column may be overwritten.
 #' @param reserved_col The dot-prefixed bookkeeping column name the output
 #'   must not collide with.
@@ -97,20 +104,15 @@
 #'   `inform_*_result()` are called for their conditions.
 #'   `resolve_geography_output_col()` returns the normalized output column
 #'   name, or `NULL`. `assign_geography_reassignment()` returns `data` with
-#'   the geography columns written.
+#'   the geography columns written. `patient_geography()` returns the patient
+#'   column's values, or a single `NA` when the column is absent.
 #' @keywords internal
 validate_geography_cols <- function(verbose, do_region, do_zip,
                                     region_col_str, hosp_region_col_str,
                                     zip_col_str, hosp_zip_col_str,
-                                    check_region_col = TRUE) {
+                                    check_zip_col = TRUE) {
   if (do_region) {
-    if (check_region_col && is.null(region_col_str)) {
-      inform_if(
-        verbose,
-        "Region geography skipped: `Region` not found in data."
-      )
-      do_region <- FALSE
-    } else if (is.null(hosp_region_col_str)) {
+    if (is.null(hosp_region_col_str)) {
       inform_if(
         verbose,
         "Region geography skipped: `HospitalRegion` not found in data."
@@ -120,7 +122,7 @@ validate_geography_cols <- function(verbose, do_region, do_zip,
   }
 
   if (do_zip) {
-    if (is.null(zip_col_str)) {
+    if (check_zip_col && is.null(zip_col_str)) {
       inform_if(verbose, "Zip geography skipped: `ZipCode` not found in data.")
       do_zip <- FALSE
     } else if (is.null(hosp_zip_col_str)) {
@@ -199,25 +201,34 @@ assign_geography_reassignment <- function(data, do_region, do_zip,
     }
   }
 
+  # The patient column may be absent when no row keeps its own value (the
+  # facility function, mask all TRUE); NA stands in for it then ----
   if (do_region) {
+    keep_region <- patient_geography(data, region_col_str)
     data <- dplyr::mutate(
       data,
       "{region_output_col_str}" := dplyr::if_else(
-        mask, .data[[hosp_region_col_str]], .data[[region_col_str]]
+        mask, .data[[hosp_region_col_str]], !!keep_region
       )
     )
   }
 
   if (do_zip) {
+    keep_zip <- patient_geography(data, zip_col_str)
     data <- dplyr::mutate(
       data,
       "{zip_output_col_str}" := dplyr::if_else(
-        mask, .data[[hosp_zip_col_str]], .data[[zip_col_str]]
+        mask, .data[[hosp_zip_col_str]], !!keep_zip
       )
     )
   }
 
   data
+}
+
+#' @rdname validate_geography_cols
+patient_geography <- function(data, col_str) {
+  if (is.null(col_str)) NA_character_ else data[[col_str]]
 }
 
 #' @rdname validate_geography_cols

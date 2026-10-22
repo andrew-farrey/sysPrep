@@ -28,8 +28,10 @@ link_encounters(
 \item{inpatient_admission_data}{Required. A deduplicated data frame of
 inpatient visits queried with \code{HasBeenAdmitted = 1} or \code{HasBeenI = 1}.
 Rows with \code{HasBeenE = 1} are automatically removed to prevent duplicate
-rows for the same underlying record. \code{link_encounters()} aborts if this
-is \code{NULL}; see Details.}
+rows for the same underlying record. It must contain the same linking
+columns as \code{ed_data} (\code{facility_col}, \code{visit_col}, and
+\code{fallback_visit_col} if used), or \code{link_encounters()} aborts.
+\code{link_encounters()} also aborts if this is \code{NULL}; see Details.}
 
 \item{facility_col}{Unquoted
 column name identifying the facility. When not supplied, prefers
@@ -40,11 +42,17 @@ post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
 
 \item{visit_col}{Unquoted
 column name identifying the visit. Defaults to \code{Visit_ID}. Accepts
-both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.}
+both raw ESSENCE names and post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents.
+Linking keys are identifiers with no numeric meaning, so \code{facility_col}
+(e.g. \code{Hospital}), this column, and \code{fallback_visit_col} are all held as
+text in the output, whatever type each pull delivered them in (the
+ESSENCE \code{dataDetails} API returns them as text; a CSV read may not).
+Numbers are written in full, without scientific notation, so \code{100000}
+becomes \code{"100000"}. Convert back after the call if you need numbers.}
 
 \item{fallback_visit_col}{Optional. Unquoted column name of a secondary identifier (e.g.
-\code{C_BioSense_ID}) used to match two rows into one episode when
-\code{visit_col} is missing on the row being matched. Defaults to \code{NULL},
+\code{C_BioSense_ID}) that matches two rows into one episode when
+\code{visit_col} is missing on both rows. Defaults to \code{NULL},
 which preserves the default behavior of never merging rows solely
 because they share a missing \code{visit_col}; see Details.}
 
@@ -66,10 +74,14 @@ within-half structure of \code{CCDD}/\code{CCDDParsed}.}
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
-output.}
+output. If \code{FALSE}, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
-(\code{rlang::inform()}); warnings and errors are always shown regardless.}
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 }
 \value{
 When \code{return_format = "collapsed"} (default), a data frame with
@@ -91,21 +103,19 @@ so information present on only one source row isn't discarded.
 \details{
 \subsection{Why this matters for case counts}{
 
-Querying the inpatient pull with \code{HasBeenE = 0} added on purpose,
-specifically to exclude anything already captured by the
-\code{HasBeenE = 1} pull, looks like a safe way to avoid double-counting.
-By the API's own field semantics it should be: \code{HasBeenE = 0} means no
-ED encounter appears anywhere in that record's history. It isn't. Some
-records that correctly show \code{HasBeenE = 0} were, clinically, discharged
-from the ED and immediately readmitted; the ED encounter lives
-entirely on a separate record already captured in the first pull, so
-the exclusion filter never catches it. If you don't know this and want
-to include inpatient admissions in your burden counts, summing the two
-pulls double-counts that proportion of ED visits a second time. This is
-the same problem \code{\link[=dedupe]{dedupe()}} solves for retransmitted or split ESSENCE
-rows: the duplicate here doesn't share a flag value that would mark
-it as related. \code{link_encounters()} finds the relationship directly, by
-checking for a matching ED record under the same \code{facility_col} x
+Adding \code{HasBeenE = 0} to the inpatient query does not stop an ED visit
+from being counted twice when you add inpatient admissions to ED counts.
+It looks like a safe exclusion, and by the API's own field semantics it
+should be: \code{HasBeenE = 0} means no ED encounter appears anywhere in that
+record's history. But some records that correctly show \code{HasBeenE = 0}
+were, clinically, discharged from the ED and immediately readmitted. The
+ED encounter lives entirely on a separate record already captured in the
+\code{HasBeenE = 1} pull, so the exclusion filter never catches it, and
+summing the two pulls counts that share of ED visits a second time. This
+is the same problem \code{\link[=dedupe]{dedupe()}} solves for retransmitted or split ESSENCE
+rows, except that the duplicate here doesn't share a flag value that would
+mark it as related. \code{link_encounters()} finds the relationship directly,
+by checking for a matching ED record under the same \code{facility_col} x
 \code{visit_col} key, instead of trusting \code{HasBeenE} alone.
 }
 
@@ -157,8 +167,11 @@ Columns named in \code{merge_fields} are reconciled using the strategy assigned
 to them:
 \describe{
 \item{\code{"concat"}}{Starting from the primary row's value, appends each
-other row's non-empty value if it is not already a substring of the
-accumulated text (\code{"; "}-separated). Generic free text.}
+other row's non-empty value unless the accumulated text (\code{"; "}-
+separated) already contains it as whole words or whole codes, so
+complaint text or a diagnosis or SNOMED code present in one record but
+not the other is kept (\code{"fall"} is not found in \code{"waterfall"}, nor
+\code{"R10.9"} in \code{"R10.90"}). Generic free text.}
 \item{\code{"union_delimited"}}{Splits each row's value on \code{merge_delimiter},
 takes the union of unique parts (preserving order of first
 appearance), rejoins with the same delimiter.}
@@ -302,9 +315,12 @@ when neither field above is present.
 }
 If none of these fields are present (or none can be parsed) anywhere in
 the data, \code{link_encounters()} warns once and \code{.patient_class_sequence}
-falls back to alphabetical order for every episode. Within a single
-episode, if only some classes have a usable timestamp, timed classes are
-ordered first and untimed classes are appended last.
+falls back to alphabetical order for every episode. Classes whose
+timestamps are identical (every class derived from one record shares that
+record's timestamp) are likewise listed alphabetically: the data cannot
+say which came first, so that order carries no clinical meaning. Within a
+single episode, if only some classes have a usable timestamp, timed classes
+are ordered first and untimed classes are appended last.
 }
 
 \subsection{Split episodes with a missing visit_col on both sides}{
@@ -323,13 +339,17 @@ episode's ED and direct-admit rows even when \code{Visit_ID} is missing on
 both, which is exactly the case \code{visit_col} alone cannot resolve.
 \code{fallback_visit_col} lets you name that secondary identifier: whenever
 a row is missing \code{visit_col}, \code{link_encounters()} matches it to
-another row sharing the same \code{facility_col} and the same
-\code{fallback_visit_col} value instead of treating it as unmatchable.
+another row that is also missing \code{visit_col} and shares the same
+\code{facility_col} and \code{fallback_visit_col} value, instead of treating it as
+unmatchable. It does not link a row missing \code{visit_col} to a row that has
+one: a secondary identifier such as \code{C_BioSense_ID} can change over a
+visit's life (it is recomputed when the visit date changes), so it is only
+trusted to pair two rows that both lack the primary key.
 Rows with a non-missing \code{visit_col} are never affected, and a row
 missing both \code{visit_col} and \code{fallback_visit_col} (or missing
 \code{facility_col}) still gets its own unique episode, exactly as when
-\code{fallback_visit_col} isn't supplied at all: the default \code{NULL}
-preserves that original behavior precisely.
+\code{fallback_visit_col} isn't supplied at all, which is the default
+(\code{NULL}).
 }
 
 \subsection{Episode metadata columns}{
@@ -351,9 +371,12 @@ in chronological order and collapsed, e.g., \code{"Direct Admit->ED"}
 when the direct admit occurred first; see Details.}
 \item{\code{.episode_n_rows}}{Number of original rows the episode was built
 from before merging.}
-\item{\code{.index_encounter}}{In long format, \code{TRUE} on the row that
-survives filtering to one row per episode. In collapsed format, always
-\code{TRUE} (retained for schema consistency with long format).}
+\item{\code{.index_encounter}}{In long format, \code{TRUE} on exactly one row per
+episode: the row the collapsed output is built from, which is the
+episode's first \code{"ED"} row if it has one, else its first row. Summing
+it therefore equals the number of rows in the collapsed output. In
+collapsed format, always \code{TRUE} (retained for schema consistency with
+long format).}
 }
 }
 }

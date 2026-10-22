@@ -58,10 +58,14 @@ pre-overwrite values before reassignment. Only has an effect when
 
 \item{clean_names}{Logical. If \code{TRUE} (default), applies
 \code{\link[janitor:clean_names]{janitor::clean_names()}} to standardize column names to snake_case on
-output.}
+output. If \code{FALSE}, the input's own column names are restored on output
+(every function normalizes names internally so that column arguments
+resolve either way); any columns the function itself adds keep their
+snake_case or dot-prefixed names.}
 
 \item{verbose}{Logical. If \code{FALSE}, suppresses informational messages
-(\code{rlang::inform()}); warnings and errors are always shown regardless.}
+(\code{rlang::inform()}); warnings and errors are always shown regardless.
+Defaults to \code{TRUE}.}
 }
 \value{
 The input data frame with facility region and/or zip code values
@@ -92,10 +96,15 @@ applies reassignment universally: all visits, including in-state patients,
 receive the treating facility's geography. This produces a dataset scoped
 entirely to incidence-at-location rather than patient residence.
 
-This is functionally equivalent to renaming \code{HospitalRegion} to \code{Region}
-and \code{HospitalZip} to \code{ZipCode}, but operates on the existing data structure
-without column renaming or pipeline restructuring, preserving compatibility
-with downstream functions that expect \code{Region} and \code{ZipCode} by name.
+With \code{overwrite = TRUE} and \code{new_region_col = "region"}/\code{new_zip_col = "zip_code"}, this is functionally equivalent to renaming \code{HospitalRegion}
+to \code{Region} and \code{HospitalZip} to \code{ZipCode}, but operates on the existing
+data structure without column renaming or pipeline restructuring,
+preserving compatibility with downstream functions that expect \code{Region}
+and \code{ZipCode} by name. By default it instead writes the facility values to
+the new \code{region_facility}/\code{zip_code_facility} columns and leaves \code{Region}
+and \code{ZipCode} untouched. Because every row takes the facility value, the
+patient \code{Region} and \code{ZipCode} columns are not needed unless one of them is
+the output column.
 }
 
 \subsection{Incidence-at-location scoping and region-level cluster detection}{
@@ -121,9 +130,9 @@ hospital as an independent spatial unit.
 \item \strong{No Master Facility Table lookup required.} Hospital-level spatial
 clustering requires latitude/longitude coordinates sourced from the NSSP
 Master Facility Table, an additional logistical step outside the standard
-ESSENCE data pull. Region-level binning achieves a close approximation of
-hospital-level cluster detection using \code{HospitalRegion}/\code{HospitalZip}
-instead, provided they're included in the pull. Neither is guaranteed
+ESSENCE data pull. Region-level binning is a coarser alternative to
+hospital-level cluster detection that needs only \code{HospitalRegion}/
+\code{HospitalZip}, provided they're included in the pull. Neither is guaranteed
 by default; both require being part of your site's default returned
 columns or explicitly requested via the API's \verb{&field=} parameter.
 }
@@ -133,7 +142,7 @@ out-of-state and unknown-residence visits treated at a facility either
 fall outside a region-scoped surveillance area entirely or bin to an
 unrelated region, silently understating exactly the facilities most
 likely to generate a true signal: border and mobile-population
-facilities. Region-level detection is only competitive with hospital-level
+facilities. Region-level detection can only be compared with hospital-level
 detection, sensitivity-wise, once that gap is closed; see
 \code{vignette("geography-assignment")} for the full mechanism.
 
@@ -156,8 +165,9 @@ Kentucky, complementing the hybrid approach implemented in
 \item Spatial cluster detection scoped to where patients received care rather
 than where they live.
 \item Incidence-at-location burden estimation irrespective of patient origin.
-\item Approximating hospital-level cluster detection without Master Facility
-Table lookups or coordinate-based spatial methods.
+\item A region-level alternative to hospital-level cluster detection that
+needs no Master Facility Table lookups or coordinate-based spatial
+methods.
 \item Comparing total treated volume across urban and rural counties without
 differentiating which specific hospital saw each visit, useful when a
 facility-to-county lookup table isn't available but \code{HospitalRegion}/
@@ -195,8 +205,7 @@ type are absent, that type is skipped with an informative message.
 
 By default, results are written to new columns (\code{region_facility}/
 \code{zip_code_facility}), and \code{region_col}/\code{zip_col} are never modified. To
-overwrite \code{region_col}/\code{zip_col} in place instead (the only behavior this
-function had before this parameter existed), pass their own name to
+overwrite \code{region_col}/\code{zip_col} in place instead, pass their own name to
 \code{new_region_col}/\code{new_zip_col} and set \code{overwrite = TRUE}. \code{overwrite}
 guards \strong{any} collision with an existing column, not just the source
 column; see \code{\link[=assign_treating_geography]{assign_treating_geography()}}'s documentation for the full
@@ -224,7 +233,7 @@ ed_clean <- essence_raw |>
 # region/zip_code themselves are never touched
 ed_clean |> assign_facility_geography()
 
-# Overwrite region/zip_code in place (the original behavior); requires
+# Overwrite region/zip_code in place; requires
 # naming the source columns explicitly and opting in with overwrite
 ed_clean |>
   assign_facility_geography(

@@ -49,12 +49,23 @@
 #' facilities to a specified `fix_to` value before the `keep_types` filter is
 #' applied.
 #'
-#' ## Kentucky data structure
-#' In Kentucky, inpatient admission data are transmitted through the
-#' corresponding ED hospital feeds and share the same `FacilityType`. The
-#' default `keep_types` of `c("Emergency Care", "Inpatient Practice Setting")`
-#' reflects this structure. Sites pulling ED visits only should set
-#' `keep_types = "Emergency Care"`.
+#' ## Default `keep_types`
+#' The default `keep_types` of `c("Emergency Care", "Inpatient Practice
+#' Setting")` keeps both facility types that identify hospitals with emergency
+#' or inpatient capacity, so a pull that mixes ED and inpatient records is not
+#' silently narrowed. In Kentucky, inpatient admission data are transmitted
+#' through the corresponding ED hospital feeds and carry the ED
+#' `FacilityType`, so Kentucky pulls do not depend on the second value; sites
+#' whose inpatient feeds are onboarded under `"Inpatient Practice Setting"`
+#' do. Sites pulling ED visits only should set `keep_types = "Emergency Care"`.
+#'
+#' ## Facility name column
+#' Unlike the duplicate and review functions, `filter_care_setting()` does not
+#' prefer `Hospital` over `HospitalName` for `facility_col`: its name-based
+#' corrections (`fix_facility_type_vector`, `fix_facility_type_regex`) match
+#' facility *names*, so the column must hold names. The ID-based route
+#' (`fix_facility_id_vector`, matched on `facility_id_col`) is the one that
+#' uses the stable identifier.
 #'
 #' ## Processing order
 #' Corrections are applied before filtering, in this sequence:
@@ -108,9 +119,10 @@
 #' @param data A data frame of ESSENCE visit-level records, typically the
 #'   output of [dedupe()].
 #' @param facility_col Unquoted
-#'   column name identifying the facility. Defaults to `HospitalName`.
-#'   Accepts both raw ESSENCE names and post-[janitor::clean_names()]
-#'   equivalents.
+#'   column name identifying the facility. Defaults to `HospitalName`, and
+#'   unlike other functions does not prefer `Hospital`; see "Facility name
+#'   column" in Details. Accepts both raw ESSENCE names and
+#'   post-[janitor::clean_names()] equivalents.
 #' @param facility_type_col
 #'   Unquoted column name identifying the facility type. Defaults to
 #'   `FacilityType`. Accepts both raw ESSENCE names and
@@ -239,8 +251,11 @@ filter_care_setting <- function(data,
   check_flag(clean_names)
   check_flag(verbose)
 
-  # Normalize names upfront ----
-  data <- clean_names_safe(data)
+  # Normalize names upfront, remembering the originals for clean_names =
+  # FALSE ----
+  original_names <- names(data)
+  data           <- clean_names_safe(data)
+  name_map       <- input_name_map(original_names, names(data))
 
   fac_col_str  <- resolve_col_str(data, rlang::ensym(facility_col))
   type_col_str <- resolve_col_str(data, rlang::ensym(facility_type_col))
@@ -294,5 +309,5 @@ filter_care_setting <- function(data,
 
   warn_if_no_rows(result, keep_types)
 
-  if (clean_names) clean_names_safe(result) else result
+  finish_names(result, clean_names, name_map)
 }

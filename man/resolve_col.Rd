@@ -6,8 +6,12 @@
 \alias{resolve_col_str}
 \alias{resolve_facility_col}
 \alias{resolve_facility_col_str}
+\alias{capture_col_sym}
 \alias{as_string_or_null}
 \alias{clean_names_safe}
+\alias{input_name_map}
+\alias{restore_input_names}
+\alias{finish_names}
 \title{Resolve column arguments against the data}
 \usage{
 resolve_col(data, col_sym, call = rlang::caller_env())
@@ -30,9 +34,17 @@ resolve_facility_col_str(
   call = rlang::caller_env()
 )
 
+capture_col_sym(col_quo, arg = "facility_col", call = rlang::caller_env())
+
 as_string_or_null(col_sym)
 
 clean_names_safe(data)
+
+input_name_map(original_names, cleaned_names)
+
+restore_input_names(result, name_map)
+
+finish_names(result, clean_names, name_map)
 }
 \arguments{
 \item{data}{A data frame, normally already passed through
@@ -52,14 +64,33 @@ or \code{NULL} when it was not supplied.}
 
 \item{facility_col_missing}{Logical. \code{TRUE} when the caller did not supply
 \code{facility_col}, so the \code{Hospital}-preferring default applies.}
+
+\item{col_quo}{The expression captured by \code{rlang::enquo()} for an optional
+column argument.}
+
+\item{arg}{The argument's name, used in the error message.}
+
+\item{original_names, cleaned_names}{The column names of the input before
+and after \code{clean_names_safe()}, in the same order.}
+
+\item{result}{The data frame about to be returned.}
+
+\item{name_map}{The named character vector from \code{input_name_map()}: values
+are original names, names are their normalized forms.}
+
+\item{clean_names}{Logical. The caller's \code{clean_names} argument.}
 }
 \value{
 \code{resolve_col()}, \code{resolve_col_optional()}, and
 \code{resolve_facility_col()} return a symbol (\code{resolve_col_optional()}
 returns \code{NULL} when the column is absent). \code{resolve_col_str()} and
 \code{resolve_facility_col_str()} return a string. \code{as_string_or_null()}
-returns a string, or \code{NULL} for a \code{NULL} input. \code{clean_names_safe()}
+returns a string, or \code{NULL} for a \code{NULL} input. \code{capture_col_sym()}
+returns a symbol, or \code{NULL}. \code{clean_names_safe()}
 returns \code{data} with snake_case names and any leading-dot names kept.
+\code{input_name_map()} returns the named character vector described above.
+\code{restore_input_names()} and \code{finish_names()} return \code{result} with its
+column names restored or normalized.
 }
 \description{
 Internal helpers that turn a user-supplied column argument (an unquoted
@@ -71,8 +102,12 @@ have to know which form their data is in.
 }
 \details{
 \code{resolve_col()} tries a direct match first, then normalizes both the
-supplied name and the data's names to snake_case and requires exactly one
-match. It aborts, attributed to \code{call}, when no unique match exists.
+supplied name and the data's names to snake_case and matches on that.
+\code{janitor::make_clean_names()} makes the names in a vector unique (two
+columns that would both be \code{visit_id} become \code{visit_id} and \code{visit_id_2}),
+so at most one column can match a given normalized name; because every
+exported function normalizes \code{data} first, this is always the case. It
+aborts, attributed to \code{call}, when nothing matches.
 \code{resolve_col_optional()} returns \code{NULL} instead of aborting, for functions
 that degrade gracefully when an optional column (for example
 \code{HospitalZip}) was not pulled. \code{resolve_col_str()} is \code{resolve_col()}
@@ -89,6 +124,14 @@ passes the result as \code{facility_col_missing}), it prefers the stable numeric
 merge two different facilities that briefly share a display name. An
 explicitly supplied \code{facility_col} is always honored exactly as given.
 
+\code{capture_col_sym()} turns an optional, \code{NULL}-defaulting column argument,
+captured by the exported function with \code{rlang::enquo()}, into a symbol (or
+\code{NULL} when it was not supplied). Every function with a \code{facility_col}
+argument uses it, so the capture is written once; it aborts with a plain
+message, attributed to the caller, when given something other than a name
+(for example \code{c(a, b)}), where \code{rlang::as_name()} alone fails with an
+error about a captured expression.
+
 \code{clean_names_safe()} is \code{\link[janitor:clean_names]{janitor::clean_names()}} that preserves
 leading-dot prefixes. \code{janitor::clean_names()} strips leading dots (for
 example \code{.index_encounter} becomes \code{index_encounter}), which would break
@@ -96,5 +139,15 @@ references to the metadata columns that sysPrep itself adds
 (\code{.index_encounter}, \code{.out_of_state}, ...). A consequence is that a raw
 input column must never be given a leading-dot name: it would not
 normalize like other raw columns.
+
+\code{input_name_map()}, \code{restore_input_names()} and \code{finish_names()} implement
+\code{clean_names = FALSE}. Every function normalizes its input names so column
+arguments resolve either way, which would otherwise make \code{clean_names = FALSE} a no-op on output. \code{input_name_map()} records which original name
+each normalized name came from (positionally, since normalization neither
+drops nor reorders columns); \code{restore_input_names()} renames the result's
+columns back through that map, leaving the columns the function itself
+added (\code{.index_encounter}, \code{region_hybrid}, ...) as they are; and
+\code{finish_names()} is the single exit that applies whichever of
+\code{clean_names_safe()} or the restore the caller asked for.
 }
 \keyword{internal}

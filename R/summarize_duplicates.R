@@ -75,20 +75,17 @@
 #' @export
 summarize_duplicates <- function(data,
                                  facility_col = NULL,
-                                 visit_col    = Visit_ID) {
+                                 visit_col    = Visit_ID,
+                                 verbose      = TRUE) {
 
   check_data_frame(data)
+  check_flag(verbose)
 
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
   # below as a plain HospitalName default ----
-  facility_col_quo     <- rlang::enquo(facility_col)
-  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
-  facility_col_sym     <- if (facility_col_missing) {
-    NULL
-  } else {
-    rlang::sym(rlang::as_name(facility_col_quo))
-  }
+  facility_col_sym     <- capture_col_sym(rlang::enquo(facility_col))
+  facility_col_missing <- is.null(facility_col_sym)
 
   # Resolve column names ----
   data_clean    <- clean_names_safe(data)
@@ -98,7 +95,9 @@ summarize_duplicates <- function(data,
   visit_col_str <- resolve_col_str(data_clean, rlang::ensym(visit_col))
 
   # Identify duplicate groups (facility x visit_col with n > 1) ----
-  groups       <- count_visit_row_groups(data_clean, fac_col_str, visit_col_str)
+  groups       <- count_visit_row_groups(
+    data_clean, fac_col_str, visit_col_str, verbose
+  )
   data_clean   <- groups$data
   group_counts <- groups$counts
   dup_groups   <- dplyr::filter(group_counts, n_rows > 1L)

@@ -9,6 +9,8 @@
 \alias{long_from_patient_class_list}
 \alias{long_from_has_been_flags}
 \alias{bind_direct_admits}
+\alias{as_text_cols}
+\alias{check_linking_columns}
 \alias{add_class_time}
 \alias{build_episode_ids}
 \alias{add_episode_metadata}
@@ -39,7 +41,22 @@ long_from_patient_class_list(
 
 long_from_has_been_flags(ed_data, exclude_from_pivot, verbose)
 
-bind_direct_admits(ed_long, inpatient_admission_data, verbose)
+bind_direct_admits(
+  ed_long,
+  inpatient_admission_data,
+  verbose,
+  key_cols = character(0),
+  text_cols = character(0),
+  call = rlang::caller_env()
+)
+
+as_text_cols(data, cols)
+
+check_linking_columns(
+  inpatient_admission_data,
+  key_cols,
+  call = rlang::caller_env()
+)
 
 add_class_time(ed_long)
 
@@ -89,6 +106,18 @@ out of the pivot.}
 \item{ed_long}{The long-format data frame (one row per patient class)
 built so far.}
 
+\item{key_cols}{Character vector of the linking columns (facility, visit,
+and the fallback column if any) that must exist in
+\code{inpatient_admission_data}. Defaults to none.}
+
+\item{text_cols}{Character vector of the linking identifier columns
+(\code{facility_col}, \code{visit_col}, and \code{fallback_visit_col}) to hold as text.
+Defaults to none.}
+
+\item{data}{A data frame. For \code{as_text_cols()}, one of the two pulls.}
+
+\item{cols}{Character vector of column names in \code{data}.}
+
 \item{fac_col_str, visit_col_str}{Names of the facility and visit columns
 in \code{ed_long}.}
 
@@ -113,6 +142,8 @@ aborts. \code{detect_patient_class_source()} returns a list with \code{use_pc_li
 returns the \code{HasBeen_} columns to exclude from the pivot. The remaining
 stages return the updated long-format data frame, except
 \code{build_episode_ids()}, which returns a character vector.
+\code{check_linking_columns()} returns \code{NULL} invisibly or aborts.
+\code{as_text_cols()} returns \code{data} with those columns as character.
 }
 \description{
 Internal helpers that \code{\link[=link_encounters]{link_encounters()}} runs in order. Each takes the
@@ -138,11 +169,14 @@ split each \code{C_Patient_Class_List} value into its classes and
 \code{pair_mdt_timestamps()} to attach \code{C_Patient_Class_MDT_Updates}
 timestamps to them.
 \item \code{bind_direct_admits()} tags \code{inpatient_admission_data} as
-\code{"Direct Admit"} and appends it.
+\code{"Direct Admit"} and appends it, after \code{check_linking_columns()} has
+confirmed the linking columns exist in it and \code{as_text_cols()} has
+converted the linking identifier columns to text.
 \item \code{add_class_time()} fills the \code{.class_time} ordering column.
 \item \code{build_episode_ids()} builds the \code{.episode_id} for every row.
 \item \code{add_episode_metadata()} adds \code{.episode_id},
-\code{.patient_class_sequence}, \code{.episode_n_rows}, and \code{.index_encounter}.
+\code{.patient_class_sequence}, \code{.episode_n_rows}, and \code{.index_encounter}
+(\code{TRUE} on the one row per episode that the collapsed output keeps).
 \item \code{collapse_episodes()} reduces each episode to one row
 (\code{return_format = "collapsed"} only).
 }
@@ -171,6 +205,11 @@ exception: a row missing \code{visit_col} can still be confirmed to match
 another row via a secondary identifier. The three candidate id strings are
 built as plain vectors, not inside a dplyr verb, so the fallback lookup is
 never attempted when no \code{fallback_visit_col} was supplied.
+
+\code{add_episode_metadata()} computes its columns over whole vectors keyed by
+episode (\code{episode_class_sequence()}, \code{episode_primary_row()}), not per
+episode inside \code{dplyr}'s \verb{.by =}: most episodes have a single row, and a
+per-episode R call for each of them dominated the run time.
 
 \code{collapse_episodes()} deliberately avoids a per-episode helper applied
 through \code{dplyr::group_modify()}: that slices out a full-width single-row

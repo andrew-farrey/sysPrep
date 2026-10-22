@@ -5,6 +5,7 @@
 \alias{check_merge_fields}
 \alias{merge_field_value}
 \alias{merge_concat}
+\alias{contains_whole}
 \alias{merge_union_delimited}
 \alias{merge_union_ccdd}
 \alias{merge_prefer_yes}
@@ -22,6 +23,8 @@ check_merge_fields(merge_fields, call = rlang::caller_env())
 merge_field_value(values, patient_classes, primary_value, strategy, delimiter)
 
 merge_concat(values, primary_value)
+
+contains_whole(text, value)
 
 merge_union_delimited(values, delimiter)
 
@@ -49,11 +52,15 @@ strategy names.}
 
 \item{delimiter}{The delimiter separating individual values within a
 field.}
+
+\item{text, value}{Single strings: the text to search and the value to look
+for in it.}
 }
 \value{
 \code{merge_strategies} is a character vector. \code{check_merge_fields()}
 returns \code{merge_fields} invisibly, or aborts. The \verb{merge_*()} functions
 and \code{merge_field_value()} return a single merged value.
+\code{contains_whole()} returns a single logical.
 }
 \description{
 Internal helpers that reconcile one field across the rows of a multi-row
@@ -69,8 +76,13 @@ the strategy named in \code{merge_fields}.
 The strategies are:
 \describe{
 \item{\code{concat}}{Free-text merge: starting from \code{primary_value}, appends
-each other non-empty value not already a substring of the accumulated
-result.}
+each other non-empty value unless the accumulated result already
+contains it as whole words or whole codes (\code{contains_whole()}). Text or
+a code that appears in one record but not the other is therefore
+kept, so extra detail or context is preserved: \code{"fall"} is not found in
+\code{"waterfall"}, the diagnosis code \code{"R10.9"} is not found in \code{"R10.90"},
+and a SNOMED code is matched only as the whole number. Matching ignores
+case, punctuation, and spacing.}
 \item{\code{union_delimited}}{Splits each value on \code{delimiter}, trims
 whitespace, and returns the union of unique parts (in order of first
 appearance) rejoined with the same delimiter.}

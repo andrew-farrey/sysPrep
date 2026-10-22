@@ -36,8 +36,10 @@
 #'     detection alerts that do not reflect genuine changes in incidence.
 #'     The duplicate arises only at facilities whose systems continue to
 #'     update `C_Visit_Date_Time` after initial registration. Detected by
-#'     multiple distinct `C_BioSense_ID` values and `Date` values within a
-#'     group.}
+#'     more than one distinct `Date` value within a group. (The recomputed
+#'     `C_BioSense_ID` accompanies it, but the date change is what is tested:
+#'     a group whose `C_BioSense_ID` varies with no change in `Date`, patient
+#'     identifier, or patient class is `"type_unknown"`.)}
 #'   \item{`"pid_change"`}{`C_Unique_Patient_ID` (which maps to MRN in
 #'     Kentucky) is also one of the three fields concatenated into
 #'     `C_BioSense_ID`, so updating it mid-visit recomputes `C_BioSense_ID`
@@ -57,10 +59,14 @@
 #'     `c_patient_class` to be present in the data; available via the
 #'     standard ESSENCE API. See also [link_encounters()] for burden
 #'     estimation from multi-class episodes.}
-#'   \item{`"type_unknown"`}{Multiple rows exist but all assessed fields
-#'     are identical across rows. The differentiating field was not included
-#'     in the pull. Consider adding `C_BioSense_ID`, `Date`, and
-#'     `C_Unique_Patient_ID` to your ESSENCE pull fields.}
+#'   \item{`"type_unknown"`}{Multiple rows exist but the assessed fields
+#'     (`Date`, `C_Unique_Patient_ID`, and `C_Patient_Class` when present) are
+#'     identical across rows. Whatever differs between the rows is not one of
+#'     the fields assessed here, for example a plain retransmission, or a
+#'     field that was not included in the pull. `n_biosense_ids` in
+#'     `$visit_groups` shows whether the rows at least carry different
+#'     `C_BioSense_ID` values. To see what does differ, compare the rows of
+#'     the groups in `$duplicate_ids` directly.}
 #'   \item{Compound types}{Any combination of the above joined with `+`,
 #'     e.g., `"visit_date_change+pid_change"`. Indicates multiple mechanisms
 #'     acting simultaneously on the same visit. All possible combinations
@@ -126,8 +132,6 @@
 #' @inheritParams dedupe
 #' @param return_format Character string. One of `"list"` (default) or
 #'   `"tibble"`. See Details.
-#' @param verbose Logical. If `FALSE`, suppresses informational messages
-#'   (`rlang::inform()`); warnings and errors are always shown regardless.
 #'
 #' @return When `return_format = "list"`, a named list of class
 #'   `essence_dup_classified` with:
@@ -136,11 +140,17 @@
 #'       more than one row.}
 #'     \item{`$visit_groups`}{Tibble with one row per facility x visit_col
 #'       containing `n_rows`, `n_biosense_ids`, `n_dates`, `n_pid`,
-#'       `n_patient_classes` (if available), and `dup_type`.}
+#'       `n_patient_classes` (if available), and `dup_type`. The `n_*`
+#'       columns count distinct values within the group;
+#'       `n_biosense_ids` is reported for inspection and does not enter the
+#'       classification.}
 #'     \item{`$by_facility`}{Wide-format count of each `dup_type` per
 #'       facility, sorted by total duplicated Visit IDs descending.}
-#'     \item{`$overall`}{Dataset-level counts and proportions by `dup_type`
-#'       via [janitor::tabyl()].}
+#'     \item{`$overall`}{Counts by `dup_type` via [janitor::tabyl()], with
+#'       `percent` as each type's share of the *duplicated* visit groups
+#'       (the groups with more than one row), not of all visits in the pull.
+#'       For the share of all visits that are duplicated, see
+#'       `pct_duplicated` in [summarize_duplicates()]`$overall`.}
 #'   }
 #'
 #'   The `format()` method returns the printed report as a character vector;
@@ -183,13 +193,8 @@ classify_duplicates <- function(data,
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
   # below as a plain HospitalName default ----
-  facility_col_quo     <- rlang::enquo(facility_col)
-  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
-  facility_col_sym     <- if (facility_col_missing) {
-    NULL
-  } else {
-    rlang::sym(rlang::as_name(facility_col_quo))
-  }
+  facility_col_sym     <- capture_col_sym(rlang::enquo(facility_col))
+  facility_col_missing <- is.null(facility_col_sym)
 
   return_format <- rlang::arg_match(return_format)
 
@@ -259,7 +264,7 @@ format.essence_dup_classified <- function(x, ...) {
       )
     }
 
-    cli::cli_h2("Overall")
+    cli::cli_h2("Overall (percent of duplicated visit groups)")
     cli::cli_verbatim(print_lines(x$overall))
 
     cli::cli_h2("By Facility")

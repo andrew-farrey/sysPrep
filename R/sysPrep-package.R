@@ -39,8 +39,6 @@ utils::globalVariables(c(
   "dup_type", "corrected_facility_type", "patient_class", "present",
   "c_visit_date_time", "date", "time",
   # Intermediate columns created by strsplit + unnest in link_encounters()
-  "pc_split", "mdt_split",
-  # Base function used without package prefix in clean_names_safe()
-  "setNames"
+  "pc_split", "mdt_split"
 ))
 NULL

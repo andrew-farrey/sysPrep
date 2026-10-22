@@ -12,21 +12,19 @@
 #' @details
 #' ## Why this matters for case counts
 #'
-#' Querying the inpatient pull with `HasBeenE = 0` added on purpose,
-#' specifically to exclude anything already captured by the
-#' `HasBeenE = 1` pull, looks like a safe way to avoid double-counting.
-#' By the API's own field semantics it should be: `HasBeenE = 0` means no
-#' ED encounter appears anywhere in that record's history. It isn't. Some
-#' records that correctly show `HasBeenE = 0` were, clinically, discharged
-#' from the ED and immediately readmitted; the ED encounter lives
-#' entirely on a separate record already captured in the first pull, so
-#' the exclusion filter never catches it. If you don't know this and want
-#' to include inpatient admissions in your burden counts, summing the two
-#' pulls double-counts that proportion of ED visits a second time. This is
-#' the same problem [dedupe()] solves for retransmitted or split ESSENCE
-#' rows: the duplicate here doesn't share a flag value that would mark
-#' it as related. `link_encounters()` finds the relationship directly, by
-#' checking for a matching ED record under the same `facility_col` x
+#' Adding `HasBeenE = 0` to the inpatient query does not stop an ED visit
+#' from being counted twice when you add inpatient admissions to ED counts.
+#' It looks like a safe exclusion, and by the API's own field semantics it
+#' should be: `HasBeenE = 0` means no ED encounter appears anywhere in that
+#' record's history. But some records that correctly show `HasBeenE = 0`
+#' were, clinically, discharged from the ED and immediately readmitted. The
+#' ED encounter lives entirely on a separate record already captured in the
+#' `HasBeenE = 1` pull, so the exclusion filter never catches it, and
+#' summing the two pulls counts that share of ED visits a second time. This
+#' is the same problem [dedupe()] solves for retransmitted or split ESSENCE
+#' rows, except that the duplicate here doesn't share a flag value that would
+#' mark it as related. `link_encounters()` finds the relationship directly,
+#' by checking for a matching ED record under the same `facility_col` x
 #' `visit_col` key, instead of trusting `HasBeenE` alone.
 #'
 #' ## The care pathway artifact problem
@@ -76,8 +74,11 @@
 #' to them:
 #' \describe{
 #'   \item{`"concat"`}{Starting from the primary row's value, appends each
-#'     other row's non-empty value if it is not already a substring of the
-#'     accumulated text (`"; "`-separated). Generic free text.}
+#'     other row's non-empty value unless the accumulated text (`"; "`-
+#'     separated) already contains it as whole words or whole codes, so
+#'     complaint text or a diagnosis or SNOMED code present in one record but
+#'     not the other is kept (`"fall"` is not found in `"waterfall"`, nor
+#'     `"R10.9"` in `"R10.90"`). Generic free text.}
 #'   \item{`"union_delimited"`}{Splits each row's value on `merge_delimiter`,
 #'     takes the union of unique parts (preserving order of first
 #'     appearance), rejoins with the same delimiter.}
@@ -213,9 +214,12 @@
 #' }
 #' If none of these fields are present (or none can be parsed) anywhere in
 #' the data, `link_encounters()` warns once and `.patient_class_sequence`
-#' falls back to alphabetical order for every episode. Within a single
-#' episode, if only some classes have a usable timestamp, timed classes are
-#' ordered first and untimed classes are appended last.
+#' falls back to alphabetical order for every episode. Classes whose
+#' timestamps are identical (every class derived from one record shares that
+#' record's timestamp) are likewise listed alphabetically: the data cannot
+#' say which came first, so that order carries no clinical meaning. Within a
+#' single episode, if only some classes have a usable timestamp, timed classes
+#' are ordered first and untimed classes are appended last.
 #'
 #' ## Split episodes with a missing visit_col on both sides
 #' A missing `visit_col` value means that row's true identity is unknown,
@@ -232,13 +236,17 @@
 #' both, which is exactly the case `visit_col` alone cannot resolve.
 #' `fallback_visit_col` lets you name that secondary identifier: whenever
 #' a row is missing `visit_col`, `link_encounters()` matches it to
-#' another row sharing the same `facility_col` and the same
-#' `fallback_visit_col` value instead of treating it as unmatchable.
+#' another row that is also missing `visit_col` and shares the same
+#' `facility_col` and `fallback_visit_col` value, instead of treating it as
+#' unmatchable. It does not link a row missing `visit_col` to a row that has
+#' one: a secondary identifier such as `C_BioSense_ID` can change over a
+#' visit's life (it is recomputed when the visit date changes), so it is only
+#' trusted to pair two rows that both lack the primary key.
 #' Rows with a non-missing `visit_col` are never affected, and a row
 #' missing both `visit_col` and `fallback_visit_col` (or missing
 #' `facility_col`) still gets its own unique episode, exactly as when
-#' `fallback_visit_col` isn't supplied at all: the default `NULL`
-#' preserves that original behavior precisely.
+#' `fallback_visit_col` isn't supplied at all, which is the default
+#' (`NULL`).
 #'
 #' ## Episode metadata columns
 #' Present regardless of `return_format`. In collapsed output, these
@@ -258,9 +266,12 @@
 #'     when the direct admit occurred first; see Details.}
 #'   \item{`.episode_n_rows`}{Number of original rows the episode was built
 #'     from before merging.}
-#'   \item{`.index_encounter`}{In long format, `TRUE` on the row that
-#'     survives filtering to one row per episode. In collapsed format, always
-#'     `TRUE` (retained for schema consistency with long format).}
+#'   \item{`.index_encounter`}{In long format, `TRUE` on exactly one row per
+#'     episode: the row the collapsed output is built from, which is the
+#'     episode's first `"ED"` row if it has one, else its first row. Summing
+#'     it therefore equals the number of rows in the collapsed output. In
+#'     collapsed format, always `TRUE` (retained for schema consistency with
+#'     long format).}
 #' }
 #'
 #' @inheritParams dedupe
@@ -272,8 +283,10 @@
 #' @param inpatient_admission_data Required. A deduplicated data frame of
 #'   inpatient visits queried with `HasBeenAdmitted = 1` or `HasBeenI = 1`.
 #'   Rows with `HasBeenE = 1` are automatically removed to prevent duplicate
-#'   rows for the same underlying record. `link_encounters()` aborts if this
-#'   is `NULL`; see Details.
+#'   rows for the same underlying record. It must contain the same linking
+#'   columns as `ed_data` (`facility_col`, `visit_col`, and
+#'   `fallback_visit_col` if used), or `link_encounters()` aborts.
+#'   `link_encounters()` also aborts if this is `NULL`; see Details.
 #' @param facility_col Unquoted
 #'   column name identifying the facility. When not supplied, prefers
 #'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present in
@@ -283,10 +296,16 @@
 #' @param visit_col Unquoted
 #'   column name identifying the visit. Defaults to `Visit_ID`. Accepts
 #'   both raw ESSENCE names and post-[janitor::clean_names()] equivalents.
+#'   Linking keys are identifiers with no numeric meaning, so `facility_col`
+#'   (e.g. `Hospital`), this column, and `fallback_visit_col` are all held as
+#'   text in the output, whatever type each pull delivered them in (the
+#'   ESSENCE `dataDetails` API returns them as text; a CSV read may not).
+#'   Numbers are written in full, without scientific notation, so `100000`
+#'   becomes `"100000"`. Convert back after the call if you need numbers.
 #' @param fallback_visit_col
 #'   Optional. Unquoted column name of a secondary identifier (e.g.
-#'   `C_BioSense_ID`) used to match two rows into one episode when
-#'   `visit_col` is missing on the row being matched. Defaults to `NULL`,
+#'   `C_BioSense_ID`) that matches two rows into one episode when
+#'   `visit_col` is missing on both rows. Defaults to `NULL`,
 #'   which preserves the default behavior of never merging rows solely
 #'   because they share a missing `visit_col`; see Details.
 #' @param merge_fields Named character vector mapping column names (raw
@@ -379,13 +398,8 @@ link_encounters <- function(ed_data,
   # facility_col defaults to NULL (rather than a fixed column) so the
   # printed signature/Usage line doesn't misrepresent the smart default
   # below as a plain HospitalName default ----
-  facility_col_quo     <- rlang::enquo(facility_col)
-  facility_col_missing <- rlang::quo_is_null(facility_col_quo)
-  facility_col_sym     <- if (facility_col_missing) {
-    NULL
-  } else {
-    rlang::sym(rlang::as_name(facility_col_quo))
-  }
+  facility_col_sym     <- capture_col_sym(rlang::enquo(facility_col))
+  facility_col_missing <- is.null(facility_col_sym)
 
   check_inpatient_admission_data(
     inpatient_admission_data,
@@ -399,7 +413,15 @@ link_encounters <- function(ed_data,
   names(merge_fields) <- janitor::make_clean_names(names(merge_fields))
 
   # Normalize ed_data and resolve the key columns ----
-  ed_data      <- clean_names_safe(ed_data)
+  original_names <- names(ed_data)
+  ed_data        <- clean_names_safe(ed_data)
+  name_map       <- c(
+    input_name_map(original_names, names(ed_data)),
+    input_name_map(
+      names(inpatient_admission_data),
+      names(clean_names_safe(inpatient_admission_data))
+    )
+  )
   facility_col <- resolve_facility_col(
     ed_data, facility_col_sym, facility_col_missing
   )
@@ -412,13 +434,21 @@ link_encounters <- function(ed_data,
   # ever matched via a secondary identifier when the caller explicitly
   # names one; see Details' "Split episodes with a missing visit_col on
   # both sides" section ----
-  fallback_visit_col_quo <- rlang::enquo(fallback_visit_col)
-  has_fallback           <- !rlang::quo_is_null(fallback_visit_col_quo)
-  fallback_col_str       <- if (has_fallback) {
-    resolve_col_str(ed_data, rlang::sym(rlang::as_name(fallback_visit_col_quo)))
+  fallback_col_sym <- capture_col_sym(
+    rlang::enquo(fallback_visit_col), "fallback_visit_col"
+  )
+  has_fallback     <- !is.null(fallback_col_sym)
+  fallback_col_str <- if (has_fallback) {
+    resolve_col_str(ed_data, fallback_col_sym)
   } else {
     NULL
   }
+
+  # The linking keys (facility, visit, and fallback identifiers) have no
+  # numeric meaning; hold them as text in both pulls so a number in one and
+  # text in the other still link ----
+  text_cols <- c(fac_col_str, visit_col_str, fallback_col_str)
+  ed_data   <- as_text_cols(ed_data, text_cols)
 
   # One row per patient class: from C_Patient_Class_List when present,
   # otherwise from the HasBeen_ flags ----
@@ -435,7 +465,11 @@ link_encounters <- function(ed_data,
   }
 
   # Supplement with direct admits, then order and group into episodes ----
-  ed_long <- bind_direct_admits(ed_long, inpatient_admission_data, verbose)
+  ed_long <- bind_direct_admits(
+    ed_long, inpatient_admission_data, verbose,
+    key_cols = c(fac_col_str, visit_col_str, fallback_col_str),
+    text_cols = text_cols
+  )
   ed_long <- add_class_time(ed_long)
 
   episode_id_vec <- build_episode_ids(
@@ -448,5 +482,5 @@ link_encounters <- function(ed_data,
     result <- collapse_episodes(result, merge_fields, merge_delimiter)
   }
 
-  if (clean_names) clean_names_safe(result) else result
+  finish_names(result, clean_names, name_map)
 }

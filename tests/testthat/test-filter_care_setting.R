@@ -110,11 +110,29 @@ test_that("filter_care_setting() fix_facility_type_regex corrects matching facil
   expect_true(any(stringr::str_detect(result$hospital_name, "FSED")))
 })
 
-test_that("filter_care_setting() clean_names = FALSE returns a data frame", {
+test_that("filter_care_setting() clean_names = FALSE keeps the input's column names", {
   data <- make_essence_data(n = 5L)
   result <- suppressMessages(filter_care_setting(data, clean_names = FALSE))
   expect_s3_class(result, "data.frame")
-  expect_true("facility_type" %in% names(result))
+  expect_identical(names(result), names(data))
+})
+
+test_that("filter_care_setting() leaves a row with a missing facility name unchanged under a regex correction", {
+  data <- tibble::tibble(
+    HospitalName = c("Hillside FSED", NA, "General"),
+    Hospital     = c(1L, 2L, 3L),
+    FacilityType = c("Urgent Care", "Emergency Care", "Emergency Care")
+  )
+  expect_warning(
+    result <- suppressMessages(
+      filter_care_setting(data, fix_facility_type_regex = "FSED")
+    ),
+    "1 facility/facilities matched"
+  )
+  # all three rows survive: the FSED is corrected, and the NA-name row keeps
+  # its own type instead of having it overwritten with NA and being dropped
+  expect_equal(nrow(result), 3L)
+  expect_false(anyNA(result$facility_type))
 })
 
 test_that("filter_care_setting() verbose = FALSE suppresses dropped-types message", {

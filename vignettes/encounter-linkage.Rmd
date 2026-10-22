@@ -345,9 +345,10 @@ episodes_long <- link_encounters(
 dplyr::count(episodes_long, patient_class)
 ```
 
-In long format, `.index_encounter` marks the row that survives a "one row per
-episode" filter: `TRUE` on the ED row when both ED and admission rows are
-present, or on the single row for ED-only or Direct Admit-only episodes:
+In long format, `.index_encounter` marks exactly one row per episode, the
+row that survives a "one row per episode" filter: the ED row when the episode
+has one (the first, if it has several), otherwise the episode's first row.
+That is the single row for ED-only or Direct Admit-only episodes:
 
 ```{r long-index}
 episodes_long |>

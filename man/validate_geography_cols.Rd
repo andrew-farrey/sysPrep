@@ -4,6 +4,7 @@
 \alias{validate_geography_cols}
 \alias{resolve_geography_output_col}
 \alias{assign_geography_reassignment}
+\alias{patient_geography}
 \alias{resolve_geography_sources}
 \alias{resolve_geography_outputs}
 \alias{reassign_geography}
@@ -21,7 +22,7 @@ validate_geography_cols(
   hosp_region_col_str,
   zip_col_str,
   hosp_zip_col_str,
-  check_region_col = TRUE
+  check_zip_col = TRUE
 )
 
 resolve_geography_output_col(
@@ -48,6 +49,8 @@ assign_geography_reassignment(
   preserve_original_geographies,
   mask
 )
+
+patient_geography(data, col_str)
 
 resolve_geography_sources(
   data,
@@ -93,7 +96,8 @@ processed.}
 \item{region_col_str, hosp_region_col_str, zip_col_str, hosp_zip_col_str}{Resolved column names (strings), or \code{NULL} when the optional column is
 absent.}
 
-\item{check_region_col}{Logical. Whether to validate \code{region_col_str} here.}
+\item{check_zip_col}{Logical. Whether to validate \code{zip_col_str} (the
+patient zip column) here.}
 
 \item{new_col}{The user-supplied output column name, or \code{NULL}.}
 
@@ -122,6 +126,8 @@ column already existed in \code{data}.}
 \item{mask}{Logical vector, one element per row of \code{data}: which rows are
 reassigned.}
 
+\item{col_str}{A resolved column name, or \code{NULL} when the column is absent.}
+
 \item{region_sym, hosp_region_sym, zip_sym, hosp_zip_sym}{Symbols captured
 from the four source column arguments (raw ESSENCE or snake_case names).}
 
@@ -147,7 +153,8 @@ return the updated data frame. \code{warn_site_without_region_match()} and
 \verb{inform_*_result()} are called for their conditions.
 \code{resolve_geography_output_col()} returns the normalized output column
 name, or \code{NULL}. \code{assign_geography_reassignment()} returns \code{data} with
-the geography columns written.
+the geography columns written. \code{patient_geography()} returns the patient
+column's values, or a single \code{NA} when the column is absent.
 }
 \description{
 Internal helpers shared by \code{\link[=assign_treating_geography]{assign_treating_geography()}} and
@@ -156,12 +163,17 @@ Internal helpers shared by \code{\link[=assign_treating_geography]{assign_treati
 \details{
 \code{validate_geography_cols()} downgrades \code{do_region}/\code{do_zip} to \code{FALSE}
 (with an informational message) when a column required for that geography
-type is absent. \code{check_region_col} controls whether \code{region_col_str}
-itself is validated here: \code{\link[=assign_treating_geography]{assign_treating_geography()}} validates it
-separately afterward, since it is unconditionally required there for
-out-of-state detection regardless of which geography types are requested,
-whereas \code{\link[=assign_facility_geography]{assign_facility_geography()}} has no such separate requirement and
-validates it as part of this check.
+type is absent. The facility columns (\code{HospitalRegion}, \code{HospitalZip}) are
+always required for their type. The patient columns (\code{Region}, \code{ZipCode})
+are only the "leave this row alone" values of a selective reassignment, so
+whether they are required depends on the caller. This function never
+validates \code{Region}: \code{\link[=assign_treating_geography]{assign_treating_geography()}} checks it separately
+afterward, since it is unconditionally required there for out-of-state
+detection regardless of which geography types are requested, and
+\code{\link[=assign_facility_geography]{assign_facility_geography()}} never reads it. \code{check_zip_col} says whether
+to validate \code{ZipCode} here: \code{\link[=assign_treating_geography]{assign_treating_geography()}} needs it, while
+\code{\link[=assign_facility_geography]{assign_facility_geography()}} reassigns every row, so it never reads the
+patient columns (unless \code{overwrite = TRUE} names one as its output).
 
 \code{resolve_geography_output_col()} resolves a \code{new_region_col}/\code{new_zip_col}
 argument (a plain string naming the output column, or \code{NULL} to skip that

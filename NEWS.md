@@ -1,5 +1,84 @@
 # sysPrep 0.1.0
 
+* **Bug fix:** `clean_names = FALSE` now returns the input's own column names
+  in `filter_care_setting()`, `link_encounters()`,
+  `assign_treating_geography()`, `assign_facility_geography()`, and
+  `review_facility_ed_visits()`; it previously still returned snake_case names
+  (only `dedupe()` honored it). Columns the function adds keep their own
+  names.
+* **Bug fix:** `review_facility_ed_visits()` normalized `visits_per_day` by
+  the days *that facility* sent data, so a facility that stopped sending
+  partway through the pull scored the same as one that sent every day. It
+  now divides by the number of distinct dates in the whole pull (`n_days`
+  still reports the facility's own days). `.outlier_method` now records the
+  criterion that fired (`"percentile"`, `"iqr"`, or `"percentile+iqr"`)
+  instead of echoing the `method` argument. The documentation now says that
+  `method = "percentile"` ranks the tails: with the default thresholds it
+  flags the lowest and highest facility in a small pull whether or not either
+  is abnormal; `method = "iqr"` flags only values outside the spread.
+* **Bug fix:** `filter_care_setting(fix_facility_type_regex = )` no longer
+  overwrites the facility type with `NA` for a row whose facility name is
+  missing (which then dropped the row at the `keep_types` step) or lists `NA`
+  as a matched facility.
+* **Bug fix:** `assign_facility_geography()` no longer requires the patient
+  `Region` and `ZipCode` columns, which it never reads when every row is
+  reassigned; without them it previously skipped that geography type with a
+  misleading "not found" message.
+* **Bug fix:** `.index_encounter` in `link_encounters(return_format =
+  "long")` now marks exactly one row per episode: the first `"ED"` row, else
+  the first row (the same row the collapsed output is built from). It could
+  previously be absent (a multi-row episode with no ED row, or an `NA` class)
+  or repeated (two ED rows), so long-format counts disagreed with the
+  collapsed row count. Collapsed output is unaffected (the column is `TRUE`
+  there). No other column of `link_encounters()` output changes.
+* **Bug fix:** `link_encounters()` now aborts when the linking columns
+  (`facility_col`, `visit_col`, and `fallback_visit_col`) are missing from
+  `inpatient_admission_data`, where it previously linked nothing without a
+  message.
+* **New argument:** `dedupe()` and `summarize_duplicates()` gain `verbose`
+  (default `TRUE`), so the missing-key message can be silenced as in every
+  other function that reports messages.
+* **Behavior change:** `link_encounters()` now holds its linking keys, the
+  facility column (default `Hospital`), `visit_col` (default `Visit_ID`) and
+  `fallback_visit_col`, as text in the output, whatever type each pull
+  delivered them in. These identifiers have no numeric meaning, and a CSV
+  read can return one pull's keys as numbers and the other's as text, which
+  previously failed in `bind_rows()`. Numbers are written in full (`100000`,
+  not `1e+05`). Keys that were already text (as the ESSENCE `dataDetails`
+  API returns them) are unchanged; a numeric `Hospital` now comes back as
+  text, so convert it back after the call if you need numbers. `.episode_id`
+  is unchanged. `dedupe()`, `summarize_duplicates()` and
+  `classify_duplicates()` already compared these keys as text and still
+  return each column in the type it arrived in.
+* **Bug fix:** the `"concat"` merge strategy in `link_encounters()` skipped a
+  value whenever it appeared anywhere inside the text already collected, even
+  inside a longer word or code, so detail present in only one record could be
+  lost (`"fall"` inside `"waterfall"`, the diagnosis code `"R10.9"` inside
+  `"R10.90"`). It now treats a value as already present only when it appears
+  as whole words or whole codes (ignoring case, punctuation and spacing), so
+  complaint text, diagnosis codes and SNOMED codes found in one record but not
+  the other are kept. `"concat"` is not in the default `merge_fields`.
+* **Performance:** `link_encounters()` builds its episode metadata with
+  whole-column operations rather than a per-episode call, several times
+  faster on a 290,000-row pull with identical output;
+  `dedupe(keep = "most_complete")` counts each row's non-missing values once
+  instead of once per group.
+* **Documentation:** `dedupe()`'s `visit_col` no longer lists patient-level
+  identifiers (`C_Unique_Patient_ID`, MRN) as alternatives, and its example
+  using one is removed: they are shared by all of a patient's visits, so
+  using one collapses repeat visits. `dedupe()` also documents that a row with
+  a missing `order_by` value sorts last. The documentation also now states
+  that `fallback_visit_col` only links two rows that are both missing
+  `visit_col`; that `.patient_class_sequence` lists classes with identical or
+  missing timestamps alphabetically, which carries no clinical meaning; that
+  `assign_treating_geography()` takes the site prefix from `site` rather than
+  parsing it from the data; that `.out_of_state` is `TRUE` for another state,
+  `OTHER_REGION`, `{site}_UNKNOWN`, and a missing `Region`; that the
+  `percent` in `classify_duplicates()$overall` is the share of duplicated
+  visit groups; and that `n_biosense_ids` is reported but not used to
+  classify. Wording that claimed more than the code establishes
+  ("approximating both residence-based and incidence-based burden", "a close
+  approximation of hospital-level cluster detection") was softened.
 * **Input validation:** every exported function now checks its arguments up
   front and aborts with a message that names the offending argument. This
   covers a non-data-frame `data` (or `ed_data`/`inpatient_admission_data`);
@@ -50,8 +129,9 @@
   (`?validate_geography_cols`), `classify_duplicates()`
   (`?resolve_classification_cols`), and `dedupe()`/`summarize_duplicates()`
   (`?sort_for_dedupe`). `link_encounters()` went from 580 lines at cyclomatic
-  complexity 49 to 97 lines at complexity 6. No change to any function's
-  output, messages, or warnings.
+  complexity 49 to 97 lines at complexity 6. The restructuring itself changes
+  no function's output, messages, or warnings; the behavior changes are the
+  separate items listed above.
 * **Dependencies:** the minimum `dplyr` version is now 1.2.0, the release that
   added `dplyr::recode_values()`, which `link_encounters()` already used.
   `stats` and `utils` are now declared in `Imports`.
@@ -151,8 +231,9 @@
 * Added `CITATION.cff` (Citation File Format) at the package root for
   GitHub's "Cite this repository" feature and Zenodo DOI metadata, alongside
   the existing `inst/CITATION` used by `citation("sysPrep")`.
-* Functions validated against the NSSP ESSENCE `va_er` (Patient Location,
-  Full Details) and `va_hosp` (Facility Location, Full Details) data sources.
+* Designed for ESSENCE `dataDetails` pulls from the NSSP ESSENCE `va_er`
+  (Patient Location, Full Details) and `va_hosp` (Facility Location, Full
+  Details) data sources, which the package was developed and tested against.
 * `dedupe()`: Remove duplicate ESSENCE records with flexible keep strategy.
 * `summarize_duplicates()`: Summarize duplicate counts by facility.
 * `classify_duplicates()`: Classify duplication mechanism by type. Supports
