@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://andrew-farrey.github.io/sysPrep/
+    about: Reference pages and articles explaining what each function does and why.
+  - name: Report a security problem or accidentally posted sensitive data
+    url: https://github.com/andrew-farrey/sysPrep/security/policy
+    about: Please use this private route instead of a public issue.

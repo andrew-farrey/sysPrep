@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest a new capability or an option for an existing function.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. sysPrep keeps its output stable between
+        releases, so a feature that changes what an existing function returns
+        is usually added as an optional argument whose default keeps today's
+        behavior. **Please do not paste real patient-level or identifiable
+        facility data.**
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: This request contains no real patient, facility-identifiable, or otherwise sensitive data.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the data quality or preprocessing problem in your ESSENCE pull, not just the code you want.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like sysPrep to do?
+      description: Which function would it extend, and what would the new behavior or argument look like?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+      description: Any workaround, or alternatives you considered.
+  - type: dropdown
+    id: changes-output
+    attributes:
+      label: Would this change the output of existing calls?
+      options:
+        - No, it only adds something new
+        - Yes, existing output would change
+        - Not sure
+    validations:
+      required: true

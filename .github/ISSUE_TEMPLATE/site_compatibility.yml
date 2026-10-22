@@ -1,0 +1,69 @@
+name: Site or data source behavior
+description: sysPrep does not fit how your NSSP site or ESSENCE data source behaves.
+title: "[Site]: "
+labels: ["site-compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        sysPrep was developed against ESSENCE `dataDetails` pulls from the
+        `va_er` and `va_hosp` data sources at a limited number of sites. If your
+        site produces duplicates by a different mechanism, onboards facilities
+        under different `FacilityType` values, formats `Region` differently, or
+        otherwise behaves differently, this form is the right place to say so.
+        **Please do not paste real patient-level data or identifiable facility
+        information.** Describe the pattern with invented rows.
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: This report contains no real patient, facility-identifiable, or otherwise sensitive data.
+          required: true
+  - type: input
+    id: site
+    attributes:
+      label: NSSP site short name (optional)
+      description: For example `KY`. Leave blank if you prefer not to say.
+  - type: dropdown
+    id: function
+    attributes:
+      label: Which function does not fit?
+      multiple: true
+      options:
+        - dedupe()
+        - summarize_duplicates()
+        - classify_duplicates()
+        - filter_care_setting()
+        - review_facility_ed_visits()
+        - link_encounters()
+        - assign_treating_geography()
+        - assign_facility_geography()
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: datasource
+    attributes:
+      label: Which ESSENCE data source?
+      options:
+        - va_er (Patient Location, Full Details)
+        - va_hosp (Facility Location, Full Details)
+        - Another data source
+    validations:
+      required: true
+  - type: textarea
+    id: difference
+    attributes:
+      label: What is different about your data?
+      description: |
+        Describe the pattern: which fields differ, how rows are duplicated or
+        mis-classified, what value formats you see. A small table of invented
+        rows that shows the pattern is ideal.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What would correct handling look like?
+      description: What should the function do with that pattern?

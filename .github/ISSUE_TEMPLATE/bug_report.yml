@@ -1,0 +1,76 @@
+name: Bug report
+description: Something sysPrep does is wrong or surprising.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. **Please do not paste real patient-level
+        data, identifiable facility information, or anything covered by a data
+        use agreement.** Reproduce the problem with the built-in synthetic
+        datasets (`essence_raw`, `essence_clean`, `essence_ed_raw`,
+        `essence_inp_raw`) or a few invented rows.
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: This report contains no real patient, facility-identifiable, or otherwise sensitive data.
+          required: true
+        - label: I read the [contributing guide](https://github.com/andrew-farrey/sysPrep/blob/master/.github/CONTRIBUTING.md).
+          required: true
+  - type: dropdown
+    id: function
+    attributes:
+      label: Which function is affected?
+      multiple: true
+      options:
+        - dedupe()
+        - summarize_duplicates()
+        - classify_duplicates()
+        - filter_care_setting()
+        - review_facility_ed_visits()
+        - link_encounters()
+        - assign_treating_geography()
+        - assign_facility_geography()
+        - Example data or documentation
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: datasource
+    attributes:
+      label: Which ESSENCE data source did the pull come from?
+      options:
+        - va_er (Patient Location, Full Details)
+        - va_hosp (Facility Location, Full Details)
+        - Another data source
+        - Not applicable (documentation or built-in data)
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: Describe the output, error, or message you got and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reprex
+    attributes:
+      label: Minimal reproducible example
+      description: |
+        Code that reproduces the problem using synthetic data. The
+        [reprex](https://reprex.tidyverse.org/) package makes this easy.
+      render: r
+    validations:
+      required: true
+  - type: textarea
+    id: session
+    attributes:
+      label: Session information
+      description: Paste the output of `sessionInfo()` (it includes the sysPrep version).
+      render: text
+    validations:
+      required: true

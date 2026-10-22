@@ -31,9 +31,10 @@ syndromic surveillance research using the NSSP ESSENCE API. All example
 data are fully synthetic with no real patient, facility, or geographic 
 identifiers. The package does not connect to any external API directly; 
 it operates on data frames returned by the ESSENCE API (accessible via 
-the separate `Rnssp` package). Functions have been validated against 
-records from the ESSENCE `va_er` (Patient Location, Full Details) and 
-`va_hosp` (Facility Location, Full Details) data sources.
+the separate `Rnssp` package). The package is designed for ESSENCE
+`dataDetails` pulls from the `va_er` (Patient Location, Full Details) and
+`va_hosp` (Facility Location, Full Details) data sources, which it was
+developed and tested against.
 
 This is a new submission. The win-builder (R-devel) check reported one
 NOTE, expected for a first submission:

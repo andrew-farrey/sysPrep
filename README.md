@@ -60,11 +60,12 @@ unaddressed:
 `sysPrep` synthesizes these methods into a reproducible, documented
 pipeline.
 
-### Validated Data Sources
+### Supported Data Sources
 
-`sysPrep`'s functions have been validated against records pulled from the
-following NSSP ESSENCE data sources. Both sources return ED visit and
-inpatient admission records, so all exported functions apply to either:
+`sysPrep` is designed for ESSENCE `dataDetails` pulls from the following NSSP
+ESSENCE data sources, which it was developed and tested against. Both sources
+return ED visit and inpatient admission records, so all exported functions
+apply to either:
 
 | ESSENCE `datasource` code | Full name | Used by |
 |----------------------------|-----------|---------|
@@ -202,6 +203,26 @@ citation("sysPrep")
 
 Citation metadata is also available in
 [`CITATION.cff`](https://github.com/andrew-farrey/sysPrep/blob/master/CITATION.cff).
+
+## Getting Help and Contributing
+
+- **Questions and bug reports:** see
+  [how to get help](https://github.com/andrew-farrey/sysPrep/blob/master/.github/SUPPORT.md)
+  and open an issue with the
+  [issue forms](https://github.com/andrew-farrey/sysPrep/issues/new/choose).
+  If `sysPrep` does not fit how your NSSP site or ESSENCE data source behaves,
+  the "Site or data source behavior" form is the place to say so.
+- **Contributing:** read the
+  [contributing guide](https://github.com/andrew-farrey/sysPrep/blob/master/.github/CONTRIBUTING.md)
+  first; it describes the design contract the package follows.
+- **Sensitive data:** never post patient-level data or identifiable facility
+  information in an issue. Reproduce problems with the package's synthetic
+  datasets. See the
+  [security policy](https://github.com/andrew-farrey/sysPrep/blob/master/.github/SECURITY.md).
+
+Please note that the `sysPrep` project is released with a
+[Contributor Code of Conduct](https://github.com/andrew-farrey/sysPrep/blob/master/.github/CODE_OF_CONDUCT.md).
+By contributing to this project, you agree to abide by its terms.
 
 ## License
 

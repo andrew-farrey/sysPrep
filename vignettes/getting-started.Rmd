@@ -79,9 +79,10 @@ particularly at facilities near state borders or serving mobile populations.
 `sysPrep` formalizes the preprocessing steps practitioners apply to address
 each of these problems into a reproducible, documented R pipeline.
 
-`sysPrep`'s functions have been validated against records pulled from the
-NSSP ESSENCE `va_er` (Patient Location, Full Details) and `va_hosp`
-(Facility Location, Full Details) data sources. Both sources return ED
+`sysPrep` is designed for ESSENCE `dataDetails` pulls from the NSSP ESSENCE
+`va_er` (Patient Location, Full Details) and `va_hosp` (Facility Location,
+Full Details) data sources, which it was developed and tested against. Both
+sources return ED
 visit and inpatient admission records, so all exported functions apply to
 either. Column names and value formats referenced throughout this package
 (e.g., `{SITE}_{REGION}` region strings, `HasBeenE`/`HasBeenAdmitted` flags)
