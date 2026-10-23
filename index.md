@@ -213,7 +213,11 @@ directly:
 citation("sysPrep")
 ```
 
-Citation metadata is also available in
+Each release is archived on Zenodo. The DOI
+[10.5281/zenodo.23603551](https://doi.org/10.5281/zenodo.23603551)
+always resolves to the latest version; the page it opens lists the DOI
+of every individual version, which you can cite to pin the exact release
+you used. Citation metadata is also available in
 [`CITATION.cff`](https://github.com/andrew-farrey/sysPrep/blob/master/CITATION.cff).
 
 ## Getting Help and Contributing
