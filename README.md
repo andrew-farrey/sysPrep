@@ -4,6 +4,7 @@
 [![R-CMD-check](https://github.com/andrew-farrey/sysPrep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/andrew-farrey/sysPrep/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/gh/andrew-farrey/sysPrep/branch/master/graph/badge.svg)](https://app.codecov.io/gh/andrew-farrey/sysPrep?branch=master)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23603551.svg)](https://doi.org/10.5281/zenodo.23603551)
 <!-- badges: end -->
 
 ## Installation
@@ -201,6 +202,10 @@ If you use `sysPrep` in published work, please cite the package directly:
 citation("sysPrep")
 ```
 
+Each release is archived on Zenodo. The DOI
+[10.5281/zenodo.23603551](https://doi.org/10.5281/zenodo.23603551) always
+resolves to the latest version; the page it opens lists the DOI of every
+individual version, which you can cite to pin the exact release you used.
 Citation metadata is also available in
 [`CITATION.cff`](https://github.com/andrew-farrey/sysPrep/blob/master/CITATION.cff).
 
