@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/andrew-farrey/sysPrep/blob/master/inst/CITATION)
+[`inst/CITATION`](https://github.com/andrew-farrey/sysPrep/blob/v0.1.0/inst/CITATION)
 
 Farrey A (2026). *sysPrep: Preprocessing Methods for NSSP ESSENCE
 Syndromic Surveillance Data*. R package version 0.1.0,
