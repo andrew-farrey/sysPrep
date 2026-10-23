@@ -8,7 +8,8 @@ bibentry(
     email   = "afarrey11@outlook.com",
     comment = c(ORCID = "0000-0003-4279-0998")
   ),
-  year     = format(Sys.Date(), "%Y"),
+  year     = "2026",
   note     = sprintf("R package version %s", meta$Version),
+  doi      = "10.5281/zenodo.23603551",
   url      = "https://github.com/andrew-farrey/sysPrep"
 )
