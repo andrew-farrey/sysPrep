@@ -365,7 +365,7 @@ and the operational consequences of omitting it.
   [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
   strategy.
 
-- [Linking ED and Inpatient Records for Accurate Burden
+- [Linking ED and Inpatient Records for Improved Burden
   Estimation](https://andrew-farrey.github.io/sysPrep/articles/encounter-linkage.md):
 
   How one care episode can be split across separately queried ED and

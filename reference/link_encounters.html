@@ -17,7 +17,7 @@ so information present on only one source row isn't discarded."><meta property="
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,8 +61,8 @@ so information present on only one source row isn't discarded.</p>
 <span>  visit_col <span class="op">=</span> <span class="va">Visit_ID</span>,</span>
 <span>  fallback_visit_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  merge_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>CCDD <span class="op">=</span> <span class="st">"union_ccdd"</span>, CCDDParsed <span class="op">=</span> <span class="st">"union_ccdd"</span>, CCDDCategory_flat <span class="op">=</span></span>
-<span>    <span class="st">"union_delimited"</span>, C_Death <span class="op">=</span> <span class="st">"prefer_yes"</span>, Discharge_Disposition <span class="op">=</span></span>
-<span>    <span class="st">"prefer_admission"</span>, DispositionCategory <span class="op">=</span> <span class="st">"prefer_admission"</span><span class="op">)</span>,</span>
+<span>    <span class="st">"union_delimited"</span>, C_Death <span class="op">=</span> <span class="st">"prefer_yes"</span>, Discharge_Disposition <span class="op">=</span> <span class="st">"follow_severity"</span>,</span>
+<span>    DispositionCategory <span class="op">=</span> <span class="st">"prefer_severity"</span><span class="op">)</span>,</span>
 <span>  merge_delimiter <span class="op">=</span> <span class="st">";"</span>,</span>
 <span>  return_format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"collapsed"</span>, <span class="st">"long"</span><span class="op">)</span>,</span>
 <span>  clean_names <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -88,7 +88,11 @@ Rows with <code>HasBeenE = 1</code> are automatically removed to prevent duplica
 rows for the same underlying record. It must contain the same linking
 columns as <code>ed_data</code> (<code>facility_col</code>, <code>visit_col</code>, and
 <code>fallback_visit_col</code> if used), or <code>link_encounters()</code> aborts.
-<code>link_encounters()</code> also aborts if this is <code>NULL</code>; see Details.</p></dd>
+<code>link_encounters()</code> also aborts if this is <code>NULL</code>; see Details. It must
+carry the same <code>HasBeen_</code> flag columns as <code>ed_data</code>, or
+<code>link_encounters()</code> aborts; see "Required fields". Each pull should hold
+one record per visit; the function reports episodes that still hold
+several records from the same pull.</p></dd>
 
 
 <dt id="arg-facility-col">facility_col<a class="anchor" aria-label="anchor" href="#arg-facility-col"></a></dt>
@@ -109,7 +113,10 @@ Linking keys are identifiers with no numeric meaning, so <code>facility_col</cod
 text in the output, whatever type each pull delivered them in (the
 ESSENCE <code>dataDetails</code> API returns them as text; a CSV read may not).
 Numbers are written in full, without scientific notation, so <code>100000</code>
-becomes <code>"100000"</code>. Convert back after the call if you need numbers.</p></dd>
+becomes <code>"100000"</code>. Convert back after the call if you need numbers.
+When reading a CSV, read these columns as text: a number cannot hold an
+integer above 2^53 exactly, so a very long identifier is already altered
+before it reaches the function.</p></dd>
 
 
 <dt id="arg-fallback-visit-col">fallback_visit_col<a class="anchor" aria-label="anchor" href="#arg-fallback-visit-col"></a></dt>
@@ -124,10 +131,11 @@ because they share a missing <code>visit_col</code>; see Details.</p></dd>
 <dd><p>Named character vector mapping column names (raw
 ESSENCE names or post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents) to a merge
 strategy: one of <code>"concat"</code>, <code>"union_delimited"</code>, <code>"union_ccdd"</code>,
-<code>"prefer_yes"</code>, or <code>"prefer_admission"</code>. Only used when
-<code>return_format = "collapsed"</code>. Defaults to a curated set of ESSENCE
-fields known to carry information only visible in the direct-admit
-record; see Details. Extend or override for other fields as needed.</p></dd>
+<code>"prefer_yes"</code>, <code>"prefer_admission"</code>, <code>"prefer_severity"</code>, or
+<code>"follow_severity"</code>. Only used when <code>return_format = "collapsed"</code>.
+Defaults to a curated set of ESSENCE fields known to carry information
+only visible in the direct-admit record; see Details. Extend or override
+for other fields as needed.</p></dd>
 
 
 <dt id="arg-merge-delimiter">merge_delimiter<a class="anchor" aria-label="anchor" href="#arg-merge-delimiter"></a></dt>
@@ -205,7 +213,10 @@ continuous record. The result is two records sharing the same
 one showing <code>HasBeenAdmitted = 1</code> and <code>HasBeenE = 0</code>, that otherwise
 look unrelated. The ED record's fields (e.g. <code>Discharge_Disposition</code>,
 <code>CCDD</code>, <code>C_Death</code>) reflect only what was known at ED discharge, not the
-outcome of the encounter that actually continued. Counting both records
+outcome of the encounter that actually continued (an ED record closed as
+<code>DISCHARGED</code> can sit beside an inpatient record that ends in a death or a
+transfer; the default merge keeps the more severe <code>DispositionCategory</code> and
+marks <code>C_Death</code>). Counting both records
 separately double-counts a single real-world event. This is a data
 quality artifact, not a distinct clinical pathway.</p>
 <p><strong>The invisibility gap.</strong> A patient admitted directly to an inpatient
@@ -267,6 +278,28 @@ row's value.</p></dd>
 if such a row has a non-missing value for the field. Otherwise falls
 back to the primary row's value.</p></dd>
 
+<dt><code>"prefer_severity"</code></dt>
+<dd><p>For <code>DispositionCategory</code>, keeps the most
+severe value in the episode, whichever record carries it: <code>DECEASED</code>
+ranks above <code>TRANSFERRED</code> and <code>ADMIT</code> (equal), which rank above
+<code>DISCHARGED</code>, which ranks above <code>UNKNOWN</code> and a missing value. This is
+the default for <code>DispositionCategory</code>, so an ED record closed as
+<code>DISCHARGED</code> does not hide a death or a transfer recorded on the linked
+inpatient record, whichever of the two records has the
+<code>HasBeenAdmitted</code> flag. Whenever the merged value is <code>DECEASED</code>,
+<code>C_Death</code> is also set to affirmative for that episode (using the form
+already in the column: <code>"Yes"</code>, <code>"1"</code>, or <code>1</code>). Among equally severe
+values the admission-class row's value is kept.</p></dd>
+
+<dt><code>"follow_severity"</code></dt>
+<dd><p>Takes the value from the same record whose
+<code>prefer_severity</code> field won (the first such field in <code>merge_fields</code>).
+This is the default for <code>Discharge_Disposition</code>, so it always comes
+from the record that supplied <code>DispositionCategory</code> and the two never
+disagree. If that record has no value for the field, or no
+<code>prefer_severity</code> field is present, the <code>"prefer_admission"</code> value is
+used instead.</p></dd>
+
 
 </dl><p>Any column not a <code>HasBeen_</code> flag and not listed in <code>merge_fields</code> takes
 its value from the <strong>primary row</strong>: the <code>"ED"</code>-class row if one exists in
@@ -275,6 +308,37 @@ the episode, else the first row in original order.</p>
 instead: one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.</p>
 </div>
+
+<div class="section">
+<h3 id="required-fields">Required fields<a class="anchor" aria-label="anchor" href="#required-fields"></a></h3>
+
+
+<p>Pull these fields in <strong>both</strong> ESSENCE <code>dataDetails</code> pulls. The function
+stops with an error that names what is missing or different when one of
+these requirements is not met.</p><ul><li><p><strong>Facility identifier</strong>: <code>Hospital</code> (<code>C_BioSense_Facility_ID</code>), or
+<code>HospitalName</code> when <code>Hospital</code> is not in <code>ed_data</code>; or the column given to
+<code>facility_col</code>. It must be in both pulls.</p></li>
+<li><p><strong>Visit identifier</strong>: <code>Visit_ID</code> (or the column given to <code>visit_col</code>),
+in both pulls.</p></li>
+<li><p><strong>The <code>HasBeen_</code> flags, identical in both pulls.</strong> <code>ed_data</code> needs
+<code>HasBeenE</code> and either <code>HasBeenAdmitted</code> or <code>HasBeenI</code> (<code>HasBeenAdmitted</code>
+is used when both are present), unless it carries
+<code>C_Patient_Class_List</code>. Whatever <code>HasBeen_</code> fields one pull carries
+(<code>HasBeenE</code>, <code>HasBeenAdmitted</code>, <code>HasBeenI</code>, <code>HasBeenO</code>), the other must
+carry too. A flag in only one pull would be <code>NA</code> on the other pull's
+rows, and ESSENCE never produces a missing flag.</p></li>
+<li><p><strong><code>fallback_visit_col</code></strong>, in both pulls, when you supply one (for example
+<code>C_BioSense_ID</code>).</p></li>
+</ul><p>Fields that are not required but change the output:</p><ul><li><p><code>C_Patient_Class_List</code> in <code>ed_data</code> gives the full patient-class
+sequence; <code>C_Patient_Class_MDT_Updates</code> orders it by time.</p></li>
+<li><p><code>C_Visit_Date_Time</code> (or <code>Date</code> and <code>Time</code>) orders classes when no
+<code>C_Patient_Class_MDT_Updates</code> is present; without any of them the order is
+alphabetical and carries no clinical meaning.</p></li>
+<li><p>The <code>merge_fields</code> columns (by default <code>CCDD</code>, <code>CCDDParsed</code>,
+<code>CCDDCategory_flat</code>, <code>C_Death</code>, <code>Discharge_Disposition</code>, and
+<code>DispositionCategory</code>) are merged only when present; without
+<code>DispositionCategory</code> no disposition is ranked by severity.</p></li>
+</ul></div>
 
 <div class="section">
 <h3 id="why-inpatient-admission-data-is-required">Why <code>inpatient_admission_data</code> is required<a class="anchor" aria-label="anchor" href="#why-inpatient-admission-data-is-required"></a></h3>
@@ -348,8 +412,10 @@ list of all <code>C_Patient_Class</code> values present across messages sharing 
 same ESSENCE ID (e.g., <code>"E"</code>, <code>"EI"</code>, <code>"EIO"</code>). When present, it is used
 in place of the <code>HasBeen_</code> pivot, since it distinguishes patient classes
 (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
-Pre-admit/Recurring) that the <code>HasBeen_</code> flags do not represent. For more
-granular and informative output, add <code>C_Patient_Class_List</code> to your
+Pre-admit/Recurring) that the <code>HasBeen_</code> flags do not represent. This
+applies to <code>ed_data</code> only: every row of <code>inpatient_admission_data</code> is
+labeled <code>"Direct Admit"</code>, whatever its own <code>C_Patient_Class_List</code> says.
+For more granular and informative output, add <code>C_Patient_Class_List</code> to your
 ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
 "Patient Class (Syndromic Surveillance)" value set (concept codes and
 preferred names, verified against

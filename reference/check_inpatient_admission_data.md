@@ -42,6 +42,14 @@ bind_direct_admits(
   call = rlang::caller_env()
 )
 
+check_flag_columns_match(
+  ed_long,
+  inpatient_admission_data,
+  call = rlang::caller_env()
+)
+
+inform_same_pull_duplicates(ed_long, episode_id_vec, verbose)
+
 as_text_cols(data, cols)
 
 check_linking_columns(
@@ -133,6 +141,10 @@ collapse_episodes(result, merge_fields, merge_delimiter)
   `visit_col`, and `fallback_visit_col`) to hold as text. Defaults to
   none.
 
+- episode_id_vec:
+
+  Character vector of `.episode_id` values, one per row of `ed_long`.
+
 - data:
 
   A data frame. For `as_text_cols()`, one of the two pulls.
@@ -152,10 +164,6 @@ collapse_episodes(result, merge_fields, merge_delimiter)
 - fallback_col_str:
 
   Name of the `fallback_visit_col` column, or `NULL`.
-
-- episode_id_vec:
-
-  Character vector of `.episode_id` values, one per row of `ed_long`.
 
 - result:
 
@@ -179,6 +187,8 @@ from the pivot. The remaining stages return the updated long-format data
 frame, except `build_episode_ids()`, which returns a character vector.
 `check_linking_columns()` returns `NULL` invisibly or aborts.
 `as_text_cols()` returns `data` with those columns as character.
+`check_flag_columns_match()` returns `NULL` invisibly or aborts, and
+`inform_same_pull_duplicates()` returns `NULL` invisibly.
 
 ## Details
 
@@ -208,11 +218,14 @@ calls them:
 5.  `bind_direct_admits()` tags `inpatient_admission_data` as
     `"Direct Admit"` and appends it, after `check_linking_columns()` has
     confirmed the linking columns exist in it and `as_text_cols()` has
-    converted the linking identifier columns to text.
+    converted the linking identifier columns to text. It first calls
+    `check_flag_columns_match()`.
 
 6.  `add_class_time()` fills the `.class_time` ordering column.
 
-7.  `build_episode_ids()` builds the `.episode_id` for every row.
+7.  `build_episode_ids()` builds the `.episode_id` for every row, and
+    `inform_same_pull_duplicates()` reports episodes that hold more than
+    one record from the same pull.
 
 8.  `add_episode_metadata()` adds `.episode_id`,
     `.patient_class_sequence`, `.episode_n_rows`, and `.index_encounter`
@@ -248,6 +261,19 @@ confirmed to match another row via a secondary identifier. The three
 candidate id strings are built as plain vectors, not inside a dplyr
 verb, so the fallback lookup is never attempted when no
 `fallback_visit_col` was supplied.
+
+`check_flag_columns_match()` aborts when the two pulls do not carry the
+same `HasBeen_` flag columns: ESSENCE never leaves a flag missing, so a
+flag in only one pull would be `NA` on the other pull's rows and the
+counts built on it would be wrong. `inform_same_pull_duplicates()` tells
+the user, when `verbose`, how many episodes hold several distinct
+records from one pull (rows expanded from a single record do not count),
+which
+[`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
+on each pull prevents. Both read the `.link_src_row` and `.link_pull`
+columns that
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+adds and `add_episode_metadata()` removes.
 
 `add_episode_metadata()` computes its columns over whole vectors keyed
 by episode

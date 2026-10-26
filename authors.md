@@ -13,13 +13,14 @@ Source:
 Farrey A (2026). *sysPrep: Preprocessing Methods for NSSP ESSENCE
 Syndromic Surveillance Data*.
 [doi:10.5281/zenodo.23603551](https://doi.org/10.5281/zenodo.23603551).
-R package version 0.1.0, <https://github.com/andrew-farrey/sysPrep>.
+R package version 0.1.0.9000,
+<https://github.com/andrew-farrey/sysPrep>.
 
     @Manual{,
       title = {sysPrep: Preprocessing Methods for NSSP ESSENCE Syndromic Surveillance Data},
       author = {Andrew Farrey},
       year = {2026},
-      note = {R package version 0.1.0},
+      note = {R package version 0.1.0.9000},
       doi = {10.5281/zenodo.23603551},
       url = {https://github.com/andrew-farrey/sysPrep},
     }

@@ -150,6 +150,8 @@ calls them:
     the number of distinct dates in the whole pull rather than by
     `n_days`, so a facility that stops sending partway through the pull
     scores lower instead of looking the same as one that sent every day.
+    The divisor is the same for every facility, so the rate ranks
+    facilities exactly as the count does and flags the same ones.
 
 5.  `add_outlier_thresholds()` adds the percentile and/or IQR
     thresholds, optionally within facility types. Only the quantiles the

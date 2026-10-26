@@ -9,7 +9,7 @@ exported function reads as a short pipeline."><meta property="og:image" content=
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -181,7 +181,9 @@ type. When a date column is available it also reports <code>n_days</code> (the
 days the facility sent data) and <code>visits_per_day</code>, which divides by the
 number of distinct dates in the whole pull rather than by <code>n_days</code>, so
 a facility that stops sending partway through the pull scores lower
-instead of looking the same as one that sent every day.</p></li>
+instead of looking the same as one that sent every day. The divisor is
+the same for every facility, so the rate ranks facilities exactly as
+the count does and flags the same ones.</p></li>
 <li><p><code>add_outlier_thresholds()</code> adds the percentile and/or IQR
 thresholds, optionally within facility types. Only the quantiles the
 chosen <code>method</code> actually uses are computed: the IQR quantiles would be

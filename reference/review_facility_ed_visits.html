@@ -19,7 +19,7 @@ misconfiguration."><meta property="og:image" content="https://andrew-farrey.gith
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,10 +198,9 @@ only facilities that are unusual relative to the spread of the rest.</p></dd>
 <dd><p>Flags facilities below <code>Q1 - iqr_multiplier * IQR</code> and
 above <code>Q3 + iqr_multiplier * IQR</code>. Tukey fences with the default
 multiplier of 1.5 flag nothing when facilities are similar, and are
-sensitive to data dropouts when <code>date_col</code> is supplied: a facility that
-abruptly stops sending visits during a pull window will fall well
-below the lower fence. Increase <code>iqr_multiplier</code> to reduce
-sensitivity.</p></dd>
+sensitive to data dropouts: a facility that abruptly stops sending
+visits during a pull window will fall well below the lower fence.
+Increase <code>iqr_multiplier</code> to reduce sensitivity.</p></dd>
 
 <dt><code>"both"</code></dt>
 <dd><p>Applies both methods independently. A facility is
@@ -216,14 +215,19 @@ criterion fired: <code>"percentile"</code>, <code>"iqr"</code>, or <code>"percen
 
 
 <p>When <code>date_col</code> is supplied, visits per day is computed and outlier
-detection is applied to the normalized rate rather than raw counts.
+detection is applied to that rate rather than raw counts.
 <code>visits_per_day</code> is a facility's <code>n_visits</code> divided by the number of
 distinct dates in the whole pull, not by the days that facility sent data
 (<code>n_days</code>, reported alongside for reference). A facility that sends data
 every day of a 30-day pull and one that sends the same daily volume for 10
-days and then stops therefore get different rates, so a mid-pull dropout
-falls below the lower fence instead of being hidden. This also makes pulls
-of different durations comparable.</p>
+days and then stops therefore get different rates, as they get different
+counts.</p>
+<p>Every facility is divided by the same number of days, so the rate is a
+rescaling of the count and ranks the facilities identically: the
+facilities flagged are the same as with raw counts. What <code>date_col</code> adds
+is the unit (visits per day), which lets you compare the rates of pulls
+of different durations. A dropout is flagged by either, because a
+facility that stops sending has a low count.</p>
 </div>
 
 <div class="section">
@@ -247,7 +251,7 @@ review.</p></div>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Default: percentile method, outliers only</span></span></span>
 <span class="r-in"><span><span class="va">essence_clean</span> <span class="op">|&gt;</span> <span class="fu">review_facility_ed_visits</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to report visits per day, which makes pulls of different durations comparable.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 2 of 8 facilities flagged as outliers (25%) using `method = "percentile"`.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag</span>
@@ -259,7 +263,7 @@ review.</p></div>
 <span class="r-in"><span><span class="co"># All facilities with flags</span></span></span>
 <span class="r-in"><span><span class="va">essence_clean</span> <span class="op">|&gt;</span> <span class="fu">review_facility_ed_visits</span><span class="op">(</span>return_format <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to report visits per day, which makes pulls of different durations comparable.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 2 of 8 facilities flagged as outliers (25%) using `method = "percentile"`.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag</span>
@@ -297,7 +301,7 @@ review.</p></div>
 <span class="r-in"><span>    return_format <span class="op">=</span> <span class="st">"all"</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to report visits per day, which makes pulls of different durations comparable.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 2 of 8 facilities flagged as outliers (25%) using `method = "both"` within FacilityType groups.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag</span>

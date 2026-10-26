@@ -9,7 +9,7 @@ care episode when link_encounters() collapses it to a single row."><meta propert
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,7 +46,14 @@ care episode when <code><a href="link_encounters.html">link_encounters()</a></co
 <span></span>
 <span><span class="fu">check_merge_fields</span><span class="op">(</span><span class="va">merge_fields</span>, call <span class="op">=</span> <span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/stack.html" class="external-link">caller_env</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">merge_field_value</span><span class="op">(</span><span class="va">values</span>, <span class="va">patient_classes</span>, <span class="va">primary_value</span>, <span class="va">strategy</span>, <span class="va">delimiter</span><span class="op">)</span></span>
+<span><span class="fu">merge_field_value</span><span class="op">(</span></span>
+<span>  <span class="va">values</span>,</span>
+<span>  <span class="va">patient_classes</span>,</span>
+<span>  <span class="va">primary_value</span>,</span>
+<span>  <span class="va">strategy</span>,</span>
+<span>  <span class="va">delimiter</span>,</span>
+<span>  severity_row <span class="op">=</span> <span class="cn">NA_integer_</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">merge_concat</span><span class="op">(</span><span class="va">values</span>, <span class="va">primary_value</span><span class="op">)</span></span>
 <span></span>
@@ -58,7 +65,17 @@ care episode when <code><a href="link_encounters.html">link_encounters()</a></co
 <span></span>
 <span><span class="fu">merge_prefer_yes</span><span class="op">(</span><span class="va">values</span>, <span class="va">primary_value</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">merge_prefer_admission</span><span class="op">(</span><span class="va">values</span>, <span class="va">patient_classes</span>, <span class="va">primary_value</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">merge_prefer_admission</span><span class="op">(</span><span class="va">values</span>, <span class="va">patient_classes</span>, <span class="va">primary_value</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">disposition_severity</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">severity_row_index</span><span class="op">(</span><span class="va">values</span>, <span class="va">patient_classes</span>, <span class="va">primary_value</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">merge_prefer_severity</span><span class="op">(</span><span class="va">values</span>, <span class="va">patient_classes</span>, <span class="va">primary_value</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">merge_follow_severity</span><span class="op">(</span><span class="va">values</span>, <span class="va">patient_classes</span>, <span class="va">primary_value</span>, <span class="va">severity_row</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">mark_death_from_disposition</span><span class="op">(</span><span class="va">result</span>, <span class="va">merge_fields</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -102,9 +119,22 @@ strategy names.</p></dd>
 field.</p></dd>
 
 
+<dt id="arg-severity-row">severity_row<a class="anchor" aria-label="anchor" href="#arg-severity-row"></a></dt>
+<dd><p>The position, within the episode's rows, of the record
+whose <code>prefer_severity</code> field won, or <code>NA</code> when none did.</p></dd>
+
+
 <dt id="arg-text-value">text, value<a class="anchor" aria-label="anchor" href="#arg-text-value"></a></dt>
 <dd><p>Single strings: the text to search and the value to look
 for in it.</p></dd>
+
+
+<dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
+<dd><p>A vector of <code>DispositionCategory</code> values.</p></dd>
+
+
+<dt id="arg-result">result<a class="anchor" aria-label="anchor" href="#arg-result"></a></dt>
+<dd><p>The collapsed episodes, with cleaned column names.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -112,7 +142,11 @@ for in it.</p></dd>
     <p><code>merge_strategies</code> is a character vector. <code>check_merge_fields()</code>
 returns <code>merge_fields</code> invisibly, or aborts. The <code>merge_*()</code> functions
 and <code>merge_field_value()</code> return a single merged value.
-<code>contains_whole()</code> returns a single logical.</p>
+<code>contains_whole()</code> returns a single logical. <code>disposition_severity()</code>
+returns an integer rank per value (0 unknown or missing, 1 discharged,
+2 admit or transferred, 3 deceased). <code>severity_row_index()</code> returns an
+integer position or <code>NA</code>. <code>mark_death_from_disposition()</code> returns
+<code>result</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -153,6 +187,26 @@ that affirmative value; otherwise <code>primary_value</code>.</p></dd>
 <code>patient_class</code> indicates an admission (Inpatient, Direct Admit, or
 Admitted), if that row has a non-missing value; otherwise
 <code>primary_value</code>.</p></dd>
+
+<dt><code>prefer_severity</code></dt>
+<dd><p>For <code>DispositionCategory</code>: the most severe value
+across the episode's rows, whichever record carries it. <code>DECEASED</code>
+ranks above <code>TRANSFERRED</code> and <code>ADMIT</code> (equal), which rank above
+<code>DISCHARGED</code>, which ranks above <code>UNKNOWN</code> and a missing value
+(<code>disposition_severity()</code>, ignoring case). A value outside the five
+ESSENCE categories ranks with <code>DISCHARGED</code>. Among equally severe
+values the admission-class row's value is kept, then the primary
+row's. After the episode is merged, <code>mark_death_from_disposition()</code>
+sets <code>C_Death</code> to affirmative for any episode whose merged value is
+<code>DECEASED</code>.</p></dd>
+
+<dt><code>follow_severity</code></dt>
+<dd><p>The value from the same record whose
+<code>prefer_severity</code> field won (the first such field in <code>merge_fields</code>),
+so a companion field such as <code>Discharge_Disposition</code> always comes from
+the record that supplied <code>DispositionCategory</code>. If that record has no
+value for the field, or there is no <code>prefer_severity</code> field, the
+<code>prefer_admission</code> value is used instead.</p></dd>
 
 
 </dl><p><code>check_merge_fields()</code> aborts, attributed to <code><a href="link_encounters.html">link_encounters()</a></code>, unless

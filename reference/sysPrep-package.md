@@ -7,7 +7,7 @@ Notification of Community-based Epidemics (ESSENCE) API. Functions
 address common data quality challenges including visit-level
 deduplication with mechanism classification, care setting filtering with
 facility type correction, emergency department to inpatient encounter
-linkage for accurate burden estimation, and geographic attribution for
+linkage for improved burden estimation, and geographic attribution for
 out-of-state and non-residential visits. Methods were developed through
 applied drug overdose surveillance and cluster detection. Designed for
 ESSENCE 'dataDetails' pulls from the 'va_er' (Patient Location, Full

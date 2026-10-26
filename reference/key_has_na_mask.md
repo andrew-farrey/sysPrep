@@ -13,7 +13,9 @@ and
 ``` r
 key_has_na_mask(data, cols)
 
-na_safe_group_id(data, cols)
+as_key_text(x)
+
+na_safe_group_id(data, cols, row_id = NULL)
 
 inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, inform_fn)
 ```
@@ -27,6 +29,15 @@ inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, inform_fn)
 - cols:
 
   Character vector of the key column names in `data`.
+
+- x:
+
+  A vector of identifiers (numeric, character, or factor).
+
+- row_id:
+
+  Optional vector, one value per row of `data`, identifying the source
+  record each row came from.
 
 - n_na_key:
 
@@ -44,6 +55,7 @@ inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, inform_fn)
 
 `key_has_na_mask()` returns a logical vector, `TRUE` where any of `cols`
 is `NA`. `na_safe_group_id()` returns an integer group id per row.
+`as_key_text()` returns a character vector the length of `x`.
 `inform_na_key_rows()` returns `NULL` invisibly.
 
 ## Details
@@ -68,6 +80,18 @@ unit-separator control character (U+001F), which cannot occur in an
 ESSENCE identifier, so two different key pairs can never concatenate to
 the same string (for example facility `100` + visit `"15"` versus
 facility `1001` + visit `"5"`).
+
+`na_safe_group_id()` takes an optional `row_id` for data that has
+already been expanded to several rows per source record (as
+[`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+does, one row per patient class): NA-key rows with the same `row_id`
+stay in one group, so one record is never split into several visits.
+
+`as_key_text()` converts an identifier column to text for comparison.
+Whole numbers are written in full, so `100000` becomes `"100000"` rather
+than [`as.character()`](https://rdrr.io/r/base/character.html)'s
+`"1e+05"`, and two different long identifiers never collapse to the same
+text.
 
 `inform_na_key_rows()` emits the standard informational message when
 `na_safe_group_id()` exempted one or more rows. `inform_fn` is either

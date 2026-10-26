@@ -151,9 +151,9 @@ decisions. Always review flagged facilities in context.
   Flags facilities below `Q1 - iqr_multiplier * IQR` and above
   `Q3 + iqr_multiplier * IQR`. Tukey fences with the default multiplier
   of 1.5 flag nothing when facilities are similar, and are sensitive to
-  data dropouts when `date_col` is supplied: a facility that abruptly
-  stops sending visits during a pull window will fall well below the
-  lower fence. Increase `iqr_multiplier` to reduce sensitivity.
+  data dropouts: a facility that abruptly stops sending visits during a
+  pull window will fall well below the lower fence. Increase
+  `iqr_multiplier` to reduce sensitivity.
 
 - `"both"`:
 
@@ -164,14 +164,20 @@ decisions. Always review flagged facilities in context.
 ### Time normalization
 
 When `date_col` is supplied, visits per day is computed and outlier
-detection is applied to the normalized rate rather than raw counts.
+detection is applied to that rate rather than raw counts.
 `visits_per_day` is a facility's `n_visits` divided by the number of
 distinct dates in the whole pull, not by the days that facility sent
 data (`n_days`, reported alongside for reference). A facility that sends
 data every day of a 30-day pull and one that sends the same daily volume
-for 10 days and then stops therefore get different rates, so a mid-pull
-dropout falls below the lower fence instead of being hidden. This also
-makes pulls of different durations comparable.
+for 10 days and then stops therefore get different rates, as they get
+different counts.
+
+Every facility is divided by the same number of days, so the rate is a
+rescaling of the count and ranks the facilities identically: the
+facilities flagged are the same as with raw counts. What `date_col` adds
+is the unit (visits per day), which lets you compare the rates of pulls
+of different durations. A dropout is flagged by either, because a
+facility that stops sending has a low count.
 
 ### Grouped detection
 
@@ -190,7 +196,7 @@ for removing non-ED facilities before review.
 # Default: percentile method, outliers only
 essence_clean |> review_facility_ed_visits()
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
+#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to report visits per day, which makes pulls of different durations comparable.
 #> 2 of 8 facilities flagged as outliers (25%) using `method = "percentile"`.
 #> # A tibble: 2 × 8
 #>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
@@ -202,7 +208,7 @@ essence_clean |> review_facility_ed_visits()
 # All facilities with flags
 essence_clean |> review_facility_ed_visits(return_format = "all")
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
+#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to report visits per day, which makes pulls of different durations comparable.
 #> 2 of 8 facilities flagged as outliers (25%) using `method = "percentile"`.
 #> # A tibble: 8 × 8
 #>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag
@@ -240,7 +246,7 @@ essence_clean |>
     return_format = "all"
   )
 #> Low-count facilities are expected for narrow syndrome definitions, particularly at small rural hospitals. Low outliers do not necessarily indicate a data quality problem. For most reliable outlier detection, use denominator (all-cause ED visit) data.
-#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to normalize to visits per day for dropout detection or cross-pull comparisons.
+#> No `date_col` supplied; using raw visit counts. Supply a date column (e.g., `date_col = Date`) to report visits per day, which makes pulls of different durations comparable.
 #> 2 of 8 facilities flagged as outliers (25%) using `method = "both"` within FacilityType groups.
 #> # A tibble: 8 × 8
 #>   hospital facility_type  n_visits .outlier_low .outlier_high .outlier_flag

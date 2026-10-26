@@ -1,4 +1,4 @@
-# Linking ED and Inpatient Records for Accurate Burden Estimation
+# Linking ED and Inpatient Records for Improved Burden Estimation
 
 `sysPrep`’s other core functions
 ([`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md),
@@ -268,7 +268,14 @@ across the episode’s rows, and fields named in `merge_fields` (`CCDD`,
 and `DispositionCategory` by default) are reconciled using a strategy
 suited to that field, so information recorded only on the admission row
 is not silently discarded when the ED row is kept as the surviving
-primary row.
+primary row. For `DispositionCategory` the strategy is
+`"prefer_severity"`: the most severe value in the episode is kept,
+whichever record carries it (`DECEASED`, then `TRANSFERRED` or `ADMIT`,
+then `DISCHARGED`, then `UNKNOWN`), and `C_Death` is set to affirmative
+whenever the merged value is `DECEASED`. An ED record closed as
+`DISCHARGED` therefore cannot hide a death or a transfer that the linked
+inpatient record reports. `Discharge_Disposition` takes its value from
+that same record, so the two fields agree.
 
 ``` r
 
