@@ -107,8 +107,8 @@ correct_by_facility_id <- function(data, fac_col_str, type_col_str, id_col_str,
     return(list(data = data, names = character(0)))
   }
 
-  id_matched_rows <- as.character(data[[id_col_str]]) %in%
-    as.character(fix_facility_id_vector)
+  id_matched_rows <- as_key_text(data[[id_col_str]]) %in%
+    as_key_text(fix_facility_id_vector)
 
   list(
     data  = apply_type_correction(data, type_col_str, id_matched_rows, fix_to),

@@ -17,7 +17,9 @@
 #'     days the facility sent data) and `visits_per_day`, which divides by the
 #'     number of distinct dates in the whole pull rather than by `n_days`, so
 #'     a facility that stops sending partway through the pull scores lower
-#'     instead of looking the same as one that sent every day.
+#'     instead of looking the same as one that sent every day. The divisor is
+#'     the same for every facility, so the rate ranks facilities exactly as
+#'     the count does and flags the same ones.
 #'   \item `add_outlier_thresholds()` adds the percentile and/or IQR
 #'     thresholds, optionally within facility types. Only the quantiles the
 #'     chosen `method` actually uses are computed: the IQR quantiles would be
@@ -128,8 +130,8 @@ inform_review_defaults <- function(data, type_col_str, use_time_norm,
       verbose,
       paste0(
         "No `date_col` supplied; using raw visit counts. ",
-        "Supply a date column (e.g., `date_col = Date`) to normalize to ",
-        "visits per day for dropout detection or cross-pull comparisons."
+        "Supply a date column (e.g., `date_col = Date`) to report visits ",
+        "per day, which makes pulls of different durations comparable."
       )
     )
   }

@@ -10,6 +10,11 @@
 \alias{merge_union_ccdd}
 \alias{merge_prefer_yes}
 \alias{merge_prefer_admission}
+\alias{disposition_severity}
+\alias{severity_row_index}
+\alias{merge_prefer_severity}
+\alias{merge_follow_severity}
+\alias{mark_death_from_disposition}
 \title{Merge strategies for link_encounters()}
 \format{
 \code{merge_strategies} is a character vector of the valid strategy
@@ -20,7 +25,14 @@ merge_strategies
 
 check_merge_fields(merge_fields, call = rlang::caller_env())
 
-merge_field_value(values, patient_classes, primary_value, strategy, delimiter)
+merge_field_value(
+  values,
+  patient_classes,
+  primary_value,
+  strategy,
+  delimiter,
+  severity_row = NA_integer_
+)
 
 merge_concat(values, primary_value)
 
@@ -33,6 +45,16 @@ merge_union_ccdd(values, delimiter)
 merge_prefer_yes(values, primary_value)
 
 merge_prefer_admission(values, patient_classes, primary_value)
+
+disposition_severity(x)
+
+severity_row_index(values, patient_classes, primary_value)
+
+merge_prefer_severity(values, patient_classes, primary_value)
+
+merge_follow_severity(values, patient_classes, primary_value, severity_row)
+
+mark_death_from_disposition(result, merge_fields)
 }
 \arguments{
 \item{merge_fields}{A named character vector mapping column names to
@@ -53,14 +75,25 @@ strategy names.}
 \item{delimiter}{The delimiter separating individual values within a
 field.}
 
+\item{severity_row}{The position, within the episode's rows, of the record
+whose \code{prefer_severity} field won, or \code{NA} when none did.}
+
 \item{text, value}{Single strings: the text to search and the value to look
 for in it.}
+
+\item{x}{A vector of \code{DispositionCategory} values.}
+
+\item{result}{The collapsed episodes, with cleaned column names.}
 }
 \value{
 \code{merge_strategies} is a character vector. \code{check_merge_fields()}
 returns \code{merge_fields} invisibly, or aborts. The \verb{merge_*()} functions
 and \code{merge_field_value()} return a single merged value.
-\code{contains_whole()} returns a single logical.
+\code{contains_whole()} returns a single logical. \code{disposition_severity()}
+returns an integer rank per value (0 unknown or missing, 1 discharged,
+2 admit or transferred, 3 deceased). \code{severity_row_index()} returns an
+integer position or \code{NA}. \code{mark_death_from_disposition()} returns
+\code{result}.
 }
 \description{
 Internal helpers that reconcile one field across the rows of a multi-row
@@ -98,6 +131,22 @@ that affirmative value; otherwise \code{primary_value}.}
 \code{patient_class} indicates an admission (Inpatient, Direct Admit, or
 Admitted), if that row has a non-missing value; otherwise
 \code{primary_value}.}
+\item{\code{prefer_severity}}{For \code{DispositionCategory}: the most severe value
+across the episode's rows, whichever record carries it. \code{DECEASED}
+ranks above \code{TRANSFERRED} and \code{ADMIT} (equal), which rank above
+\code{DISCHARGED}, which ranks above \code{UNKNOWN} and a missing value
+(\code{disposition_severity()}, ignoring case). A value outside the five
+ESSENCE categories ranks with \code{DISCHARGED}. Among equally severe
+values the admission-class row's value is kept, then the primary
+row's. After the episode is merged, \code{mark_death_from_disposition()}
+sets \code{C_Death} to affirmative for any episode whose merged value is
+\code{DECEASED}.}
+\item{\code{follow_severity}}{The value from the same record whose
+\code{prefer_severity} field won (the first such field in \code{merge_fields}),
+so a companion field such as \code{Discharge_Disposition} always comes from
+the record that supplied \code{DispositionCategory}. If that record has no
+value for the field, or there is no \code{prefer_severity} field, the
+\code{prefer_admission} value is used instead.}
 }
 
 \code{check_merge_fields()} aborts, attributed to \code{\link[=link_encounters]{link_encounters()}}, unless

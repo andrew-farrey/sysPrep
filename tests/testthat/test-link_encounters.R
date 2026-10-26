@@ -767,13 +767,330 @@ test_that("link_encounters() applies prefer_yes to c_death in collapsed output",
   expect_equal(result$c_death, "Yes")
 })
 
-test_that("link_encounters() applies prefer_admission to discharge_disposition in collapsed output", {
+test_that("link_encounters() applies follow_severity to discharge_disposition and prefer_severity to disposition_category", {
   fixture <- make_readmit_merge_data()
   result  <- suppressMessages(
     link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
   )
   expect_equal(result$discharge_disposition, "Expired")
-  expect_equal(result$disposition_category, "Died")
+  expect_equal(result$disposition_category, "DECEASED")
+})
+
+# prefer_severity: the more severe DispositionCategory wins, whichever record has it ----
+
+test_that("disposition_severity() ranks DECEASED above ADMIT/TRANSFERRED above DISCHARGED above UNKNOWN", {
+  expect_identical(
+    disposition_severity(c(
+      "DECEASED", "ADMIT", "TRANSFERRED", "DISCHARGED", "UNKNOWN", NA, ""
+    )),
+    c(3L, 2L, 2L, 1L, 0L, 0L, 0L)
+  )
+  expect_identical(disposition_severity(character(0)), integer(0))
+})
+
+test_that("disposition_severity() ignores case and surrounding spaces, and ranks other values with DISCHARGED", {
+  expect_identical(
+    disposition_severity(c(" deceased ", "Admit", "transferred", "Home")),
+    c(3L, 2L, 2L, 1L)
+  )
+})
+
+test_that("merge_prefer_severity() keeps DECEASED on the ED record over an inpatient DISCHARGED", {
+  # the ED record carries the more severe value; the inpatient record's
+  # milder value must not win
+  result <- merge_prefer_severity(
+    values          = c("DECEASED", "DISCHARGED"),
+    patient_classes = c("ED", "Direct Admit"),
+    primary_value   = "DECEASED"
+  )
+  expect_equal(result, "DECEASED")
+})
+
+test_that("merge_prefer_severity() keeps TRANSFERRED over DISCHARGED from either record", {
+  expect_equal(
+    merge_prefer_severity(
+      c("DISCHARGED", "TRANSFERRED"), c("ED", "Direct Admit"), "DISCHARGED"
+    ),
+    "TRANSFERRED"
+  )
+  expect_equal(
+    merge_prefer_severity(
+      c("TRANSFERRED", "DISCHARGED"), c("ED", "Direct Admit"), "TRANSFERRED"
+    ),
+    "TRANSFERRED"
+  )
+})
+
+test_that("merge_prefer_severity() ranks DECEASED above TRANSFERRED and ADMIT", {
+  expect_equal(
+    merge_prefer_severity(
+      c("TRANSFERRED", "DECEASED"), c("ED", "Direct Admit"), "TRANSFERRED"
+    ),
+    "DECEASED"
+  )
+  expect_equal(
+    merge_prefer_severity(
+      c("ADMIT", "DECEASED"), c("ED", "Direct Admit"), "ADMIT"
+    ),
+    "DECEASED"
+  )
+})
+
+test_that("merge_prefer_severity() keeps a known category over UNKNOWN", {
+  expect_equal(
+    merge_prefer_severity(
+      c("UNKNOWN", "DISCHARGED"), c("ED", "Direct Admit"), "UNKNOWN"
+    ),
+    "DISCHARGED"
+  )
+})
+
+test_that("merge_prefer_severity() breaks ties by admission-class row, then primary row, then first", {
+  expect_equal(
+    merge_prefer_severity(
+      c("ADMIT", "TRANSFERRED"), c("ED", "Direct Admit"), "ADMIT"
+    ),
+    "TRANSFERRED"
+  )
+  expect_equal(
+    merge_prefer_severity(
+      c("ADMIT", "TRANSFERRED"), c("ED", "Observation"), "ADMIT"
+    ),
+    "ADMIT"
+  )
+  expect_equal(
+    merge_prefer_severity(
+      c("ADMIT", "TRANSFERRED"), c("Observation", "Outpatient"), "Other"
+    ),
+    "ADMIT"
+  )
+})
+
+test_that("merge_prefer_severity() falls back to primary_value when every value is unknown or missing", {
+  expect_equal(
+    merge_prefer_severity(
+      c(NA, "UNKNOWN"), c("ED", "Direct Admit"), "primary"
+    ),
+    "primary"
+  )
+})
+
+test_that("link_encounters() keeps DECEASED recorded on the inpatient record and marks C_Death", {
+  fixture <- make_readmit_merge_data()
+  # the inpatient record names the death but leaves C_Death unmarked
+  fixture$inpatient_admission_data$C_Death <- "No"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "DECEASED")
+  expect_equal(result$c_death, "Yes")
+})
+
+test_that("link_encounters() keeps TRANSFERRED over DISCHARGED without touching C_Death", {
+  fixture <- make_readmit_merge_data()
+  fixture$inpatient_admission_data$C_Death <- "No"
+  fixture$inpatient_admission_data$DispositionCategory <- "TRANSFERRED"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "TRANSFERRED")
+  expect_equal(result$c_death, "No")
+})
+
+test_that("link_encounters() keeps DECEASED on the ED record even when it also has HasBeenAdmitted = 1", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$HasBeenAdmitted <- 1L
+  fixture$ed_data$DispositionCategory <- "DECEASED"
+  fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+  fixture$inpatient_admission_data$C_Death <- "No"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "DECEASED")
+  expect_equal(result$c_death, "Yes")
+})
+
+test_that("severity_row_index() returns the winning position, or NA when nothing is known", {
+  expect_equal(
+    severity_row_index(
+      c("DISCHARGED", "DECEASED"), c("ED", "Direct Admit"), "DISCHARGED"
+    ),
+    2L
+  )
+  expect_equal(
+    severity_row_index(c("DECEASED", "DISCHARGED"), c("ED", "Admitted"), "x"),
+    1L
+  )
+  # equally severe, no admission-class row: the primary row's value, found by
+  # position
+  expect_equal(
+    severity_row_index(
+      c("ADMIT", "TRANSFERRED"), c("Observation", "Outpatient"), "TRANSFERRED"
+    ),
+    2L
+  )
+  expect_true(is.na(
+    severity_row_index(c(NA, "UNKNOWN"), c("ED", "Direct Admit"), "x")
+  ))
+})
+
+test_that("merge_follow_severity() takes the value from the winning record, else prefer_admission", {
+  expect_equal(
+    merge_follow_severity(
+      c("Discharged to home", "Expired"), c("ED", "Direct Admit"),
+      "Discharged to home", severity_row = 2L
+    ),
+    "Expired"
+  )
+  # the winning record has no value: fall back to the admission-class value
+  expect_equal(
+    merge_follow_severity(
+      c("Discharged to home", NA), c("ED", "Direct Admit"),
+      "Discharged to home", severity_row = 2L
+    ),
+    "Discharged to home"
+  )
+  expect_equal(
+    merge_follow_severity(
+      c("Discharged to home", ""), c("ED", "Direct Admit"),
+      "Discharged to home", severity_row = 2L
+    ),
+    "Discharged to home"
+  )
+  # no winner at all
+  expect_equal(
+    merge_follow_severity(
+      c("Home", "Expired"), c("ED", "Direct Admit"), "Home",
+      severity_row = NA_integer_
+    ),
+    "Expired"
+  )
+})
+
+test_that("Discharge_Disposition comes from the record that supplied DispositionCategory", {
+  fixture <- make_readmit_merge_data()
+  fixture$inpatient_admission_data$DispositionCategory <- "TRANSFERRED"
+  fixture$inpatient_admission_data$Discharge_Disposition <-
+    "Transferred to another facility"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "TRANSFERRED")
+  expect_equal(result$discharge_disposition, "Transferred to another facility")
+})
+
+test_that("Discharge_Disposition follows DispositionCategory to the ED record when it wins", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$HasBeenAdmitted <- 1L
+  fixture$ed_data$DispositionCategory <- "DECEASED"
+  fixture$ed_data$Discharge_Disposition <- "Expired"
+  fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+  fixture$inpatient_admission_data$Discharge_Disposition <-
+    "Discharged to home"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "DECEASED")
+  expect_equal(result$discharge_disposition, "Expired")
+})
+
+test_that("Discharge_Disposition falls back when the winning record has none", {
+  fixture <- make_readmit_merge_data()
+  fixture$inpatient_admission_data$Discharge_Disposition <- NA_character_
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "DECEASED")
+  expect_equal(result$discharge_disposition, "Discharged to home")
+})
+
+test_that("follow_severity falls back to prefer_admission when no prefer_severity field is present", {
+  fixture <- make_readmit_merge_data()
+  result <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(Discharge_Disposition = "follow_severity")
+    )
+  )
+  expect_equal(result$discharge_disposition, "Expired")
+})
+
+test_that("link_encounters() leaves a record with no linked counterpart unchanged", {
+  ed <- make_readmit_merge_data()$ed_data
+  ip <- make_readmit_merge_data()$inpatient_admission_data
+  ip$Visit_ID <- "V00000099"
+  result <- suppressMessages(link_encounters(ed, ip))
+  expect_equal(nrow(result), 2L)
+  expect_equal(
+    result$disposition_category[result$visit_id == "V00000001"], "DISCHARGED"
+  )
+  expect_equal(result$c_death[result$visit_id == "V00000001"], "No")
+})
+
+test_that("mark_death_from_disposition() writes C_Death in the form the column already uses", {
+  merge_fields <- c(
+    disposition_category = "prefer_severity", c_death = "prefer_yes"
+  )
+  dead <- "DECEASED"
+  as_text <- tibble::tibble(disposition_category = dead, c_death = "No")
+  expect_equal(
+    mark_death_from_disposition(as_text, merge_fields)$c_death, "Yes"
+  )
+  as_flag_text <- tibble::tibble(
+    disposition_category = c(dead, "DISCHARGED"), c_death = c("0", "1")
+  )
+  expect_equal(
+    mark_death_from_disposition(as_flag_text, merge_fields)$c_death,
+    c("1", "1")
+  )
+  as_int <- tibble::tibble(disposition_category = dead, c_death = 0L)
+  expect_identical(
+    mark_death_from_disposition(as_int, merge_fields)$c_death, 1L
+  )
+  as_dbl <- tibble::tibble(disposition_category = dead, c_death = 0)
+  expect_identical(
+    mark_death_from_disposition(as_dbl, merge_fields)$c_death, 1
+  )
+})
+
+test_that("mark_death_from_disposition() leaves C_Death alone when there is nothing to mark", {
+  merge_fields <- c(
+    disposition_category = "prefer_severity", c_death = "prefer_yes"
+  )
+  no_death <- tibble::tibble(
+    disposition_category = "DISCHARGED", c_death = "No"
+  )
+  expect_identical(
+    mark_death_from_disposition(no_death, merge_fields), no_death
+  )
+
+  no_c_death <- tibble::tibble(disposition_category = "DECEASED")
+  expect_identical(
+    mark_death_from_disposition(no_c_death, merge_fields), no_c_death
+  )
+
+  old_strategy <- c(
+    disposition_category = "prefer_admission", c_death = "prefer_yes"
+  )
+  dead_no_flag <- tibble::tibble(
+    disposition_category = "DECEASED", c_death = "No"
+  )
+  expect_identical(
+    mark_death_from_disposition(dead_no_flag, old_strategy), dead_no_flag
+  )
+})
+
+test_that("prefer_admission is still available and takes the first admission-class row", {
+  fixture <- make_readmit_merge_data()
+  # the ED record's own "Admitted" row comes first, so its value is kept
+  fixture$ed_data$HasBeenAdmitted <- 1L
+  result <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(DispositionCategory = "prefer_admission")
+    )
+  )
+  expect_equal(result$disposition_category, "DISCHARGED")
 })
 
 test_that("link_encounters() applies union_ccdd to ccdd in collapsed output", {
@@ -1272,6 +1589,225 @@ test_that("link_encounters() holds a numeric Hospital as text even when both pul
 test_that("as_text_cols() writes large numbers in full and keeps NA", {
   d <- tibble::tibble(h = c(1e5, 1234567890123, NA))
   expect_identical(as_text_cols(d, "h")$h, c("100000", "1234567890123", NA))
+})
+
+test_that("as_key_text() keeps different long identifiers different", {
+  v <- c(1234567890123456, 1234567890123457, 100000, 1.5, NA)
+  expect_identical(
+    as_key_text(v),
+    c("1234567890123456", "1234567890123457", "100000", "1.5", NA)
+  )
+  expect_identical(as_key_text(c("a", NA)), c("a", NA))
+  expect_identical(as_key_text(factor("x")), "x")
+})
+
+test_that("link_encounters() does not merge two long numeric Visit_IDs", {
+  ed <- tibble::tibble(
+    Hospital = 1, Visit_ID = c(1234567890123456, 1234567890123457),
+    HasBeenE = 1L, HasBeenAdmitted = 0L,
+    C_Visit_Date_Time = "2025-01-01 10:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = "1", Visit_ID = "1234567890123456", HasBeenE = 0L,
+    HasBeenAdmitted = 1L, C_Visit_Date_Time = "2025-01-02 10:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+  expect_equal(nrow(result), 2L)
+  linked <- dplyr::filter(result, visit_id == "1234567890123456")
+  expect_equal(linked$.episode_n_rows, 2L)
+  other <- dplyr::filter(result, visit_id == "1234567890123457")
+  expect_equal(other$.episode_n_rows, 1L)
+})
+
+# a record with a missing key stays one visit ----
+
+test_that("an NA-key record with several patient classes stays one episode (HasBeen_ flags)", {
+  ed <- tibble::tibble(
+    Hospital = "1", Visit_ID = c(NA, "V2"), HasBeenE = 1L,
+    HasBeenAdmitted = c(1L, 0L),
+    C_Visit_Date_Time = "2025-01-01 10:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = "1", Visit_ID = "V9", HasBeenE = 0L, HasBeenAdmitted = 1L,
+    C_Visit_Date_Time = "2025-01-02 10:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+  expect_equal(nrow(result), 3L)
+  na_key <- dplyr::filter(result, is.na(visit_id))
+  expect_equal(nrow(na_key), 1L)
+  expect_equal(na_key$.episode_n_rows, 2L)
+  expect_equal(na_key$has_been_e, 1L)
+  expect_equal(na_key$has_been_admitted, 1L)
+  expect_false(".link_src_row" %in% names(result))
+})
+
+test_that("an NA-key record with several patient classes stays one episode (class list)", {
+  ed <- tibble::tibble(
+    Hospital = "1", Visit_ID = c(NA, "V2"),
+    C_Patient_Class_List = c("EI", "E"),
+    HasBeenE = 1L, HasBeenAdmitted = c(1L, 0L),
+    C_Visit_Date_Time = "2025-01-01 10:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = "1", Visit_ID = "V9", HasBeenE = 0L, HasBeenAdmitted = 1L,
+    C_Visit_Date_Time = "2025-01-02 10:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+  expect_equal(nrow(result), 3L)
+  expect_equal(sum(is.na(result$visit_id)), 1L)
+  long <- suppressMessages(link_encounters(ed, ip, return_format = "long"))
+  expect_equal(sum(long$.index_encounter), 3L)
+})
+
+test_that("the missing-key message counts records, not expanded rows", {
+  ed <- tibble::tibble(
+    Hospital = "1", Visit_ID = c(NA, "V2"), HasBeenE = 1L,
+    HasBeenAdmitted = c(1L, 0L), C_Visit_Date_Time = "2025-01-01 10:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = "1", Visit_ID = "V9", HasBeenE = 0L, HasBeenAdmitted = 1L,
+    C_Visit_Date_Time = "2025-01-02 10:00:00"
+  )
+  expect_message(link_encounters(ed, ip), "^1 row\\(s\\) have a missing")
+})
+
+test_that("na_safe_group_id() keeps NA-key rows that share a row_id together", {
+  d <- tibble::tibble(a = c("x", NA, NA, "y"), b = 1)
+  expect_equal(length(unique(na_safe_group_id(d, c("a", "b")))), 4L)
+  ids <- na_safe_group_id(d, c("a", "b"), row_id = c(1, 2, 2, 3))
+  expect_equal(ids[2], ids[3])
+  expect_equal(length(unique(ids)), 3L)
+})
+
+test_that("build_episode_ids() treats each NA-key row as its own record without a source id", {
+  long <- tibble::tibble(h = c("1", "1"), v = c(NA, NA))
+  ids <- build_episode_ids(long, "h", "v", FALSE, NULL, FALSE)
+  expect_equal(length(unique(ids)), 2L)
+})
+
+# the two pulls carry the same HasBeen_ flags; one record per visit per pull ----
+
+make_flag_pulls <- function() {
+  list(
+    ed = tibble::tibble(
+      Hospital = "1", Visit_ID = c("A", "B"), HasBeenE = 1L,
+      HasBeenAdmitted = 0L, HasBeenI = 0L,
+      C_Visit_Date_Time = "2025-01-01 10:00:00"
+    ),
+    ip = tibble::tibble(
+      Hospital = "1", Visit_ID = c("A", "Q"), HasBeenE = 0L,
+      HasBeenAdmitted = 1L, HasBeenI = 1L,
+      C_Visit_Date_Time = "2025-01-02 10:00:00"
+    )
+  )
+}
+
+test_that("link_encounters() is quiet when both pulls carry the same HasBeen_ flags", {
+  pulls <- make_flag_pulls()
+  expect_no_warning(
+    suppressMessages(link_encounters(pulls$ed, pulls$ip))
+  )
+})
+
+test_that("link_encounters() aborts when a HasBeen_ flag is in only one pull", {
+  pulls <- make_flag_pulls()
+  pulls$ip$HasBeenI <- NULL
+  expect_error(
+    suppressMessages(link_encounters(pulls$ed, pulls$ip)),
+    "only in `ed_data`: `has_been_i`"
+  )
+
+  pulls <- make_flag_pulls()
+  pulls$ed$HasBeenI <- NULL
+  expect_error(
+    suppressMessages(link_encounters(pulls$ed, pulls$ip)),
+    "only in `inpatient_admission_data`: `has_been_i`"
+  )
+})
+
+test_that("the flag error names both sides, the required fields, and ignores verbose", {
+  pulls <- make_flag_pulls()
+  pulls$ed$HasBeenO <- 0L
+  pulls$ip$HasBeenI <- NULL
+  error <- tryCatch(
+    link_encounters(pulls$ed, pulls$ip, verbose = FALSE),
+    error = function(e) e
+  )
+  expect_s3_class(error, "rlang_error")
+  expect_equal(rlang::call_name(error$call), "link_encounters")
+  message <- conditionMessage(error)
+  expect_match(message, "must carry the same `HasBeen_` flag columns")
+  expect_match(message, "only in `ed_data`: ")
+  expect_match(message, "`has_been_o`")
+  expect_match(message, "`has_been_i`")
+  expect_match(message, "Required fields")
+})
+
+test_that("link_encounters() accepts pulls that carry no HasBeen_ flags at all", {
+  ed <- tibble::tibble(
+    Hospital = "1", Visit_ID = "A", C_Patient_Class_List = "E",
+    C_Visit_Date_Time = "2025-01-01 10:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = "1", Visit_ID = "A", C_Visit_Date_Time = "2025-01-02 10:00:00"
+  )
+  result <- suppressMessages(link_encounters(ed, ip))
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$.episode_n_rows, 2L)
+})
+
+test_that("link_encounters() reports episodes with several records from one pull", {
+  pulls <- make_flag_pulls()
+  pulls$ed <- dplyr::bind_rows(pulls$ed, pulls$ed[1, ])
+  expect_message(
+    link_encounters(pulls$ed, pulls$ip),
+    "1 episode\\(s\\) hold more than one record from the same pull"
+  )
+  expect_no_message(
+    link_encounters(pulls$ed, pulls$ip, verbose = FALSE)
+  )
+
+  pulls <- make_flag_pulls()
+  pulls$ip <- dplyr::bind_rows(pulls$ip, pulls$ip[2, ])
+  expect_message(
+    link_encounters(pulls$ed, pulls$ip),
+    "hold more than one record from the same pull"
+  )
+})
+
+test_that("a linked pair and an in-record escalation are not reported as same-pull duplicates", {
+  pulls <- make_flag_pulls()
+  # visit A is in both pulls (linked); visit B escalates inside one ED record
+  pulls$ed$HasBeenAdmitted[2] <- 1L
+  messages <- character()
+  withCallingHandlers(
+    link_encounters(pulls$ed, pulls$ip),
+    message = function(m) {
+      messages <<- c(messages, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_false(any(grepl("same pull", messages)))
+})
+
+test_that("inform_same_pull_duplicates() does nothing without the source columns", {
+  expect_null(inform_same_pull_duplicates(tibble::tibble(a = 1), "x", TRUE))
+})
+
+test_that("link_encounters() names itself when the two pulls cannot be combined", {
+  ed <- tibble::tibble(
+    Hospital = "1", Visit_ID = "A", HasBeenE = "1", HasBeenAdmitted = "0",
+    C_Visit_Date_Time = "2025-01-01 10:00:00"
+  )
+  ip <- tibble::tibble(
+    Hospital = "1", Visit_ID = "B", HasBeenE = 0L, HasBeenAdmitted = 1L,
+    C_Visit_Date_Time = "2025-01-02 10:00:00"
+  )
+  expect_error(
+    suppressMessages(link_encounters(ed, ip)),
+    "could not be combined",
+    class = "rlang_error"
+  )
 })
 
 # concat: whole words and whole codes ----

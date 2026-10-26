@@ -1,6 +1,7 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes
+Local and GitHub Actions: 0 errors | 0 warnings | 0 notes. The win-builder
+(R-devel) run reported 1 NOTE, explained below.
 
 ## Test environments
 
@@ -16,9 +17,8 @@
   sub-items remain (see below).
   win-builder (R-release): TODO, run via `devtools::check_win_release()`
   and replace this line with actual results
-* R-hub: TODO, run `rhub::rhub_setup()` (writes
-  `.github/workflows/rhub.yaml`, not yet added), commit + push, then
-  `rhub::rhub_check()`, and replace this line with actual results
+* R-hub: TODO, run `rhub::rhub_check()` (the workflow is already in
+  `.github/workflows/rhub.yaml`), and replace this line with actual results
 
 ## Downstream dependencies
 

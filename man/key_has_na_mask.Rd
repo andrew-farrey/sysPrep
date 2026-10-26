@@ -2,13 +2,16 @@
 % Please edit documentation in R/utils-na-keys.R
 \name{key_has_na_mask}
 \alias{key_has_na_mask}
+\alias{as_key_text}
 \alias{na_safe_group_id}
 \alias{inform_na_key_rows}
 \title{NA-safe grouping keys}
 \usage{
 key_has_na_mask(data, cols)
 
-na_safe_group_id(data, cols)
+as_key_text(x)
+
+na_safe_group_id(data, cols, row_id = NULL)
 
 inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, inform_fn)
 }
@@ -16,6 +19,11 @@ inform_na_key_rows(n_na_key, fac_col_str, visit_col_str, inform_fn)
 \item{data}{A data frame.}
 
 \item{cols}{Character vector of the key column names in \code{data}.}
+
+\item{x}{A vector of identifiers (numeric, character, or factor).}
+
+\item{row_id}{Optional vector, one value per row of \code{data}, identifying the
+source record each row came from.}
 
 \item{n_na_key}{Integer. Number of rows with a missing key.}
 
@@ -27,6 +35,7 @@ used in the message.}
 \value{
 \code{key_has_na_mask()} returns a logical vector, \code{TRUE} where any of
 \code{cols} is \code{NA}. \code{na_safe_group_id()} returns an integer group id per row.
+\code{as_key_text()} returns a character vector the length of \code{x}.
 \code{inform_na_key_rows()} returns \code{NULL} invisibly.
 }
 \description{
@@ -52,6 +61,16 @@ ASCII unit-separator control character (U+001F), which cannot occur in an
 ESSENCE identifier, so two different key pairs can never concatenate to the
 same string (for example facility \code{100} + visit \code{"15"} versus facility
 \code{1001} + visit \code{"5"}).
+
+\code{na_safe_group_id()} takes an optional \code{row_id} for data that has already
+been expanded to several rows per source record (as \code{\link[=link_encounters]{link_encounters()}}
+does, one row per patient class): NA-key rows with the same \code{row_id} stay in
+one group, so one record is never split into several visits.
+
+\code{as_key_text()} converts an identifier column to text for comparison. Whole
+numbers are written in full, so \code{100000} becomes \code{"100000"} rather than
+\code{as.character()}'s \code{"1e+05"}, and two different long identifiers never
+collapse to the same text.
 
 \code{inform_na_key_rows()} emits the standard informational message when
 \code{na_safe_group_id()} exempted one or more rows. \code{inform_fn} is either

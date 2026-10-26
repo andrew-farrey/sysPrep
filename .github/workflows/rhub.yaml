@@ -27,6 +27,10 @@ on:
         description: 'Unique ID. You can leave this empty.'
         type: string
 
+# The checks authenticate with the RHUB_TOKEN secret, so the workflow's own
+# token only needs to read the repository.
+permissions: read-all
+
 jobs:
 
   setup:

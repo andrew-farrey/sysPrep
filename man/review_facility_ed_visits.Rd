@@ -117,10 +117,9 @@ only facilities that are unusual relative to the spread of the rest.}
 \item{\code{"iqr"}}{Flags facilities below \code{Q1 - iqr_multiplier * IQR} and
 above \code{Q3 + iqr_multiplier * IQR}. Tukey fences with the default
 multiplier of 1.5 flag nothing when facilities are similar, and are
-sensitive to data dropouts when \code{date_col} is supplied: a facility that
-abruptly stops sending visits during a pull window will fall well
-below the lower fence. Increase \code{iqr_multiplier} to reduce
-sensitivity.}
+sensitive to data dropouts: a facility that abruptly stops sending
+visits during a pull window will fall well below the lower fence.
+Increase \code{iqr_multiplier} to reduce sensitivity.}
 \item{\code{"both"}}{Applies both methods independently. A facility is
 flagged if it meets either criterion. \code{.outlier_method} records which
 criterion fired: \code{"percentile"}, \code{"iqr"}, or \code{"percentile+iqr"}.}
@@ -130,14 +129,20 @@ criterion fired: \code{"percentile"}, \code{"iqr"}, or \code{"percentile+iqr"}.}
 \subsection{Time normalization}{
 
 When \code{date_col} is supplied, visits per day is computed and outlier
-detection is applied to the normalized rate rather than raw counts.
+detection is applied to that rate rather than raw counts.
 \code{visits_per_day} is a facility's \code{n_visits} divided by the number of
 distinct dates in the whole pull, not by the days that facility sent data
 (\code{n_days}, reported alongside for reference). A facility that sends data
 every day of a 30-day pull and one that sends the same daily volume for 10
-days and then stops therefore get different rates, so a mid-pull dropout
-falls below the lower fence instead of being hidden. This also makes pulls
-of different durations comparable.
+days and then stops therefore get different rates, as they get different
+counts.
+
+Every facility is divided by the same number of days, so the rate is a
+rescaling of the count and ranks the facilities identically: the
+facilities flagged are the same as with raw counts. What \code{date_col} adds
+is the unit (visits per day), which lets you compare the rates of pulls
+of different durations. A dropout is flagged by either, because a
+facility that stops sending has a low count.
 }
 
 \subsection{Grouped detection}{

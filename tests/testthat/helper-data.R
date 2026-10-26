@@ -114,7 +114,7 @@ make_readmit_merge_data <- function() {
     CCDDCategory_flat        = "GI;Pain",
     C_Death                  = "No",
     Discharge_Disposition    = "Discharged to home",
-    DispositionCategory      = "Discharged"
+    DispositionCategory      = "DISCHARGED"
   )
 
   direct_admit_row <- tibble::tibble(
@@ -133,7 +133,7 @@ make_readmit_merge_data <- function() {
     CCDDCategory_flat        = "Overdose;Toxicology",
     C_Death                  = "Yes",
     Discharge_Disposition    = "Expired",
-    DispositionCategory      = "Died"
+    DispositionCategory      = "DECEASED"
   )
 
   list(ed_data = ed_row, inpatient_admission_data = direct_admit_row)

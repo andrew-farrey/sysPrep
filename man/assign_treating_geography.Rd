@@ -78,8 +78,10 @@ Defaults to \code{TRUE}.}
 }
 \value{
 The input data frame with reassigned region and/or zip code
-values written to \code{new_region_col}/\code{new_zip_col} (or to \code{region_col}/
-\code{zip_col} in place, when \code{overwrite = TRUE}). A \code{.out_of_state} logical
+values written to \code{new_region_col}/\code{new_zip_col}. These are new columns
+by default, and \code{region_col}/\code{zip_col} are overwritten in place only when
+\code{new_region_col}/\code{new_zip_col} name them and \code{overwrite = TRUE}. A
+\code{.out_of_state} logical
 column is added indicating which rows were reassigned. Despite its name
 it is \code{TRUE} for every row whose residence is not in \code{site}: another
 state, \code{"OTHER_REGION"}, \code{"{site}_UNKNOWN"}, and a missing \code{Region}. When

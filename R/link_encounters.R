@@ -41,7 +41,10 @@
 #' one showing `HasBeenAdmitted = 1` and `HasBeenE = 0`, that otherwise
 #' look unrelated. The ED record's fields (e.g. `Discharge_Disposition`,
 #' `CCDD`, `C_Death`) reflect only what was known at ED discharge, not the
-#' outcome of the encounter that actually continued. Counting both records
+#' outcome of the encounter that actually continued (an ED record closed as
+#' `DISCHARGED` can sit beside an inpatient record that ends in a death or a
+#' transfer; the default merge keeps the more severe `DispositionCategory` and
+#' marks `C_Death`). Counting both records
 #' separately double-counts a single real-world event. This is a data
 #' quality artifact, not a distinct clinical pathway.
 #'
@@ -95,6 +98,24 @@
 #'     `patient_class` is `"Inpatient"`, `"Direct Admit"`, or `"Admitted"`,
 #'     if such a row has a non-missing value for the field. Otherwise falls
 #'     back to the primary row's value.}
+#'   \item{`"prefer_severity"`}{For `DispositionCategory`, keeps the most
+#'     severe value in the episode, whichever record carries it: `DECEASED`
+#'     ranks above `TRANSFERRED` and `ADMIT` (equal), which rank above
+#'     `DISCHARGED`, which ranks above `UNKNOWN` and a missing value. This is
+#'     the default for `DispositionCategory`, so an ED record closed as
+#'     `DISCHARGED` does not hide a death or a transfer recorded on the linked
+#'     inpatient record, whichever of the two records has the
+#'     `HasBeenAdmitted` flag. Whenever the merged value is `DECEASED`,
+#'     `C_Death` is also set to affirmative for that episode (using the form
+#'     already in the column: `"Yes"`, `"1"`, or `1`). Among equally severe
+#'     values the admission-class row's value is kept.}
+#'   \item{`"follow_severity"`}{Takes the value from the same record whose
+#'     `prefer_severity` field won (the first such field in `merge_fields`).
+#'     This is the default for `Discharge_Disposition`, so it always comes
+#'     from the record that supplied `DispositionCategory` and the two never
+#'     disagree. If that record has no value for the field, or no
+#'     `prefer_severity` field is present, the `"prefer_admission"` value is
+#'     used instead.}
 #' }
 #'
 #' Any column not a `HasBeen_` flag and not listed in `merge_fields` takes
@@ -104,6 +125,39 @@
 #' Set `return_format = "long"` to get the diagnostic long-format output
 #' instead: one row per patient-class per episode, with no merge applied.
 #' Useful for inspecting the raw linkage mechanism directly.
+#'
+#' ## Required fields
+#'
+#' Pull these fields in **both** ESSENCE `dataDetails` pulls. The function
+#' stops with an error that names what is missing or different when one of
+#' these requirements is not met.
+#'
+#' * **Facility identifier**: `Hospital` (`C_BioSense_Facility_ID`), or
+#'   `HospitalName` when `Hospital` is not in `ed_data`; or the column given to
+#'   `facility_col`. It must be in both pulls.
+#' * **Visit identifier**: `Visit_ID` (or the column given to `visit_col`),
+#'   in both pulls.
+#' * **The `HasBeen_` flags, identical in both pulls.** `ed_data` needs
+#'   `HasBeenE` and either `HasBeenAdmitted` or `HasBeenI` (`HasBeenAdmitted`
+#'   is used when both are present), unless it carries
+#'   `C_Patient_Class_List`. Whatever `HasBeen_` fields one pull carries
+#'   (`HasBeenE`, `HasBeenAdmitted`, `HasBeenI`, `HasBeenO`), the other must
+#'   carry too. A flag in only one pull would be `NA` on the other pull's
+#'   rows, and ESSENCE never produces a missing flag.
+#' * **`fallback_visit_col`**, in both pulls, when you supply one (for example
+#'   `C_BioSense_ID`).
+#'
+#' Fields that are not required but change the output:
+#'
+#' * `C_Patient_Class_List` in `ed_data` gives the full patient-class
+#'   sequence; `C_Patient_Class_MDT_Updates` orders it by time.
+#' * `C_Visit_Date_Time` (or `Date` and `Time`) orders classes when no
+#'   `C_Patient_Class_MDT_Updates` is present; without any of them the order is
+#'   alphabetical and carries no clinical meaning.
+#' * The `merge_fields` columns (by default `CCDD`, `CCDDParsed`,
+#'   `CCDDCategory_flat`, `C_Death`, `Discharge_Disposition`, and
+#'   `DispositionCategory`) are merged only when present; without
+#'   `DispositionCategory` no disposition is ranked by severity.
 #'
 #' ## Why `inpatient_admission_data` is required
 #'
@@ -167,8 +221,10 @@
 #' same ESSENCE ID (e.g., `"E"`, `"EI"`, `"EIO"`). When present, it is used
 #' in place of the `HasBeen_` pivot, since it distinguishes patient classes
 #' (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
-#' Pre-admit/Recurring) that the `HasBeen_` flags do not represent. For more
-#' granular and informative output, add `C_Patient_Class_List` to your
+#' Pre-admit/Recurring) that the `HasBeen_` flags do not represent. This
+#' applies to `ed_data` only: every row of `inpatient_admission_data` is
+#' labeled `"Direct Admit"`, whatever its own `C_Patient_Class_List` says.
+#' For more granular and informative output, add `C_Patient_Class_List` to your
 #' ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
 #' "Patient Class (Syndromic Surveillance)" value set (concept codes and
 #' preferred names, verified against
@@ -286,7 +342,11 @@
 #'   rows for the same underlying record. It must contain the same linking
 #'   columns as `ed_data` (`facility_col`, `visit_col`, and
 #'   `fallback_visit_col` if used), or `link_encounters()` aborts.
-#'   `link_encounters()` also aborts if this is `NULL`; see Details.
+#'   `link_encounters()` also aborts if this is `NULL`; see Details. It must
+#'   carry the same `HasBeen_` flag columns as `ed_data`, or
+#'   `link_encounters()` aborts; see "Required fields". Each pull should hold
+#'   one record per visit; the function reports episodes that still hold
+#'   several records from the same pull.
 #' @param facility_col Unquoted
 #'   column name identifying the facility. When not supplied, prefers
 #'   `Hospital`/`C_BioSense_Facility_ID` over `HospitalName` if present in
@@ -302,6 +362,9 @@
 #'   ESSENCE `dataDetails` API returns them as text; a CSV read may not).
 #'   Numbers are written in full, without scientific notation, so `100000`
 #'   becomes `"100000"`. Convert back after the call if you need numbers.
+#'   When reading a CSV, read these columns as text: a number cannot hold an
+#'   integer above 2^53 exactly, so a very long identifier is already altered
+#'   before it reaches the function.
 #' @param fallback_visit_col
 #'   Optional. Unquoted column name of a secondary identifier (e.g.
 #'   `C_BioSense_ID`) that matches two rows into one episode when
@@ -311,10 +374,11 @@
 #' @param merge_fields Named character vector mapping column names (raw
 #'   ESSENCE names or post-[janitor::clean_names()] equivalents) to a merge
 #'   strategy: one of `"concat"`, `"union_delimited"`, `"union_ccdd"`,
-#'   `"prefer_yes"`, or `"prefer_admission"`. Only used when
-#'   `return_format = "collapsed"`. Defaults to a curated set of ESSENCE
-#'   fields known to carry information only visible in the direct-admit
-#'   record; see Details. Extend or override for other fields as needed.
+#'   `"prefer_yes"`, `"prefer_admission"`, `"prefer_severity"`, or
+#'   `"follow_severity"`. Only used when `return_format = "collapsed"`.
+#'   Defaults to a curated set of ESSENCE fields known to carry information
+#'   only visible in the direct-admit record; see Details. Extend or override
+#'   for other fields as needed.
 #' @param merge_delimiter Character string. Delimiter used by the
 #'   `"union_delimited"` and `"union_ccdd"` strategies. Defaults to `";"`,
 #'   matching ESSENCE's convention for `CCDDCategory_flat` and the
@@ -382,8 +446,8 @@ link_encounters <- function(ed_data,
                               CCDDParsed = "union_ccdd",
                               CCDDCategory_flat = "union_delimited",
                               C_Death = "prefer_yes",
-                              Discharge_Disposition = "prefer_admission",
-                              DispositionCategory = "prefer_admission"
+                              Discharge_Disposition = "follow_severity",
+                              DispositionCategory = "prefer_severity"
                             ),
                             merge_delimiter = ";",
                             return_format = c("collapsed", "long"),
@@ -450,6 +514,11 @@ link_encounters <- function(ed_data,
   text_cols <- c(fac_col_str, visit_col_str, fallback_col_str)
   ed_data   <- as_text_cols(ed_data, text_cols)
 
+  # Tag every source record, so rows expanded from one record (one per
+  # patient class) are never taken for different visits ----
+  ed_data$.link_src_row <- seq_len(nrow(ed_data))
+  ed_data$.link_pull    <- "ed"
+
   # One row per patient class: from C_Patient_Class_List when present,
   # otherwise from the HasBeen_ flags ----
   class_source <- detect_patient_class_source(ed_data)
@@ -476,6 +545,7 @@ link_encounters <- function(ed_data,
     ed_long, fac_col_str, visit_col_str, has_fallback, fallback_col_str,
     verbose
   )
+  inform_same_pull_duplicates(ed_long, episode_id_vec, verbose)
   result <- add_episode_metadata(ed_long, episode_id_vec)
 
   if (return_format == "collapsed") {

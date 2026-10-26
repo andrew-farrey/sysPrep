@@ -25,9 +25,12 @@
 #'   \item `bind_direct_admits()` tags `inpatient_admission_data` as
 #'     `"Direct Admit"` and appends it, after `check_linking_columns()` has
 #'     confirmed the linking columns exist in it and `as_text_cols()` has
-#'     converted the linking identifier columns to text.
+#'     converted the linking identifier columns to text. It first calls
+#'     `check_flag_columns_match()`.
 #'   \item `add_class_time()` fills the `.class_time` ordering column.
-#'   \item `build_episode_ids()` builds the `.episode_id` for every row.
+#'   \item `build_episode_ids()` builds the `.episode_id` for every row, and
+#'     `inform_same_pull_duplicates()` reports episodes that hold more than one
+#'     record from the same pull.
 #'   \item `add_episode_metadata()` adds `.episode_id`,
 #'     `.patient_class_sequence`, `.episode_n_rows`, and `.index_encounter`
 #'     (`TRUE` on the one row per episode that the collapsed output keeps).
@@ -59,6 +62,15 @@
 #' another row via a secondary identifier. The three candidate id strings are
 #' built as plain vectors, not inside a dplyr verb, so the fallback lookup is
 #' never attempted when no `fallback_visit_col` was supplied.
+#'
+#' `check_flag_columns_match()` aborts when the two pulls do not carry the same
+#' `HasBeen_` flag columns: ESSENCE never leaves a flag missing, so a flag in
+#' only one pull would be `NA` on the other pull's rows and the counts built on
+#' it would be wrong. `inform_same_pull_duplicates()` tells the user, when
+#' `verbose`, how many episodes hold several distinct records from one pull
+#' (rows expanded from a single record do not count), which `dedupe()` on each
+#' pull prevents. Both read the `.link_src_row` and `.link_pull` columns that
+#' `link_encounters()` adds and `add_episode_metadata()` removes.
 #'
 #' `add_episode_metadata()` computes its columns over whole vectors keyed by
 #' episode (`episode_class_sequence()`, `episode_primary_row()`), not per
@@ -120,6 +132,8 @@
 #'   `build_episode_ids()`, which returns a character vector.
 #'   `check_linking_columns()` returns `NULL` invisibly or aborts.
 #'   `as_text_cols()` returns `data` with those columns as character.
+#'   `check_flag_columns_match()` returns `NULL` invisibly or aborts, and
+#'   `inform_same_pull_duplicates()` returns `NULL` invisibly.
 #' @keywords internal
 check_inpatient_admission_data <- function(inpatient_admission_data,
                                            is_missing,
@@ -459,13 +473,121 @@ bind_direct_admits <- function(ed_long, inpatient_admission_data, verbose,
     }
   }
 
-  # Tag as Direct Admit and bind ----
+  # Flag columns carried by only one pull would be NA on the other pull's
+  # rows, and ESSENCE flags are never NA ----
+  check_flag_columns_match(ed_long, inpatient_admission_data, call)
+
+  # Tag as Direct Admit and bind; source-record ids continue after the ED
+  # pull's ----
   inpatient_admission_data <- dplyr::mutate(
     inpatient_admission_data,
-    patient_class = "Direct Admit"
+    patient_class = "Direct Admit",
+    .link_src_row = max(ed_long[[".link_src_row"]], 0L) +
+      seq_len(dplyr::n()),
+    .link_pull    = "inpatient"
   )
 
-  dplyr::bind_rows(ed_long, inpatient_admission_data)
+  # A column held as different types in the two pulls (for example a flag
+  # read as text from one and as a number from the other) cannot be
+  # combined; say so under the exported function's name ----
+  tryCatch(
+    dplyr::bind_rows(ed_long, inpatient_admission_data),
+    error = function(e) {
+      rlang::abort(
+        c(
+          paste0(
+            "`ed_data` and `inpatient_admission_data` could not be ",
+            "combined."
+          ),
+          "i" = paste0(
+            "A column that appears in both pulls must have the same type ",
+            "in each (for example `HasBeenE` as text in one and numbers in ",
+            "the other). Convert it in one pull and try again."
+          )
+        ),
+        parent = e,
+        call = call
+      )
+    }
+  )
+}
+
+#' @rdname check_inpatient_admission_data
+check_flag_columns_match <- function(ed_long, inpatient_admission_data,
+                                     call = rlang::caller_env()) {
+  # ESSENCE derives every HasBeen_ flag as 0 or 1 and never leaves one
+  # missing, so a flag present in only one pull means the pulls were queried
+  # with different fields. The other pull's rows would carry NA in it, which
+  # silently breaks the flag counts and the admission-flag choice, so the
+  # function stops instead ----
+  flags_in <- function(data) grep("^has_been_", names(data), value = TRUE)
+  ed_flags <- flags_in(ed_long)
+  ip_flags <- flags_in(inpatient_admission_data)
+  only_ed  <- setdiff(ed_flags, ip_flags)
+  only_ip  <- setdiff(ip_flags, ed_flags)
+  if (length(only_ed) == 0L && length(only_ip) == 0L) return(invisible(NULL))
+
+  list_flags <- function(x) paste0("`", x, "`", collapse = ", ")
+  detail <- c(
+    if (length(only_ed) > 0L) {
+      paste0("only in `ed_data`: ", list_flags(only_ed))
+    },
+    if (length(only_ip) > 0L) {
+      paste0("only in `inpatient_admission_data`: ", list_flags(only_ip))
+    }
+  )
+  rlang::abort(
+    c(
+      paste0(
+        "`ed_data` and `inpatient_admission_data` must carry the same ",
+        "`HasBeen_` flag columns, but they differ (",
+        paste(detail, collapse = "; "), ")."
+      ),
+      "i" = paste0(
+        "A flag in only one pull would be `NA` on the other pull's rows, ",
+        "which ESSENCE never produces, so flag counts and the ",
+        "`HasBeenAdmitted`/`HasBeenI` choice would be wrong."
+      ),
+      "i" = paste0(
+        "Query both pulls with the same `HasBeen_` fields (`HasBeenE`, ",
+        "`HasBeenAdmitted` or `HasBeenI`, and `HasBeenO` if used). See the ",
+        "\"Required fields\" section of `?link_encounters`."
+      )
+    ),
+    call = call
+  )
+}
+
+#' @rdname check_inpatient_admission_data
+inform_same_pull_duplicates <- function(ed_long, episode_id_vec, verbose) {
+  # Rows expanded from one source record (one per patient class) share a
+  # source id, so only distinct records from the same pull count here ----
+  if (!all(c(".link_src_row", ".link_pull") %in% names(ed_long))) {
+    return(invisible(NULL))
+  }
+  sep    <- "\x1f"
+  record <- paste(
+    episode_id_vec, ed_long$.link_pull, ed_long$.link_src_row, sep = sep
+  )
+  first  <- !duplicated(record)
+  episode_of_record <- episode_id_vec[first]
+  pair   <- paste(episode_of_record, ed_long$.link_pull[first], sep = sep)
+  n_episodes <- length(unique(
+    episode_of_record[pair %in% pair[duplicated(pair)]]
+  ))
+  if (n_episodes == 0L) return(invisible(NULL))
+
+  inform_if(
+    verbose,
+    paste0(
+      n_episodes, " episode(s) hold more than one record from the same pull ",
+      "(the same facility and visit more than once in `ed_data` or in ",
+      "`inpatient_admission_data`). They are merged into one episode, and ",
+      "a field not named in `merge_fields` keeps only the primary row's ",
+      "value. Run `dedupe()` on each pull before `link_encounters()`."
+    )
+  )
+  invisible(NULL)
 }
 
 #' @rdname check_inpatient_admission_data
@@ -476,15 +598,7 @@ as_text_cols <- function(data, cols) {
   # Numbers are written without scientific notation, so 100000 becomes
   # "100000" (not as.character()'s "1e+05"), and NA stays NA ----
   for (col in cols) {
-    v <- data[[col]]
-    if (is.character(v)) next
-    if (is.numeric(v)) {
-      text <- sprintf("%.15g", as.numeric(v))
-      text[is.na(v)] <- NA_character_
-      data[[col]] <- text
-    } else {
-      data[[col]] <- as.character(v)
-    }
+    if (!is.character(data[[col]])) data[[col]] <- as_key_text(data[[col]])
   }
   data
 }
@@ -579,8 +693,16 @@ build_episode_ids <- function(ed_long, fac_col_str, visit_col_str,
 
   still_na_key <- key_has_na & !uses_fallback
 
+  # A source record that expanded to several patient-class rows is still one
+  # visit, so rows are counted and grouped by source record ----
+  src_row <- if (".link_src_row" %in% names(ed_long)) {
+    ed_long$.link_src_row
+  } else {
+    seq_len(nrow(ed_long))
+  }
+
   inform_na_key_rows(
-    sum(still_na_key), fac_col_str, visit_col_str,
+    length(unique(src_row[still_na_key])), fac_col_str, visit_col_str,
     function(...) inform_if(verbose, ...)
   )
   if (any(uses_fallback)) {
@@ -594,7 +716,9 @@ build_episode_ids <- function(ed_long, fac_col_str, visit_col_str,
     )
   }
 
-  group_id <- na_safe_group_id(ed_long, c(fac_col_str, visit_col_str))
+  group_id <- na_safe_group_id(
+    ed_long, c(fac_col_str, visit_col_str), row_id = src_row
+  )
 
   normal_episode_id  <- paste(
     ed_long[[fac_col_str]], ed_long[[visit_col_str]], sep = "_"
@@ -636,7 +760,9 @@ add_episode_metadata <- function(ed_long, episode_id_vec) {
         episode_code, patient_class
       )
     ) |>
-    dplyr::select(-.class_time)
+    dplyr::select(
+      -.class_time, -dplyr::any_of(c(".link_src_row", ".link_pull"))
+    )
 }
 
 #' @rdname check_inpatient_admission_data
@@ -654,10 +780,24 @@ collapse_episodes <- function(result, merge_fields, merge_delimiter) {
   single_row <- dplyr::filter(result, .data[[".episode_n_rows"]] == 1L)
   multi_row  <- dplyr::filter(result, .data[[".episode_n_rows"]] > 1L)
 
+  # The first field merged with prefer_severity decides which record's values
+  # the follow_severity fields take; NA when no such field is present ----
+  severity_col <- intersect(
+    names(merge_fields)[merge_fields == "prefer_severity"], names(result)
+  )[1L]
+
   if (nrow(multi_row) > 0L) {
     multi_row <- multi_row |>
       dplyr::mutate(
         .primary_idx = pick_primary_row_index(patient_class),
+        .severity_row = if (is.na(severity_col)) {
+          NA_integer_
+        } else {
+          severity_row_index(
+            .data[[severity_col]], patient_class,
+            .data[[severity_col]][.data[[".primary_idx"]][1L]]
+          )
+        },
         dplyr::across(
           dplyr::all_of(has_been_cols),
           ~ if (all(is.na(.x))) .x else max(.x, na.rm = TRUE)
@@ -669,14 +809,18 @@ collapse_episodes <- function(result, merge_fields, merge_delimiter) {
             patient_classes = patient_class,
             primary_value   = .x[.primary_idx[1L]],
             strategy        = merge_fields[[dplyr::cur_column()]],
-            delimiter       = merge_delimiter
+            delimiter       = merge_delimiter,
+            severity_row    = .severity_row[1L]
           )
         ),
         .row_in_group = dplyr::row_number(),
         .by = .episode_id
       ) |>
       dplyr::filter(.data[[".row_in_group"]] == .data[[".primary_idx"]]) |>
-      dplyr::select(-dplyr::all_of(c(".primary_idx", ".row_in_group")))
+      dplyr::select(
+        -dplyr::all_of(c(".primary_idx", ".severity_row", ".row_in_group"))
+      ) |>
+      mark_death_from_disposition(merge_fields)
   }
 
   dplyr::bind_rows(single_row, multi_row) |>

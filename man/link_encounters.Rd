@@ -11,8 +11,8 @@ link_encounters(
   visit_col = Visit_ID,
   fallback_visit_col = NULL,
   merge_fields = c(CCDD = "union_ccdd", CCDDParsed = "union_ccdd", CCDDCategory_flat =
-    "union_delimited", C_Death = "prefer_yes", Discharge_Disposition =
-    "prefer_admission", DispositionCategory = "prefer_admission"),
+    "union_delimited", C_Death = "prefer_yes", Discharge_Disposition = "follow_severity",
+    DispositionCategory = "prefer_severity"),
   merge_delimiter = ";",
   return_format = c("collapsed", "long"),
   clean_names = TRUE,
@@ -31,7 +31,11 @@ Rows with \code{HasBeenE = 1} are automatically removed to prevent duplicate
 rows for the same underlying record. It must contain the same linking
 columns as \code{ed_data} (\code{facility_col}, \code{visit_col}, and
 \code{fallback_visit_col} if used), or \code{link_encounters()} aborts.
-\code{link_encounters()} also aborts if this is \code{NULL}; see Details.}
+\code{link_encounters()} also aborts if this is \code{NULL}; see Details. It must
+carry the same \code{HasBeen_} flag columns as \code{ed_data}, or
+\code{link_encounters()} aborts; see "Required fields". Each pull should hold
+one record per visit; the function reports episodes that still hold
+several records from the same pull.}
 
 \item{facility_col}{Unquoted
 column name identifying the facility. When not supplied, prefers
@@ -48,7 +52,10 @@ Linking keys are identifiers with no numeric meaning, so \code{facility_col}
 text in the output, whatever type each pull delivered them in (the
 ESSENCE \code{dataDetails} API returns them as text; a CSV read may not).
 Numbers are written in full, without scientific notation, so \code{100000}
-becomes \code{"100000"}. Convert back after the call if you need numbers.}
+becomes \code{"100000"}. Convert back after the call if you need numbers.
+When reading a CSV, read these columns as text: a number cannot hold an
+integer above 2^53 exactly, so a very long identifier is already altered
+before it reaches the function.}
 
 \item{fallback_visit_col}{Optional. Unquoted column name of a secondary identifier (e.g.
 \code{C_BioSense_ID}) that matches two rows into one episode when
@@ -59,10 +66,11 @@ because they share a missing \code{visit_col}; see Details.}
 \item{merge_fields}{Named character vector mapping column names (raw
 ESSENCE names or post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents) to a merge
 strategy: one of \code{"concat"}, \code{"union_delimited"}, \code{"union_ccdd"},
-\code{"prefer_yes"}, or \code{"prefer_admission"}. Only used when
-\code{return_format = "collapsed"}. Defaults to a curated set of ESSENCE
-fields known to carry information only visible in the direct-admit
-record; see Details. Extend or override for other fields as needed.}
+\code{"prefer_yes"}, \code{"prefer_admission"}, \code{"prefer_severity"}, or
+\code{"follow_severity"}. Only used when \code{return_format = "collapsed"}.
+Defaults to a curated set of ESSENCE fields known to carry information
+only visible in the direct-admit record; see Details. Extend or override
+for other fields as needed.}
 
 \item{merge_delimiter}{Character string. Delimiter used by the
 \code{"union_delimited"} and \code{"union_ccdd"} strategies. Defaults to \code{";"},
@@ -133,7 +141,10 @@ continuous record. The result is two records sharing the same
 one showing \code{HasBeenAdmitted = 1} and \code{HasBeenE = 0}, that otherwise
 look unrelated. The ED record's fields (e.g. \code{Discharge_Disposition},
 \code{CCDD}, \code{C_Death}) reflect only what was known at ED discharge, not the
-outcome of the encounter that actually continued. Counting both records
+outcome of the encounter that actually continued (an ED record closed as
+\code{DISCHARGED} can sit beside an inpatient record that ends in a death or a
+transfer; the default merge keeps the more severe \code{DispositionCategory} and
+marks \code{C_Death}). Counting both records
 separately double-counts a single real-world event. This is a data
 quality artifact, not a distinct clinical pathway.
 
@@ -188,6 +199,24 @@ row's value.}
 \code{patient_class} is \code{"Inpatient"}, \code{"Direct Admit"}, or \code{"Admitted"},
 if such a row has a non-missing value for the field. Otherwise falls
 back to the primary row's value.}
+\item{\code{"prefer_severity"}}{For \code{DispositionCategory}, keeps the most
+severe value in the episode, whichever record carries it: \code{DECEASED}
+ranks above \code{TRANSFERRED} and \code{ADMIT} (equal), which rank above
+\code{DISCHARGED}, which ranks above \code{UNKNOWN} and a missing value. This is
+the default for \code{DispositionCategory}, so an ED record closed as
+\code{DISCHARGED} does not hide a death or a transfer recorded on the linked
+inpatient record, whichever of the two records has the
+\code{HasBeenAdmitted} flag. Whenever the merged value is \code{DECEASED},
+\code{C_Death} is also set to affirmative for that episode (using the form
+already in the column: \code{"Yes"}, \code{"1"}, or \code{1}). Among equally severe
+values the admission-class row's value is kept.}
+\item{\code{"follow_severity"}}{Takes the value from the same record whose
+\code{prefer_severity} field won (the first such field in \code{merge_fields}).
+This is the default for \code{Discharge_Disposition}, so it always comes
+from the record that supplied \code{DispositionCategory} and the two never
+disagree. If that record has no value for the field, or no
+\code{prefer_severity} field is present, the \code{"prefer_admission"} value is
+used instead.}
 }
 
 Any column not a \code{HasBeen_} flag and not listed in \code{merge_fields} takes
@@ -197,6 +226,42 @@ the episode, else the first row in original order.
 Set \code{return_format = "long"} to get the diagnostic long-format output
 instead: one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.
+}
+
+\subsection{Required fields}{
+
+Pull these fields in \strong{both} ESSENCE \code{dataDetails} pulls. The function
+stops with an error that names what is missing or different when one of
+these requirements is not met.
+\itemize{
+\item \strong{Facility identifier}: \code{Hospital} (\code{C_BioSense_Facility_ID}), or
+\code{HospitalName} when \code{Hospital} is not in \code{ed_data}; or the column given to
+\code{facility_col}. It must be in both pulls.
+\item \strong{Visit identifier}: \code{Visit_ID} (or the column given to \code{visit_col}),
+in both pulls.
+\item \strong{The \code{HasBeen_} flags, identical in both pulls.} \code{ed_data} needs
+\code{HasBeenE} and either \code{HasBeenAdmitted} or \code{HasBeenI} (\code{HasBeenAdmitted}
+is used when both are present), unless it carries
+\code{C_Patient_Class_List}. Whatever \code{HasBeen_} fields one pull carries
+(\code{HasBeenE}, \code{HasBeenAdmitted}, \code{HasBeenI}, \code{HasBeenO}), the other must
+carry too. A flag in only one pull would be \code{NA} on the other pull's
+rows, and ESSENCE never produces a missing flag.
+\item \strong{\code{fallback_visit_col}}, in both pulls, when you supply one (for example
+\code{C_BioSense_ID}).
+}
+
+Fields that are not required but change the output:
+\itemize{
+\item \code{C_Patient_Class_List} in \code{ed_data} gives the full patient-class
+sequence; \code{C_Patient_Class_MDT_Updates} orders it by time.
+\item \code{C_Visit_Date_Time} (or \code{Date} and \code{Time}) orders classes when no
+\code{C_Patient_Class_MDT_Updates} is present; without any of them the order is
+alphabetical and carries no clinical meaning.
+\item The \code{merge_fields} columns (by default \code{CCDD}, \code{CCDDParsed},
+\code{CCDDCategory_flat}, \code{C_Death}, \code{Discharge_Disposition}, and
+\code{DispositionCategory}) are merged only when present; without
+\code{DispositionCategory} no disposition is ranked by severity.
+}
 }
 
 \subsection{Why \code{inpatient_admission_data} is required}{
@@ -266,8 +331,10 @@ list of all \code{C_Patient_Class} values present across messages sharing the
 same ESSENCE ID (e.g., \code{"E"}, \code{"EI"}, \code{"EIO"}). When present, it is used
 in place of the \code{HasBeen_} pivot, since it distinguishes patient classes
 (e.g. Direct Admit vs. Inpatient, or Observation/Outpatient/Obstetrics/
-Pre-admit/Recurring) that the \code{HasBeen_} flags do not represent. For more
-granular and informative output, add \code{C_Patient_Class_List} to your
+Pre-admit/Recurring) that the \code{HasBeen_} flags do not represent. This
+applies to \code{ed_data} only: every row of \code{inpatient_admission_data} is
+labeled \code{"Direct Admit"}, whatever its own \code{C_Patient_Class_List} says.
+For more granular and informative output, add \code{C_Patient_Class_List} to your
 ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
 "Patient Class (Syndromic Surveillance)" value set (concept codes and
 preferred names, verified against

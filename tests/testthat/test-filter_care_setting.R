@@ -170,6 +170,18 @@ test_that("filter_care_setting() fix_facility_id_vector accepts character IDs ma
   expect_gt(nrow(dplyr::filter(result, hospital == 1001L)), 0L)
 })
 
+test_that("filter_care_setting() matches round numeric IDs against text Hospital values", {
+  # as.character(100000) is "1e+05", which would not equal "100000"
+  data <- tibble::tibble(
+    HospitalName = c("A", "B"), Hospital = c("100000", "300000"),
+    FacilityType = "Urgent Care"
+  )
+  result <- suppressMessages(
+    filter_care_setting(data, fix_facility_id_vector = c(100000, 300000))
+  )
+  expect_equal(nrow(result), 2L)
+})
+
 test_that("filter_care_setting() never warns on unmatched fix_facility_id_vector IDs", {
   data <- make_essence_data(n = 5L)
   expect_no_warning(

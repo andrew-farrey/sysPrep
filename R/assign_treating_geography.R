@@ -175,8 +175,10 @@
 #'   pre-overwrite values before reassignment. Only has an effect when
 #'   `overwrite = TRUE`. Defaults to `FALSE`.
 #' @return The input data frame with reassigned region and/or zip code
-#'   values written to `new_region_col`/`new_zip_col` (or to `region_col`/
-#'   `zip_col` in place, when `overwrite = TRUE`). A `.out_of_state` logical
+#'   values written to `new_region_col`/`new_zip_col`. These are new columns
+#'   by default, and `region_col`/`zip_col` are overwritten in place only when
+#'   `new_region_col`/`new_zip_col` name them and `overwrite = TRUE`. A
+#'   `.out_of_state` logical
 #'   column is added indicating which rows were reassigned. Despite its name
 #'   it is `TRUE` for every row whose residence is not in `site`: another
 #'   state, `"OTHER_REGION"`, `"{site}_UNKNOWN"`, and a missing `Region`. When
