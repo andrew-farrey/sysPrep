@@ -760,9 +760,7 @@ add_episode_metadata <- function(ed_long, episode_id_vec) {
         episode_code, patient_class
       )
     ) |>
-    dplyr::select(
-      -.class_time, -dplyr::any_of(c(".link_src_row", ".link_pull"))
-    )
+    dplyr::select(-.class_time, -dplyr::any_of(".link_src_row"))
 }
 
 #' @rdname check_inpatient_admission_data
@@ -786,16 +784,26 @@ collapse_episodes <- function(result, merge_fields, merge_delimiter) {
     names(merge_fields)[merge_fields == "prefer_severity"], names(result)
   )[1L]
 
+  # Which pull each row came from breaks ties between equally severe values
+  # in favor of the inpatient pull's record ----
+  has_pull <- ".link_pull" %in% names(result)
+
   if (nrow(multi_row) > 0L) {
     multi_row <- multi_row |>
       dplyr::mutate(
         .primary_idx = pick_primary_row_index(patient_class),
+        .from_inpatient = if (has_pull) {
+          .data[[".link_pull"]] == "inpatient"
+        } else {
+          FALSE
+        },
         .severity_row = if (is.na(severity_col)) {
           NA_integer_
         } else {
           severity_row_index(
             .data[[severity_col]], patient_class,
-            .data[[severity_col]][.data[[".primary_idx"]][1L]]
+            .data[[severity_col]][.data[[".primary_idx"]][1L]],
+            .data[[".from_inpatient"]]
           )
         },
         dplyr::across(
@@ -810,7 +818,8 @@ collapse_episodes <- function(result, merge_fields, merge_delimiter) {
             primary_value   = .x[.primary_idx[1L]],
             strategy        = merge_fields[[dplyr::cur_column()]],
             delimiter       = merge_delimiter,
-            severity_row    = .severity_row[1L]
+            severity_row    = .severity_row[1L],
+            from_inpatient  = .from_inpatient
           )
         ),
         .row_in_group = dplyr::row_number(),
@@ -818,12 +827,15 @@ collapse_episodes <- function(result, merge_fields, merge_delimiter) {
       ) |>
       dplyr::filter(.data[[".row_in_group"]] == .data[[".primary_idx"]]) |>
       dplyr::select(
-        -dplyr::all_of(c(".primary_idx", ".severity_row", ".row_in_group"))
+        -dplyr::all_of(c(
+          ".primary_idx", ".severity_row", ".from_inpatient", ".row_in_group"
+        ))
       ) |>
-      mark_death_from_disposition(merge_fields)
+      mark_death_from_disposition(merge_fields, reference = result)
   }
 
   dplyr::bind_rows(single_row, multi_row) |>
+    dplyr::select(-dplyr::any_of(".link_pull")) |>
     dplyr::mutate(.index_encounter = TRUE) |>
     dplyr::arrange(.data[[".episode_id"]])
 }

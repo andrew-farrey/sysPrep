@@ -249,12 +249,15 @@ reconciled using a strategy suited to that field, so information recorded
 only on the admission row is not silently discarded when the ED row is kept
 as the surviving primary row. For `DispositionCategory` the strategy is
 `"prefer_severity"`: the most severe value in the episode is kept, whichever
-record carries it (`DECEASED`, then `TRANSFERRED` or `ADMIT`, then
-`DISCHARGED`, then `UNKNOWN`), and `C_Death` is set to affirmative whenever
-the merged value is `DECEASED`. An ED record closed as `DISCHARGED` therefore
-cannot hide a death or a transfer that the linked inpatient record reports.
+record carries it (`DECEASED`, then `TRANSFERRED`, then `DISCHARGED` and
+`ADMIT` as equals, then `UNKNOWN`), and `C_Death` is set to affirmative
+whenever the merged value is `DECEASED`. An ED record closed as `DISCHARGED`
+therefore cannot hide a death or a transfer that the linked inpatient record
+reports. `DISCHARGED` and `ADMIT` rank equally and the tie goes to the
+inpatient pull's record, which reflects the whole encounter of care: an ED
+`ADMIT` gives way to the inpatient record's `DISCHARGED`.
 `Discharge_Disposition` takes its value from that same record, so the two
-fields agree.
+fields agree whenever that record has a value for it.
 
 ```{r episodes}
 episodes <- link_encounters(ed_clean, inpatient_clean)
@@ -302,10 +305,13 @@ counterpart). This column enables filtering to specific episode types
 the continuity-break cases) even though the underlying rows have already
 been merged.
 
-**`.episode_n_rows`**: The number of original rows the episode was built
-from before merging. Episodes with no linkage have `.episode_n_rows = 1`;
-episodes merged from an ED row and an admission row have
-`.episode_n_rows = 2`.
+**`.episode_n_rows`**: The number of patient-class rows the episode was built
+from before merging. A record that carries several patient classes
+contributes one row per class. Episodes with no linkage and a single class
+have `.episode_n_rows = 1`; an ED row and an admission row give
+`.episode_n_rows = 2`; an ED record that already carries
+`HasBeenAdmitted = 1`, linked to an admission record, gives 3. Do not use
+`.episode_n_rows > 1` on its own to count linked episodes.
 
 **`.index_encounter`**: In collapsed output (the default), always `TRUE`,
 since every row already represents exactly one merged encounter; the column

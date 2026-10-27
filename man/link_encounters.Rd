@@ -201,22 +201,30 @@ if such a row has a non-missing value for the field. Otherwise falls
 back to the primary row's value.}
 \item{\code{"prefer_severity"}}{For \code{DispositionCategory}, keeps the most
 severe value in the episode, whichever record carries it: \code{DECEASED}
-ranks above \code{TRANSFERRED} and \code{ADMIT} (equal), which rank above
-\code{DISCHARGED}, which ranks above \code{UNKNOWN} and a missing value. This is
+ranks above \code{TRANSFERRED}, which ranks above \code{DISCHARGED} and \code{ADMIT}
+(equal), which rank above \code{UNKNOWN} and a missing value. This is
 the default for \code{DispositionCategory}, so an ED record closed as
 \code{DISCHARGED} does not hide a death or a transfer recorded on the linked
 inpatient record, whichever of the two records has the
 \code{HasBeenAdmitted} flag. Whenever the merged value is \code{DECEASED},
 \code{C_Death} is also set to affirmative for that episode (using the form
-already in the column: \code{"Yes"}, \code{"1"}, or \code{1}). Among equally severe
-values the admission-class row's value is kept.}
+already in the column, read from the whole column: \code{"Yes"}, \code{"1"}, or
+\code{1}). This derives \code{C_Death} from the merged category, so it can
+change a \code{"No"} that both records carried; it applies only to linked
+episodes, and a record that is not linked is never changed. Among
+equally severe values the inpatient pull's record wins, because it
+reflects the whole encounter of care: an ED \code{ADMIT} gives way to the
+inpatient record's \code{DISCHARGED}, and the result does not depend on
+whether the ED record also carries \code{HasBeenAdmitted}. Then another
+admission-class row's value is kept.}
 \item{\code{"follow_severity"}}{Takes the value from the same record whose
 \code{prefer_severity} field won (the first such field in \code{merge_fields}).
-This is the default for \code{Discharge_Disposition}, so it always comes
-from the record that supplied \code{DispositionCategory} and the two never
-disagree. If that record has no value for the field, or no
-\code{prefer_severity} field is present, the \code{"prefer_admission"} value is
-used instead.}
+This is the default for \code{Discharge_Disposition}, so it comes from the
+record that supplied \code{DispositionCategory} and the two agree whenever
+that record has a value for it. If that record has no value for the
+field, or no \code{prefer_severity} field is present, the
+\code{"prefer_admission"} value is used instead (so the two can then
+differ, rather than dropping a value that is known).}
 }
 
 Any column not a \code{HasBeen_} flag and not listed in \code{merge_fields} takes
@@ -422,9 +430,8 @@ missing both \code{visit_col} and \code{fallback_visit_col} (or missing
 \subsection{Episode metadata columns}{
 
 Present regardless of \code{return_format}. In collapsed output, these
-describe the episode the collapsed row was built from (e.g.
-\code{.episode_n_rows = 2} on a collapsed row means two original records were
-merged into it).
+describe the episode the collapsed row was built from. \code{.episode_n_rows}
+counts patient-class rows, not records (see below).
 \describe{
 \item{\code{.episode_id}}{A character key combining \code{facility_col} and
 \code{visit_col}, shared across all rows belonging to the same care
@@ -436,8 +443,12 @@ suffix instead of being shared with any other row, unless
 \item{\code{.patient_class_sequence}}{All patient classes for the episode
 in chronological order and collapsed, e.g., \code{"Direct Admit->ED"}
 when the direct admit occurred first; see Details.}
-\item{\code{.episode_n_rows}}{Number of original rows the episode was built
-from before merging.}
+\item{\code{.episode_n_rows}}{Number of patient-class rows the episode was
+built from before merging. A record carrying several patient classes
+contributes one row per class, so an ED record with
+\code{HasBeenAdmitted = 1} plus a linked inpatient record gives 3, and one
+unlinked ED record with an \code{E} and an \code{I} class gives 2. Do not use
+\code{.episode_n_rows > 1} on its own to count linked episodes.}
 \item{\code{.index_encounter}}{In long format, \code{TRUE} on exactly one row per
 episode: the row the collapsed output is built from, which is the
 episode's first \code{"ED"} row if it has one, else its first row. Summing

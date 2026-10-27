@@ -778,12 +778,12 @@ test_that("link_encounters() applies follow_severity to discharge_disposition an
 
 # prefer_severity: the more severe DispositionCategory wins, whichever record has it ----
 
-test_that("disposition_severity() ranks DECEASED above ADMIT/TRANSFERRED above DISCHARGED above UNKNOWN", {
+test_that("disposition_severity() ranks DECEASED above TRANSFERRED above ADMIT = DISCHARGED above UNKNOWN", {
   expect_identical(
     disposition_severity(c(
       "DECEASED", "ADMIT", "TRANSFERRED", "DISCHARGED", "UNKNOWN", NA, ""
     )),
-    c(3L, 2L, 2L, 1L, 0L, 0L, 0L)
+    c(3L, 1L, 2L, 1L, 0L, 0L, 0L)
   )
   expect_identical(disposition_severity(character(0)), integer(0))
 })
@@ -791,7 +791,7 @@ test_that("disposition_severity() ranks DECEASED above ADMIT/TRANSFERRED above D
 test_that("disposition_severity() ignores case and surrounding spaces, and ranks other values with DISCHARGED", {
   expect_identical(
     disposition_severity(c(" deceased ", "Admit", "transferred", "Home")),
-    c(3L, 2L, 2L, 1L)
+    c(3L, 1L, 2L, 1L)
   )
 })
 
@@ -848,19 +848,35 @@ test_that("merge_prefer_severity() keeps a known category over UNKNOWN", {
 test_that("merge_prefer_severity() breaks ties by admission-class row, then primary row, then first", {
   expect_equal(
     merge_prefer_severity(
-      c("ADMIT", "TRANSFERRED"), c("ED", "Direct Admit"), "ADMIT"
+      c("ADMIT", "DISCHARGED"), c("ED", "Direct Admit"), "ADMIT"
     ),
-    "TRANSFERRED"
+    "DISCHARGED"
   )
   expect_equal(
     merge_prefer_severity(
-      c("ADMIT", "TRANSFERRED"), c("ED", "Observation"), "ADMIT"
+      c("ADMIT", "DISCHARGED"), c("ED", "Observation"), "ADMIT"
     ),
     "ADMIT"
   )
   expect_equal(
     merge_prefer_severity(
-      c("ADMIT", "TRANSFERRED"), c("Observation", "Outpatient"), "Other"
+      c("ADMIT", "DISCHARGED"), c("Observation", "Outpatient"), "Other"
+    ),
+    "ADMIT"
+  )
+})
+
+test_that("an ED ADMIT gives way to the inpatient record's DISCHARGED, and an ED DISCHARGED to its ADMIT", {
+  from_ip <- c(FALSE, TRUE)
+  expect_equal(
+    merge_prefer_severity(
+      c("ADMIT", "DISCHARGED"), c("ED", "Direct Admit"), "ADMIT", from_ip
+    ),
+    "DISCHARGED"
+  )
+  expect_equal(
+    merge_prefer_severity(
+      c("DISCHARGED", "ADMIT"), c("ED", "Direct Admit"), "DISCHARGED", from_ip
     ),
     "ADMIT"
   )
@@ -925,7 +941,7 @@ test_that("severity_row_index() returns the winning position, or NA when nothing
   # position
   expect_equal(
     severity_row_index(
-      c("ADMIT", "TRANSFERRED"), c("Observation", "Outpatient"), "TRANSFERRED"
+      c("ADMIT", "DISCHARGED"), c("Observation", "Outpatient"), "DISCHARGED"
     ),
     2L
   )
@@ -1013,6 +1029,149 @@ test_that("follow_severity falls back to prefer_admission when no prefer_severit
     )
   )
   expect_equal(result$discharge_disposition, "Expired")
+})
+
+test_that("severity_row_index() breaks a tie in favor of the inpatient pull's record", {
+  # row 2 is the ED record's own "Admitted" row, row 3 the inpatient record
+  expect_equal(
+    severity_row_index(
+      c("DISCHARGED", "ADMIT", "DISCHARGED"),
+      c("ED", "Admitted", "Direct Admit"), "DISCHARGED",
+      from_inpatient = c(FALSE, FALSE, TRUE)
+    ),
+    3L
+  )
+  # without pull information the first admission-class row wins, as before
+  expect_equal(
+    severity_row_index(
+      c("DISCHARGED", "ADMIT", "DISCHARGED"),
+      c("ED", "Admitted", "Direct Admit"), "DISCHARGED"
+    ),
+    2L
+  )
+})
+
+test_that("an ED ADMIT gives way to the inpatient record's DISCHARGED whatever the ED HasBeenAdmitted flag", {
+  for (ed_admitted in c(0L, 1L)) {
+    fixture <- make_readmit_merge_data()
+    fixture$ed_data$HasBeenAdmitted <- ed_admitted
+    fixture$ed_data$DispositionCategory <- "ADMIT"
+    fixture$ed_data$Discharge_Disposition <- "Admitted to inpatient"
+    fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+    fixture$inpatient_admission_data$Discharge_Disposition <-
+      "Discharged home"
+    fixture$inpatient_admission_data$C_Death <- "No"
+    result <- suppressMessages(
+      link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    )
+    expect_equal(result$disposition_category, "DISCHARGED")
+    expect_equal(result$discharge_disposition, "Discharged home")
+  }
+})
+
+test_that("an ED DISCHARGED followed by an inpatient ADMIT merges to ADMIT", {
+  fixture <- make_readmit_merge_data()
+  fixture$inpatient_admission_data$DispositionCategory <- "ADMIT"
+  fixture$inpatient_admission_data$Discharge_Disposition <-
+    "Admitted to inpatient"
+  fixture$inpatient_admission_data$C_Death <- "No"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "ADMIT")
+  expect_equal(result$discharge_disposition, "Admitted to inpatient")
+})
+
+test_that("a TRANSFERRED on either record outranks an ADMIT or DISCHARGED on the other", {
+  for (side in c("ed_data", "inpatient_admission_data")) {
+    fixture <- make_readmit_merge_data()
+    fixture$ed_data$DispositionCategory <- "ADMIT"
+    fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+    fixture$inpatient_admission_data$C_Death <- "No"
+    fixture[[side]]$DispositionCategory <- "TRANSFERRED"
+    result <- suppressMessages(
+      link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    )
+    expect_equal(result$disposition_category, "TRANSFERRED")
+  }
+})
+
+test_that(".link_pull and .link_src_row never appear in the output", {
+  fixture <- make_readmit_merge_data()
+  collapsed <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  long <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      return_format = "long"
+    )
+  )
+  for (output in list(collapsed, long)) {
+    expect_false(any(c(".link_pull", ".link_src_row") %in% names(output)))
+  }
+})
+
+test_that("collapse_episodes() works without pull information and ranks by severity", {
+  result <- tibble::tibble(
+    .episode_id = c("1_A", "1_A"), .episode_n_rows = 2L,
+    patient_class = c("ED", "Direct Admit"),
+    disposition_category = c("DISCHARGED", "DECEASED"),
+    c_death = c("No", "No")
+  )
+  collapsed <- collapse_episodes(
+    result,
+    merge_fields = c(
+      disposition_category = "prefer_severity", c_death = "prefer_yes"
+    ),
+    merge_delimiter = ";"
+  )
+  expect_equal(nrow(collapsed), 1L)
+  expect_equal(collapsed$disposition_category, "DECEASED")
+  expect_equal(collapsed$c_death, "Yes")
+})
+
+test_that("a text 0/1 C_Death column stays 0/1 coded when a linked episode is marked", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$C_Death <- "0"
+  fixture$inpatient_admission_data$C_Death <- "0"
+  unlinked <- fixture$ed_data
+  unlinked$Visit_ID <- "V00000009"
+  unlinked$C_Death <- "1"
+  ed <- dplyr::bind_rows(fixture$ed_data, unlinked)
+  result <- suppressMessages(
+    link_encounters(ed, fixture$inpatient_admission_data)
+  )
+  expect_equal(nrow(result), 2L)
+  expect_equal(sort(unique(result$c_death)), "1")
+  expect_equal(
+    result$disposition_category[result$visit_id == "V00000001"], "DECEASED"
+  )
+})
+
+test_that("mark_death_from_disposition() reads the C_Death coding from the reference column", {
+  merge_fields <- c(
+    disposition_category = "prefer_severity", c_death = "prefer_yes"
+  )
+  linked <- tibble::tibble(disposition_category = "DECEASED", c_death = "0")
+  reference <- tibble::tibble(
+    disposition_category = c("DECEASED", "DISCHARGED"), c_death = c("0", "1")
+  )
+  expect_equal(
+    mark_death_from_disposition(linked, merge_fields, reference)$c_death, "1"
+  )
+  # a Yes/No reference keeps Yes
+  yes_no <- tibble::tibble(
+    disposition_category = c("DECEASED", "DISCHARGED"),
+    c_death = c("No", "Yes")
+  )
+  expect_equal(
+    mark_death_from_disposition(
+      tibble::tibble(disposition_category = "DECEASED", c_death = "No"),
+      merge_fields, yes_no
+    )$c_death,
+    "Yes"
+  )
 })
 
 test_that("link_encounters() leaves a record with no linked counterpart unchanged", {

@@ -222,20 +222,26 @@ episode_primary_row <- function(episode, patient_class) {
 #'     `primary_value`.}
 #'   \item{`prefer_severity`}{For `DispositionCategory`: the most severe value
 #'     across the episode's rows, whichever record carries it. `DECEASED`
-#'     ranks above `TRANSFERRED` and `ADMIT` (equal), which rank above
-#'     `DISCHARGED`, which ranks above `UNKNOWN` and a missing value
+#'     ranks above `TRANSFERRED`, which ranks above `DISCHARGED` and `ADMIT`
+#'     (equal), which rank above `UNKNOWN` and a missing value
 #'     (`disposition_severity()`, ignoring case). A value outside the five
 #'     ESSENCE categories ranks with `DISCHARGED`. Among equally severe
-#'     values the admission-class row's value is kept, then the primary
-#'     row's. After the episode is merged, `mark_death_from_disposition()`
-#'     sets `C_Death` to affirmative for any episode whose merged value is
-#'     `DECEASED`.}
+#'     values the inpatient pull's record wins: it reflects the whole
+#'     encounter of care, so an ED `ADMIT` gives way to the inpatient
+#'     record's `DISCHARGED`, and the result does not depend on whether the
+#'     ED record also carries `HasBeenAdmitted`. Then another admission-class
+#'     row's value is kept, then the primary row's. After the episode
+#'     is merged, `mark_death_from_disposition()` sets `C_Death` to
+#'     affirmative for any linked episode whose merged value is `DECEASED`,
+#'     in the coding read from the whole `C_Death` column; unlinked records
+#'     are never changed.}
 #'   \item{`follow_severity`}{The value from the same record whose
 #'     `prefer_severity` field won (the first such field in `merge_fields`),
-#'     so a companion field such as `Discharge_Disposition` always comes from
-#'     the record that supplied `DispositionCategory`. If that record has no
+#'     so a companion field such as `Discharge_Disposition` comes from the
+#'     record that supplied `DispositionCategory`. If that record has no
 #'     value for the field, or there is no `prefer_severity` field, the
-#'     `prefer_admission` value is used instead.}
+#'     `prefer_admission` value is used instead, so the two fields can then
+#'     differ.}
 #' }
 #'
 #' `check_merge_fields()` aborts, attributed to [link_encounters()], unless
@@ -264,8 +270,8 @@ episode_primary_row <- function(episode, patient_class) {
 #'   returns `merge_fields` invisibly, or aborts. The `merge_*()` functions
 #'   and `merge_field_value()` return a single merged value.
 #'   `contains_whole()` returns a single logical. `disposition_severity()`
-#'   returns an integer rank per value (0 unknown or missing, 1 discharged,
-#'   2 admit or transferred, 3 deceased). `severity_row_index()` returns an
+#'   returns an integer rank per value (0 unknown or missing, 1 discharged or
+#'   admit, 2 transferred, 3 deceased). `severity_row_index()` returns an
 #'   integer position or `NA`. `mark_death_from_disposition()` returns
 #'   `result`.
 #' @format `merge_strategies` is a character vector of the valid strategy
@@ -315,7 +321,8 @@ check_merge_fields <- function(merge_fields, call = rlang::caller_env()) {
 #' @rdname merge_strategies
 merge_field_value <- function(values, patient_classes, primary_value,
                               strategy, delimiter,
-                              severity_row = NA_integer_) {
+                              severity_row = NA_integer_,
+                              from_inpatient = rep(FALSE, length(values))) {
   switch(
     strategy,
     concat           = merge_concat(values, primary_value),
@@ -326,7 +333,7 @@ merge_field_value <- function(values, patient_classes, primary_value,
       values, patient_classes, primary_value
     ),
     prefer_severity  = merge_prefer_severity(
-      values, patient_classes, primary_value
+      values, patient_classes, primary_value, from_inpatient
     ),
     follow_severity  = merge_follow_severity(
       values, patient_classes, primary_value, severity_row
@@ -452,27 +459,35 @@ merge_prefer_admission <- function(values, patient_classes, primary_value) {
 
 #' @rdname merge_strategies
 disposition_severity <- function(x) {
-  # ESSENCE's DispositionCategory has five values: DECEASED, ADMIT,
-  # TRANSFERRED, DISCHARGED, and UNKNOWN. Matching ignores case and
-  # surrounding spaces. A value outside that list ranks with DISCHARGED, so
-  # it never outranks a recognized death or onward care ----
+  # ESSENCE's DispositionCategory has five values: DECEASED, TRANSFERRED,
+  # DISCHARGED, ADMIT, and UNKNOWN. Matching ignores case and surrounding
+  # spaces. DECEASED and TRANSFERRED are outcomes that outrank everything
+  # else. ADMIT and DISCHARGED rank equally: an ADMIT on the ED record is
+  # superseded by whatever the inpatient record says happened next, and the
+  # tie goes to the inpatient pull's record (see severity_row_index()). A
+  # value outside the list ranks with them ----
   value <- toupper(trimws(as.character(x)))
   rank  <- rep(1L, length(value))
-  rank[value %in% c("ADMIT", "TRANSFERRED")] <- 2L
-  rank[value %in% "DECEASED"]                <- 3L
+  rank[value %in% "TRANSFERRED"] <- 2L
+  rank[value %in% "DECEASED"]    <- 3L
   rank[is.na(value) | value %in% c("", "UNKNOWN")] <- 0L
   rank
 }
 
 #' @rdname merge_strategies
-severity_row_index <- function(values, patient_classes, primary_value) {
+severity_row_index <- function(values, patient_classes, primary_value,
+                               from_inpatient = rep(FALSE, length(values))) {
   severity <- disposition_severity(values)
   if (all(severity == 0L)) return(NA_integer_)
 
   # The most severe disposition wins whichever record carries it. Among
-  # equally severe values the admission-class record's value is kept (as
-  # `prefer_admission` does), then the primary row's, then the first ----
+  # equally severe values the inpatient pull's record wins (the ED record
+  # holds what was known at ED discharge, and the result must not depend on
+  # whether that ED record also carries HasBeenAdmitted), then another
+  # admission-class row, then the primary row's, then the first ----
   top_idx <- which(severity == max(severity))
+  inpatient_idx <- top_idx[from_inpatient[top_idx]]
+  if (length(inpatient_idx) > 0L) return(inpatient_idx[1L])
   admission_classes <- c("Inpatient", "Direct Admit", "Admitted")
   admitted_idx <- top_idx[patient_classes[top_idx] %in% admission_classes]
   if (length(admitted_idx) > 0L) return(admitted_idx[1L])
@@ -483,8 +498,11 @@ severity_row_index <- function(values, patient_classes, primary_value) {
 }
 
 #' @rdname merge_strategies
-merge_prefer_severity <- function(values, patient_classes, primary_value) {
-  row <- severity_row_index(values, patient_classes, primary_value)
+merge_prefer_severity <- function(values, patient_classes, primary_value,
+                                  from_inpatient = rep(FALSE, length(values))) {
+  row <- severity_row_index(
+    values, patient_classes, primary_value, from_inpatient
+  )
   if (is.na(row)) return(primary_value)
   values[row]
 }
@@ -493,7 +511,7 @@ merge_prefer_severity <- function(values, patient_classes, primary_value) {
 merge_follow_severity <- function(values, patient_classes, primary_value,
                                   severity_row) {
   # A companion field (Discharge_Disposition) keeps the value from the very
-  # record whose DispositionCategory won, so the two never disagree. When
+  # record whose DispositionCategory won, so the two agree. When
   # that record has no value, the usual prefer_admission value is used
   # rather than dropping a known one ----
   if (!is.na(severity_row)) {
@@ -504,7 +522,8 @@ merge_follow_severity <- function(values, patient_classes, primary_value,
 }
 
 #' @rdname merge_strategies
-mark_death_from_disposition <- function(result, merge_fields) {
+mark_death_from_disposition <- function(result, merge_fields,
+                                        reference = result) {
   # C_Death is brought into line with the merged disposition: when any
   # record in the episode names a death, the episode's C_Death is affirmative
   # even if the record that carried the death left it unmarked. Only the
@@ -523,17 +542,22 @@ mark_death_from_disposition <- function(result, merge_fields) {
   )
   if (!any(died)) return(result)
 
-  current <- result[["c_death"]]
-  yes <- if (is.integer(current)) {
+  # The coding is read from the whole column (`reference`), not just the
+  # linked episodes: a text column holding only "0"/"1" stays 0/1 coded even
+  # when every linked row says "0" ----
+  coding <- reference[["c_death"]]
+  seen   <- tolower(as.character(coding[!is.na(coding)]))
+  yes <- if (is.integer(coding)) {
     1L
-  } else if (is.numeric(current)) {
+  } else if (is.numeric(coding)) {
     1
-  } else if (any(tolower(as.character(current)) == "1", na.rm = TRUE)) {
+  } else if (length(seen) > 0L && all(seen %in% c("0", "1"))) {
     "1"
   } else {
     "Yes"
   }
-  is_yes <- tolower(as.character(current)) %in% c("yes", "1")
+  current <- result[["c_death"]]
+  is_yes  <- tolower(as.character(current)) %in% c("yes", "1")
   result[["c_death"]][died & !is_yes] <- yes
   result
 }

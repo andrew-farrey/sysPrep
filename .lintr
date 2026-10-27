@@ -1,6 +1,6 @@
 linters: linters_with_defaults(line_length_linter(80L))
 exclusions: list(
-    "R/link_encounters.R" = 231L,
+    "R/link_encounters.R" = 239L,
     "data-raw",
     "tests/testthat"
   )

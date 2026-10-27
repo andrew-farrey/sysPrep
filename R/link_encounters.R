@@ -100,22 +100,30 @@
 #'     back to the primary row's value.}
 #'   \item{`"prefer_severity"`}{For `DispositionCategory`, keeps the most
 #'     severe value in the episode, whichever record carries it: `DECEASED`
-#'     ranks above `TRANSFERRED` and `ADMIT` (equal), which rank above
-#'     `DISCHARGED`, which ranks above `UNKNOWN` and a missing value. This is
+#'     ranks above `TRANSFERRED`, which ranks above `DISCHARGED` and `ADMIT`
+#'     (equal), which rank above `UNKNOWN` and a missing value. This is
 #'     the default for `DispositionCategory`, so an ED record closed as
 #'     `DISCHARGED` does not hide a death or a transfer recorded on the linked
 #'     inpatient record, whichever of the two records has the
 #'     `HasBeenAdmitted` flag. Whenever the merged value is `DECEASED`,
 #'     `C_Death` is also set to affirmative for that episode (using the form
-#'     already in the column: `"Yes"`, `"1"`, or `1`). Among equally severe
-#'     values the admission-class row's value is kept.}
+#'     already in the column, read from the whole column: `"Yes"`, `"1"`, or
+#'     `1`). This derives `C_Death` from the merged category, so it can
+#'     change a `"No"` that both records carried; it applies only to linked
+#'     episodes, and a record that is not linked is never changed. Among
+#'     equally severe values the inpatient pull's record wins, because it
+#'     reflects the whole encounter of care: an ED `ADMIT` gives way to the
+#'     inpatient record's `DISCHARGED`, and the result does not depend on
+#'     whether the ED record also carries `HasBeenAdmitted`. Then another
+#'     admission-class row's value is kept.}
 #'   \item{`"follow_severity"`}{Takes the value from the same record whose
 #'     `prefer_severity` field won (the first such field in `merge_fields`).
-#'     This is the default for `Discharge_Disposition`, so it always comes
-#'     from the record that supplied `DispositionCategory` and the two never
-#'     disagree. If that record has no value for the field, or no
-#'     `prefer_severity` field is present, the `"prefer_admission"` value is
-#'     used instead.}
+#'     This is the default for `Discharge_Disposition`, so it comes from the
+#'     record that supplied `DispositionCategory` and the two agree whenever
+#'     that record has a value for it. If that record has no value for the
+#'     field, or no `prefer_severity` field is present, the
+#'     `"prefer_admission"` value is used instead (so the two can then
+#'     differ, rather than dropping a value that is known).}
 #' }
 #'
 #' Any column not a `HasBeen_` flag and not listed in `merge_fields` takes
@@ -306,9 +314,8 @@
 #'
 #' ## Episode metadata columns
 #' Present regardless of `return_format`. In collapsed output, these
-#' describe the episode the collapsed row was built from (e.g.
-#' `.episode_n_rows = 2` on a collapsed row means two original records were
-#' merged into it).
+#' describe the episode the collapsed row was built from. `.episode_n_rows`
+#' counts patient-class rows, not records (see below).
 #' \describe{
 #'   \item{`.episode_id`}{A character key combining `facility_col` and
 #'     `visit_col`, shared across all rows belonging to the same care
@@ -320,8 +327,12 @@
 #'   \item{`.patient_class_sequence`}{All patient classes for the episode
 #'     in chronological order and collapsed, e.g., `"Direct Admit->ED"`
 #'     when the direct admit occurred first; see Details.}
-#'   \item{`.episode_n_rows`}{Number of original rows the episode was built
-#'     from before merging.}
+#'   \item{`.episode_n_rows`}{Number of patient-class rows the episode was
+#'     built from before merging. A record carrying several patient classes
+#'     contributes one row per class, so an ED record with
+#'     `HasBeenAdmitted = 1` plus a linked inpatient record gives 3, and one
+#'     unlinked ED record with an `E` and an `I` class gives 2. Do not use
+#'     `.episode_n_rows > 1` on its own to count linked episodes.}
 #'   \item{`.index_encounter`}{In long format, `TRUE` on exactly one row per
 #'     episode: the row the collapsed output is built from, which is the
 #'     episode's first `"ED"` row if it has one, else its first row. Summing
@@ -548,8 +559,12 @@ link_encounters <- function(ed_data,
   inform_same_pull_duplicates(ed_long, episode_id_vec, verbose)
   result <- add_episode_metadata(ed_long, episode_id_vec)
 
-  if (return_format == "collapsed") {
-    result <- collapse_episodes(result, merge_fields, merge_delimiter)
+  # `.link_pull` is kept until the collapse, which uses it to break ties
+  # between equally severe dispositions ----
+  result <- if (return_format == "collapsed") {
+    collapse_episodes(result, merge_fields, merge_delimiter)
+  } else {
+    dplyr::select(result, -dplyr::any_of(".link_pull"))
   }
 
   finish_names(result, clean_names, name_map)

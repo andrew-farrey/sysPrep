@@ -31,7 +31,8 @@ merge_field_value(
   primary_value,
   strategy,
   delimiter,
-  severity_row = NA_integer_
+  severity_row = NA_integer_,
+  from_inpatient = rep(FALSE, length(values))
 )
 
 merge_concat(values, primary_value)
@@ -48,13 +49,23 @@ merge_prefer_admission(values, patient_classes, primary_value)
 
 disposition_severity(x)
 
-severity_row_index(values, patient_classes, primary_value)
+severity_row_index(
+  values,
+  patient_classes,
+  primary_value,
+  from_inpatient = rep(FALSE, length(values))
+)
 
-merge_prefer_severity(values, patient_classes, primary_value)
+merge_prefer_severity(
+  values,
+  patient_classes,
+  primary_value,
+  from_inpatient = rep(FALSE, length(values))
+)
 
 merge_follow_severity(values, patient_classes, primary_value, severity_row)
 
-mark_death_from_disposition(result, merge_fields)
+mark_death_from_disposition(result, merge_fields, reference = result)
 }
 \arguments{
 \item{merge_fields}{A named character vector mapping column names to
@@ -90,8 +101,8 @@ for in it.}
 returns \code{merge_fields} invisibly, or aborts. The \verb{merge_*()} functions
 and \code{merge_field_value()} return a single merged value.
 \code{contains_whole()} returns a single logical. \code{disposition_severity()}
-returns an integer rank per value (0 unknown or missing, 1 discharged,
-2 admit or transferred, 3 deceased). \code{severity_row_index()} returns an
+returns an integer rank per value (0 unknown or missing, 1 discharged or
+admit, 2 transferred, 3 deceased). \code{severity_row_index()} returns an
 integer position or \code{NA}. \code{mark_death_from_disposition()} returns
 \code{result}.
 }
@@ -133,20 +144,26 @@ Admitted), if that row has a non-missing value; otherwise
 \code{primary_value}.}
 \item{\code{prefer_severity}}{For \code{DispositionCategory}: the most severe value
 across the episode's rows, whichever record carries it. \code{DECEASED}
-ranks above \code{TRANSFERRED} and \code{ADMIT} (equal), which rank above
-\code{DISCHARGED}, which ranks above \code{UNKNOWN} and a missing value
+ranks above \code{TRANSFERRED}, which ranks above \code{DISCHARGED} and \code{ADMIT}
+(equal), which rank above \code{UNKNOWN} and a missing value
 (\code{disposition_severity()}, ignoring case). A value outside the five
 ESSENCE categories ranks with \code{DISCHARGED}. Among equally severe
-values the admission-class row's value is kept, then the primary
-row's. After the episode is merged, \code{mark_death_from_disposition()}
-sets \code{C_Death} to affirmative for any episode whose merged value is
-\code{DECEASED}.}
+values the inpatient pull's record wins: it reflects the whole
+encounter of care, so an ED \code{ADMIT} gives way to the inpatient
+record's \code{DISCHARGED}, and the result does not depend on whether the
+ED record also carries \code{HasBeenAdmitted}. Then another admission-class
+row's value is kept, then the primary row's. After the episode
+is merged, \code{mark_death_from_disposition()} sets \code{C_Death} to
+affirmative for any linked episode whose merged value is \code{DECEASED},
+in the coding read from the whole \code{C_Death} column; unlinked records
+are never changed.}
 \item{\code{follow_severity}}{The value from the same record whose
 \code{prefer_severity} field won (the first such field in \code{merge_fields}),
-so a companion field such as \code{Discharge_Disposition} always comes from
-the record that supplied \code{DispositionCategory}. If that record has no
+so a companion field such as \code{Discharge_Disposition} comes from the
+record that supplied \code{DispositionCategory}. If that record has no
 value for the field, or there is no \code{prefer_severity} field, the
-\code{prefer_admission} value is used instead.}
+\code{prefer_admission} value is used instead, so the two fields can then
+differ.}
 }
 
 \code{check_merge_fields()} aborts, attributed to \code{\link[=link_encounters]{link_encounters()}}, unless
