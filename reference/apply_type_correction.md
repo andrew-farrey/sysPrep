@@ -54,7 +54,7 @@ preview_type_corrections(
 
 inform_dropped_types(data, type_col_str, keep_types, verbose)
 
-warn_if_no_rows(result, keep_types)
+warn_if_no_rows(data, result, type_col_str, keep_types)
 ```
 
 ## Arguments
@@ -122,7 +122,9 @@ warn_if_no_rows(result, keep_types)
 
 - result:
 
-  The filtered data frame.
+  The filtered data frame. `warn_if_no_rows()` also takes `data`, the
+  unfiltered input, to tell an empty input from a filter that matched
+  nothing.
 
 ## Value
 
