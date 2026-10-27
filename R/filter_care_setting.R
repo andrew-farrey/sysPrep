@@ -307,7 +307,7 @@ filter_care_setting <- function(data,
   ) |>
     dplyr::select(-.original_facility_type)
 
-  warn_if_no_rows(result, keep_types)
+  warn_if_no_rows(data, result, type_col_str, keep_types)
 
   finish_names(result, clean_names, name_map)
 }

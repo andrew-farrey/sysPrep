@@ -13,6 +13,12 @@
   many episodes hold more than one record from the same pull (the same
   facility and visit more than once in a pull), which are merged into one
   episode; run `dedupe()` on each pull first. It changes no output.
+* **Clearer warning:** when `filter_care_setting()` leaves no rows, the warning
+  now says why. It lists the `FacilityType` values the data held next to
+  `keep_types`, names a value that differs from a `keep_types` entry only in
+  letter case, and, for an input with no rows, says there was nothing to
+  filter (it previously blamed `keep_types` matching). Still a warning, and
+  the output is unchanged.
 * **Wording:** the package description and the encounter-linkage vignette
   title now say "improved burden estimation" rather than "accurate".
 * **Behavior change:** `link_encounters()` now keeps the most severe

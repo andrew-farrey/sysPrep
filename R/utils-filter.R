@@ -41,7 +41,9 @@
 #' @param use_facility_id Logical. Whether the ID column is present, so it is
 #'   included in the preview.
 #' @param keep_types Character vector of facility types to keep.
-#' @param result The filtered data frame.
+#' @param result The filtered data frame. `warn_if_no_rows()` also takes
+#'   `data`, the unfiltered input, to tell an empty input from a filter that
+#'   matched nothing.
 #' @param verbose Logical. Whether to emit informational messages.
 #' @param call The environment errors are attributed to; see
 #'   [resolve_col()].
@@ -226,17 +228,46 @@ inform_dropped_types <- function(data, type_col_str, keep_types, verbose) {
 }
 
 #' @rdname apply_type_correction
-warn_if_no_rows <- function(result, keep_types) {
-  if (nrow(result) == 0L) {
-    rlang::warn(
-      paste0(
-        "No rows remain after filtering. `keep_types` values (",
-        paste(keep_types, collapse = ", "),
-        ") did not match any `FacilityType` values in data. ",
-        "Check for exact case match; ESSENCE facility type values ",
-        "are title case by default (e.g., \"Emergency Care\", not ",
-        "\"emergency care\")."
-      )
-    )
+warn_if_no_rows <- function(data, result, type_col_str, keep_types) {
+  if (nrow(result) > 0L) {
+    return(invisible(NULL))
   }
+
+  if (nrow(data) == 0L) {
+    rlang::warn(paste0(
+      "No rows remain after filtering. `data` has no rows, so there is ",
+      "nothing to filter."
+    ))
+    return(invisible(NULL))
+  }
+
+  present <- unique(stats::na.omit(as.character(data[[type_col_str]])))
+  present_text <- if (length(present) > 0L) {
+    paste0("(", paste(present, collapse = ", "), ")")
+  } else {
+    "(all missing)"
+  }
+
+  # Matching is exact, so name any value that differs from a keep_types entry
+  # only by letter case ----
+  case_only <- present[
+    tolower(present) %in% tolower(keep_types) & !present %in% keep_types
+  ]
+  case_hint <- if (length(case_only) > 0L) {
+    paste0(
+      " Matching is exact; ",
+      paste0("\"", case_only, "\"", collapse = ", "),
+      " differs from a `keep_types` value only in letter case."
+    )
+  } else {
+    ""
+  }
+
+  rlang::warn(
+    paste0(
+      "No rows remain after filtering. None of the `FacilityType` values in ",
+      "the data ", present_text, " is in `keep_types` (",
+      paste(keep_types, collapse = ", "), ").", case_hint
+    )
+  )
 }

@@ -58,7 +58,7 @@ preview_type_corrections(
 
 inform_dropped_types(data, type_col_str, keep_types, verbose)
 
-warn_if_no_rows(result, keep_types)
+warn_if_no_rows(data, result, type_col_str, keep_types)
 }
 \arguments{
 \item{data}{A data frame already passed through \code{\link[=clean_names_safe]{clean_names_safe()}},
@@ -94,7 +94,9 @@ included in the preview.}
 
 \item{keep_types}{Character vector of facility types to keep.}
 
-\item{result}{The filtered data frame.}
+\item{result}{The filtered data frame. \code{warn_if_no_rows()} also takes
+\code{data}, the unfiltered input, to tell an empty input from a filter that
+matched nothing.}
 }
 \value{
 \code{resolve_facility_id_str()} returns a string.

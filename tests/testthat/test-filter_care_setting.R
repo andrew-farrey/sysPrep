@@ -70,6 +70,37 @@ test_that("filter_care_setting() warns on empty result", {
   )
 })
 
+test_that("filter_care_setting() empty-result warning lists the types present", {
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(FacilityType = "Primary Care")
+  w <- expect_warning(filter_care_setting(data), "No rows remain")
+  expect_match(conditionMessage(w), "Primary Care", fixed = TRUE)
+  expect_match(conditionMessage(w), "Emergency Care", fixed = TRUE)
+  expect_no_match(conditionMessage(w), "letter case")
+})
+
+test_that("filter_care_setting() empty-result warning names a case-only mismatch", {
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(FacilityType = "emergency care")
+  w <- expect_warning(filter_care_setting(data), "No rows remain")
+  expect_match(conditionMessage(w), "\"emergency care\"", fixed = TRUE)
+  expect_match(conditionMessage(w), "letter case", fixed = TRUE)
+})
+
+test_that("filter_care_setting() empty-result warning handles all-missing types", {
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(FacilityType = NA_character_)
+  w <- expect_warning(filter_care_setting(data), "No rows remain")
+  expect_match(conditionMessage(w), "all missing", fixed = TRUE)
+})
+
+test_that("filter_care_setting() says an empty input has nothing to filter", {
+  data <- make_essence_data(n = 5L)[0L, ]
+  w <- expect_warning(filter_care_setting(data), "No rows remain")
+  expect_match(conditionMessage(w), "has no rows", fixed = TRUE)
+  expect_no_match(conditionMessage(w), "keep_types")
+})
+
 test_that("filter_care_setting() warns on unmatched fix_facility_type_vector names during dry_run", {
   data <- make_essence_data(n = 5L)
   expect_warning(
