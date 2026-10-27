@@ -18,7 +18,8 @@ merge_field_value(
   primary_value,
   strategy,
   delimiter,
-  severity_row = NA_integer_
+  severity_row = NA_integer_,
+  from_inpatient = rep(FALSE, length(values))
 )
 
 merge_concat(values, primary_value)
@@ -35,13 +36,23 @@ merge_prefer_admission(values, patient_classes, primary_value)
 
 disposition_severity(x)
 
-severity_row_index(values, patient_classes, primary_value)
+severity_row_index(
+  values,
+  patient_classes,
+  primary_value,
+  from_inpatient = rep(FALSE, length(values))
+)
 
-merge_prefer_severity(values, patient_classes, primary_value)
+merge_prefer_severity(
+  values,
+  patient_classes,
+  primary_value,
+  from_inpatient = rep(FALSE, length(values))
+)
 
 merge_follow_severity(values, patient_classes, primary_value, severity_row)
 
-mark_death_from_disposition(result, merge_fields)
+mark_death_from_disposition(result, merge_fields, reference = result)
 ```
 
 ## Format
@@ -104,7 +115,7 @@ mark_death_from_disposition(result, merge_fields)
 `merge_fields` invisibly, or aborts. The `merge_*()` functions and
 `merge_field_value()` return a single merged value. `contains_whole()`
 returns a single logical. `disposition_severity()` returns an integer
-rank per value (0 unknown or missing, 1 discharged, 2 admit or
+rank per value (0 unknown or missing, 1 discharged or admit, 2
 transferred, 3 deceased). `severity_row_index()` returns an integer
 position or `NA`. `mark_death_from_disposition()` returns `result`.
 
@@ -158,23 +169,28 @@ The strategies are:
 
   For `DispositionCategory`: the most severe value across the episode's
   rows, whichever record carries it. `DECEASED` ranks above
-  `TRANSFERRED` and `ADMIT` (equal), which rank above `DISCHARGED`,
-  which ranks above `UNKNOWN` and a missing value
+  `TRANSFERRED`, which ranks above `DISCHARGED` and `ADMIT` (equal),
+  which rank above `UNKNOWN` and a missing value
   (`disposition_severity()`, ignoring case). A value outside the five
   ESSENCE categories ranks with `DISCHARGED`. Among equally severe
-  values the admission-class row's value is kept, then the primary
-  row's. After the episode is merged, `mark_death_from_disposition()`
-  sets `C_Death` to affirmative for any episode whose merged value is
-  `DECEASED`.
+  values the inpatient pull's record wins: it reflects the whole
+  encounter of care, so an ED `ADMIT` gives way to the inpatient
+  record's `DISCHARGED`, and the result does not depend on whether the
+  ED record also carries `HasBeenAdmitted`. Then another admission-class
+  row's value is kept, then the primary row's. After the episode is
+  merged, `mark_death_from_disposition()` sets `C_Death` to affirmative
+  for any linked episode whose merged value is `DECEASED`, in the coding
+  read from the whole `C_Death` column; unlinked records are never
+  changed.
 
 - `follow_severity`:
 
   The value from the same record whose `prefer_severity` field won (the
   first such field in `merge_fields`), so a companion field such as
-  `Discharge_Disposition` always comes from the record that supplied
+  `Discharge_Disposition` comes from the record that supplied
   `DispositionCategory`. If that record has no value for the field, or
   there is no `prefer_severity` field, the `prefer_admission` value is
-  used instead.
+  used instead, so the two fields can then differ.
 
 `check_merge_fields()` aborts, attributed to
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md),

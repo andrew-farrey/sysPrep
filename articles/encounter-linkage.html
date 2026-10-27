@@ -381,13 +381,18 @@ when the ED row is kept as the surviving primary row. For
 <code>DispositionCategory</code> the strategy is
 <code>"prefer_severity"</code>: the most severe value in the episode is
 kept, whichever record carries it (<code>DECEASED</code>, then
-<code>TRANSFERRED</code> or <code>ADMIT</code>, then
-<code>DISCHARGED</code>, then <code>UNKNOWN</code>), and
+<code>TRANSFERRED</code>, then <code>DISCHARGED</code> and
+<code>ADMIT</code> as equals, then <code>UNKNOWN</code>), and
 <code>C_Death</code> is set to affirmative whenever the merged value is
 <code>DECEASED</code>. An ED record closed as <code>DISCHARGED</code>
 therefore cannot hide a death or a transfer that the linked inpatient
-record reports. <code>Discharge_Disposition</code> takes its value from
-that same record, so the two fields agree.</p>
+record reports. <code>DISCHARGED</code> and <code>ADMIT</code> rank
+equally and the tie goes to the inpatient pull’s record, which reflects
+the whole encounter of care: an ED <code>ADMIT</code> gives way to the
+inpatient record’s <code>DISCHARGED</code>.
+<code>Discharge_Disposition</code> takes its value from that same
+record, so the two fields agree whenever that record has a value for
+it.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">episodes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/link_encounters.html">link_encounters</a></span><span class="op">(</span><span class="va">ed_clean</span>, <span class="va">inpatient_clean</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.</span></span>
@@ -464,10 +469,15 @@ counterpart). This column enables filtering to specific episode types
 <code>filter(.patient_class_sequence == "ED-&gt;Direct Admit")</code> to
 isolate the continuity-break cases) even though the underlying rows have
 already been merged.</p>
-<p><strong><code>.episode_n_rows</code></strong>: The number of original
-rows the episode was built from before merging. Episodes with no linkage
-have <code>.episode_n_rows = 1</code>; episodes merged from an ED row
-and an admission row have <code>.episode_n_rows = 2</code>.</p>
+<p><strong><code>.episode_n_rows</code></strong>: The number of
+patient-class rows the episode was built from before merging. A record
+that carries several patient classes contributes one row per class.
+Episodes with no linkage and a single class have
+<code>.episode_n_rows = 1</code>; an ED row and an admission row give
+<code>.episode_n_rows = 2</code>; an ED record that already carries
+<code>HasBeenAdmitted = 1</code>, linked to an admission record, gives
+3. Do not use <code>.episode_n_rows &gt; 1</code> on its own to count
+linked episodes.</p>
 <p><strong><code>.index_encounter</code></strong>: In collapsed output
 (the default), always <code>TRUE</code>, since every row already
 represents exactly one merged encounter; the column is retained for

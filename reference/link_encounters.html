@@ -281,24 +281,32 @@ back to the primary row's value.</p></dd>
 <dt><code>"prefer_severity"</code></dt>
 <dd><p>For <code>DispositionCategory</code>, keeps the most
 severe value in the episode, whichever record carries it: <code>DECEASED</code>
-ranks above <code>TRANSFERRED</code> and <code>ADMIT</code> (equal), which rank above
-<code>DISCHARGED</code>, which ranks above <code>UNKNOWN</code> and a missing value. This is
+ranks above <code>TRANSFERRED</code>, which ranks above <code>DISCHARGED</code> and <code>ADMIT</code>
+(equal), which rank above <code>UNKNOWN</code> and a missing value. This is
 the default for <code>DispositionCategory</code>, so an ED record closed as
 <code>DISCHARGED</code> does not hide a death or a transfer recorded on the linked
 inpatient record, whichever of the two records has the
 <code>HasBeenAdmitted</code> flag. Whenever the merged value is <code>DECEASED</code>,
 <code>C_Death</code> is also set to affirmative for that episode (using the form
-already in the column: <code>"Yes"</code>, <code>"1"</code>, or <code>1</code>). Among equally severe
-values the admission-class row's value is kept.</p></dd>
+already in the column, read from the whole column: <code>"Yes"</code>, <code>"1"</code>, or
+<code>1</code>). This derives <code>C_Death</code> from the merged category, so it can
+change a <code>"No"</code> that both records carried; it applies only to linked
+episodes, and a record that is not linked is never changed. Among
+equally severe values the inpatient pull's record wins, because it
+reflects the whole encounter of care: an ED <code>ADMIT</code> gives way to the
+inpatient record's <code>DISCHARGED</code>, and the result does not depend on
+whether the ED record also carries <code>HasBeenAdmitted</code>. Then another
+admission-class row's value is kept.</p></dd>
 
 <dt><code>"follow_severity"</code></dt>
 <dd><p>Takes the value from the same record whose
 <code>prefer_severity</code> field won (the first such field in <code>merge_fields</code>).
-This is the default for <code>Discharge_Disposition</code>, so it always comes
-from the record that supplied <code>DispositionCategory</code> and the two never
-disagree. If that record has no value for the field, or no
-<code>prefer_severity</code> field is present, the <code>"prefer_admission"</code> value is
-used instead.</p></dd>
+This is the default for <code>Discharge_Disposition</code>, so it comes from the
+record that supplied <code>DispositionCategory</code> and the two agree whenever
+that record has a value for it. If that record has no value for the
+field, or no <code>prefer_severity</code> field is present, the
+<code>"prefer_admission"</code> value is used instead (so the two can then
+differ, rather than dropping a value that is known).</p></dd>
 
 
 </dl><p>Any column not a <code>HasBeen_</code> flag and not listed in <code>merge_fields</code> takes
@@ -494,9 +502,8 @@ missing both <code>visit_col</code> and <code>fallback_visit_col</code> (or miss
 
 
 <p>Present regardless of <code>return_format</code>. In collapsed output, these
-describe the episode the collapsed row was built from (e.g.
-<code>.episode_n_rows = 2</code> on a collapsed row means two original records were
-merged into it).</p><dl><dt><code>.episode_id</code></dt>
+describe the episode the collapsed row was built from. <code>.episode_n_rows</code>
+counts patient-class rows, not records (see below).</p><dl><dt><code>.episode_id</code></dt>
 <dd><p>A character key combining <code>facility_col</code> and
 <code>visit_col</code>, shared across all rows belonging to the same care
 episode. A row with a missing <code>facility_col</code> or <code>visit_col</code> value
@@ -511,8 +518,12 @@ in chronological order and collapsed, e.g., <code>"Direct Admit-&gt;ED"</code>
 when the direct admit occurred first; see Details.</p></dd>
 
 <dt><code>.episode_n_rows</code></dt>
-<dd><p>Number of original rows the episode was built
-from before merging.</p></dd>
+<dd><p>Number of patient-class rows the episode was
+built from before merging. A record carrying several patient classes
+contributes one row per class, so an ED record with
+<code>HasBeenAdmitted = 1</code> plus a linked inpatient record gives 3, and one
+unlinked ED record with an <code>E</code> and an <code>I</code> class gives 2. Do not use
+<code>.episode_n_rows &gt; 1</code> on its own to count linked episodes.</p></dd>
 
 <dt><code>.index_encounter</code></dt>
 <dd><p>In long format, <code>TRUE</code> on exactly one row per

@@ -28,30 +28,37 @@
   now keeps the most severe `DispositionCategory` in a linked episode,
   whichever record carries it. The default strategy for that field is
   the new `"prefer_severity"` (replacing `"prefer_admission"`):
-  `DECEASED` ranks above `TRANSFERRED` and `ADMIT` (equal), which rank
-  above `DISCHARGED`, which ranks above `UNKNOWN` and a missing value.
+  `DECEASED` ranks above `TRANSFERRED`, which ranks above `DISCHARGED`
+  and `ADMIT` (equal), which rank above `UNKNOWN` and a missing value.
   Previously the first admission-class row’s value won, so an ED record
   that also carried `HasBeenAdmitted = 1` and read `DISCHARGED` could
   hide a death or transfer on the linked inpatient record. When the
   merged value is `DECEASED`, `C_Death` is also set to affirmative for
-  that episode (`"Yes"` for ESSENCE’s own `Yes`/`No`; `"1"` or `1` when
-  the column is already 0/1). `Discharge_Disposition` now uses the new
-  `"follow_severity"` strategy: it takes the value from the same record
-  that supplied `DispositionCategory`, so the two fields never disagree
-  (when that record has no value, the `"prefer_admission"` value is
-  used). Episodes whose records agree are unchanged. To keep the old
-  behavior, pass `merge_fields` with `"prefer_admission"` for these
-  fields.
+  that linked episode (`"Yes"` for ESSENCE’s own `Yes`/`No`; `"1"` or
+  `1` when the column is already 0/1, read from the whole column so a
+  text `"0"`/`"1"` column stays 0/1). This derives `C_Death` from the
+  category, so it can change a `"No"` that both records carried, and a
+  record that is not linked is never changed. Equally severe values
+  (`ADMIT` and `DISCHARGED`) resolve to the inpatient pull’s record,
+  which reflects the whole encounter of care: an ED `ADMIT` gives way to
+  the inpatient record’s `DISCHARGED`, and the result does not depend on
+  whether the ED record also carries `HasBeenAdmitted`.
+  `Discharge_Disposition` now uses the new `"follow_severity"` strategy:
+  it takes the value from the same record that supplied
+  `DispositionCategory`, so the two fields agree whenever that record
+  has a value (when it has none, the `"prefer_admission"` value is used
+  and the two can differ). Episodes whose records agree are unchanged.
+  To keep the old behavior, pass `merge_fields` with
+  `"prefer_admission"` for these fields.
 - **Bug fix:**
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   split a record with a missing `facility_col` or `visit_col` value into
   one visit per patient class (an `"ED"` row and an `"Admitted"` row
   from one `HasBeenE = 1`, `HasBeenAdmitted = 1` record became two
-  collapsed rows, counted twice). The record now stays one episode with
-  `.episode_n_rows` of 2, and the missing-key message counts records.
-  Records with a single patient class, and every record with a key, are
-  unchanged; only the numeric suffix of `.episode_id` after such a
-  record can shift.
+  collapsed rows, counted twice). The record now stays one episode, and
+  the missing-key message counts records. Records with a single patient
+  class, and every record with a key, are unchanged; only the numeric
+  suffix of `.episode_id` after such a record can shift.
 - **Bug fix:** numeric identifiers of 16 or more digits were written in
   scientific notation and rounded when held as text, so two different
   `Visit_ID` values could link as one visit in
@@ -79,7 +86,10 @@
   `"Direct Admit"` whatever its own `C_Patient_Class_List` says, and
   recommends reading key columns as text.
   [`assign_treating_geography()`](https://andrew-farrey.github.io/sysPrep/reference/assign_treating_geography.md)’s
-  `@return` says when `region_col` is overwritten.
+  `@return` says when `region_col` is overwritten. `.episode_n_rows` is
+  documented as the number of patient-class rows (a record carrying
+  several classes counts once per class), not the number of records, so
+  it should not be used on its own to count linked episodes.
 
 ## sysPrep 0.1.0
 
