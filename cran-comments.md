@@ -15,8 +15,12 @@ Local and GitHub Actions: 0 errors | 0 warnings | 0 notes. The win-builder
   ucrt), x86_64-w64-mingw32): checked 2026-09-01, re-checked same day
   after fixes below: 1 NOTE, only the two expected/false-positive
   sub-items remain (see below).
-  win-builder (R-release): TODO, run via `devtools::check_win_release()`
-  and replace this line with actual results
+  win-builder (R-release, R 4.6.1, Windows Server 2022): checked
+  2026-10-27 on version 0.1.0.9000: 1 NOTE (new submission; the development
+  version number, which goes away when submitting a release version; the
+  same two expected spelling false positives as above). Examples, tests,
+  vignettes and the manual all built and passed
+  (<https://win-builder.r-project.org/Nn3MCfWMyEHG/>)
 * R-hub: TODO, run `rhub::rhub_check()` (the workflow is already in
   `.github/workflows/rhub.yaml`), and replace this line with actual results
 
