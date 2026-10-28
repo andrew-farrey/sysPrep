@@ -56,9 +56,21 @@ preview_type_corrections(
   keep_types
 )
 
-inform_dropped_types(data, type_col_str, keep_types, verbose)
+inform_dropped_types(
+  data,
+  type_col_str,
+  keep_types,
+  verbose,
+  type_col_label = type_col_str
+)
 
-warn_if_no_rows(data, result, type_col_str, keep_types)
+warn_if_no_rows(
+  data,
+  result,
+  type_col_str,
+  keep_types,
+  type_col_label = type_col_str
+)
 }
 \arguments{
 \item{data}{A data frame already passed through \code{\link[=clean_names_safe]{clean_names_safe()}},
@@ -93,6 +105,11 @@ route, which the regex route skips.}
 included in the preview.}
 
 \item{keep_types}{Character vector of facility types to keep.}
+
+\item{type_col_label}{The facility type column's name as the caller wrote
+it (for example \code{FacilityType}), used in the messages from
+\code{inform_dropped_types()} and \code{warn_if_no_rows()}. Defaults to
+\code{type_col_str}.}
 
 \item{result}{The filtered data frame. \code{warn_if_no_rows()} also takes
 \code{data}, the unfiltered input, to tell an empty input from a filter that

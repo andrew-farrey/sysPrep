@@ -298,8 +298,13 @@ filter_care_setting <- function(data,
     )
   }
 
+  # Name the type column as the input spelled it in messages ----
+  type_col_label <- unname(name_map)[match(type_col_str, names(name_map))]
+
   # Filter to keep_types, reporting what was dropped ----
-  inform_dropped_types(data, type_col_str, keep_types, verbose)
+  inform_dropped_types(
+    data, type_col_str, keep_types, verbose, type_col_label = type_col_label
+  )
 
   result <- dplyr::filter(
     data,
@@ -307,7 +312,9 @@ filter_care_setting <- function(data,
   ) |>
     dplyr::select(-.original_facility_type)
 
-  warn_if_no_rows(data, result, type_col_str, keep_types)
+  warn_if_no_rows(
+    data, result, type_col_str, keep_types, type_col_label = type_col_label
+  )
 
   finish_names(result, clean_names, name_map)
 }

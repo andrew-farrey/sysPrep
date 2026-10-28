@@ -18,7 +18,9 @@
   `keep_types`, names a value that differs from a `keep_types` entry only in
   letter case, and, for an input with no rows, says there was nothing to
   filter (it previously blamed `keep_types` matching). Still a warning, and
-  the output is unchanged.
+  the output is unchanged. This warning and the "values not in `keep_types`"
+  message now name the column passed as `facility_type_col` instead of always
+  saying `FacilityType`.
 * **Wording:** the package description and the encounter-linkage vignette
   title now say "improved burden estimation" rather than "accurate".
 * **Behavior change:** `link_encounters()` now keeps the most severe

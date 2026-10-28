@@ -101,6 +101,26 @@ test_that("filter_care_setting() says an empty input has nothing to filter", {
   expect_no_match(conditionMessage(w), "keep_types")
 })
 
+test_that("filter_care_setting() messages name a custom facility_type_col", {
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(SettingType = "Primary Care")
+  w <- expect_warning(
+    msg <- testthat::capture_messages(
+      filter_care_setting(data, facility_type_col = SettingType)
+    ),
+    "No rows remain"
+  )
+  expect_match(conditionMessage(w), "`SettingType` values", fixed = TRUE)
+  expect_match(paste(msg, collapse = ""), "`SettingType` values", fixed = TRUE)
+})
+
+test_that("filter_care_setting() messages use the default column's name", {
+  data <- make_essence_data(n = 5L) |>
+    dplyr::mutate(FacilityType = "Primary Care")
+  w <- expect_warning(filter_care_setting(data), "No rows remain")
+  expect_match(conditionMessage(w), "`FacilityType` values", fixed = TRUE)
+})
+
 test_that("filter_care_setting() warns on unmatched fix_facility_type_vector names during dry_run", {
   data <- make_essence_data(n = 5L)
   expect_warning(

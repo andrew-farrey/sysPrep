@@ -41,6 +41,10 @@
 #' @param use_facility_id Logical. Whether the ID column is present, so it is
 #'   included in the preview.
 #' @param keep_types Character vector of facility types to keep.
+#' @param type_col_label The facility type column's name as the caller wrote
+#'   it (for example `FacilityType`), used in the messages from
+#'   `inform_dropped_types()` and `warn_if_no_rows()`. Defaults to
+#'   `type_col_str`.
 #' @param result The filtered data frame. `warn_if_no_rows()` also takes
 #'   `data`, the unfiltered input, to tell an empty input from a filter that
 #'   matched nothing.
@@ -212,14 +216,15 @@ preview_type_corrections <- function(data, fac_col_str, type_col_str,
 }
 
 #' @rdname apply_type_correction
-inform_dropped_types <- function(data, type_col_str, keep_types, verbose) {
+inform_dropped_types <- function(data, type_col_str, keep_types, verbose,
+                                 type_col_label = type_col_str) {
   dropped_types <- setdiff(unique(data[[type_col_str]]), keep_types)
 
   if (length(dropped_types) > 0L) {
     inform_if(
       verbose,
       paste0(
-        "The following `FacilityType` values are not in `keep_types` ",
+        "The following `", type_col_label, "` values are not in `keep_types` ",
         "and will be excluded:\n",
         paste0("  - ", dropped_types, collapse = "\n")
       )
@@ -228,7 +233,8 @@ inform_dropped_types <- function(data, type_col_str, keep_types, verbose) {
 }
 
 #' @rdname apply_type_correction
-warn_if_no_rows <- function(data, result, type_col_str, keep_types) {
+warn_if_no_rows <- function(data, result, type_col_str, keep_types,
+                            type_col_label = type_col_str) {
   if (nrow(result) > 0L) {
     return(invisible(NULL))
   }
@@ -265,8 +271,8 @@ warn_if_no_rows <- function(data, result, type_col_str, keep_types) {
 
   rlang::warn(
     paste0(
-      "No rows remain after filtering. None of the `FacilityType` values in ",
-      "the data ", present_text, " is in `keep_types` (",
+      "No rows remain after filtering. None of the `", type_col_label,
+      "` values in the data ", present_text, " is in `keep_types` (",
       paste(keep_types, collapse = ", "), ").", case_hint
     )
   )
