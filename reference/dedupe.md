@@ -313,7 +313,7 @@ essence_raw |>
   dedupe(order_by = Arrived_Date_Time, keep = "last") |>
   filter_care_setting() |>
   assign_treating_geography()
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
+#> The following `facility_type` values are not in `keep_types` and will be excluded:
 #>   - Urgent Care
 #>   - Primary Care
 #>   - Medical Specialty

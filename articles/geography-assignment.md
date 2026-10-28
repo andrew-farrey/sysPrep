@@ -215,7 +215,7 @@ geo_all <- essence_raw |>
   ) |>
   assign_treating_geography() |>
   assign_facility_geography()
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
+#> The following `facility_type` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
 #>   - Medical Specialty
 #> 27 of 160 visits (16.9%) identified as out-of-state or OTHER_REGION and assigned treating facility geography in `region_hybrid`/`zip_code_hybrid`.
@@ -274,7 +274,7 @@ ed_clean <- essence_raw |>
   filter_care_setting(
     fix_facility_type_vector = c("Hillside FSED", "Downtown Emergency Services")
   )
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
+#> The following `facility_type` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
 #>   - Medical Specialty
 

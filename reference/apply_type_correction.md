@@ -52,9 +52,21 @@ preview_type_corrections(
   keep_types
 )
 
-inform_dropped_types(data, type_col_str, keep_types, verbose)
+inform_dropped_types(
+  data,
+  type_col_str,
+  keep_types,
+  verbose,
+  type_col_label = type_col_str
+)
 
-warn_if_no_rows(data, result, type_col_str, keep_types)
+warn_if_no_rows(
+  data,
+  result,
+  type_col_str,
+  keep_types,
+  type_col_label = type_col_str
+)
 ```
 
 ## Arguments
@@ -119,6 +131,12 @@ warn_if_no_rows(data, result, type_col_str, keep_types)
 - keep_types:
 
   Character vector of facility types to keep.
+
+- type_col_label:
+
+  The facility type column's name as the caller wrote it (for example
+  `FacilityType`), used in the messages from `inform_dropped_types()`
+  and `warn_if_no_rows()`. Defaults to `type_col_str`.
 
 - result:
 

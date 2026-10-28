@@ -87,9 +87,21 @@ exported function reads as a short pipeline.</p>
 <span>  <span class="va">keep_types</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">inform_dropped_types</span><span class="op">(</span><span class="va">data</span>, <span class="va">type_col_str</span>, <span class="va">keep_types</span>, <span class="va">verbose</span><span class="op">)</span></span>
+<span><span class="fu">inform_dropped_types</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">type_col_str</span>,</span>
+<span>  <span class="va">keep_types</span>,</span>
+<span>  <span class="va">verbose</span>,</span>
+<span>  type_col_label <span class="op">=</span> <span class="va">type_col_str</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">warn_if_no_rows</span><span class="op">(</span><span class="va">data</span>, <span class="va">result</span>, <span class="va">type_col_str</span>, <span class="va">keep_types</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">warn_if_no_rows</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">result</span>,</span>
+<span>  <span class="va">type_col_str</span>,</span>
+<span>  <span class="va">keep_types</span>,</span>
+<span>  type_col_label <span class="op">=</span> <span class="va">type_col_str</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -153,6 +165,13 @@ included in the preview.</p></dd>
 
 <dt id="arg-keep-types">keep_types<a class="anchor" aria-label="anchor" href="#arg-keep-types"></a></dt>
 <dd><p>Character vector of facility types to keep.</p></dd>
+
+
+<dt id="arg-type-col-label">type_col_label<a class="anchor" aria-label="anchor" href="#arg-type-col-label"></a></dt>
+<dd><p>The facility type column's name as the caller wrote
+it (for example <code>FacilityType</code>), used in the messages from
+<code>inform_dropped_types()</code> and <code>warn_if_no_rows()</code>. Defaults to
+<code>type_col_str</code>.</p></dd>
 
 
 <dt id="arg-result">result<a class="anchor" aria-label="anchor" href="#arg-result"></a></dt>

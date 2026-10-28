@@ -455,7 +455,7 @@ essence_raw |>
       "Hillside FSED", "Downtown Emergency Services"
     )
   )
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
+#> The following `facility_type` values are not in `keep_types` and will be excluded:
 #>   - Primary Care
 #>   - Medical Specialty
 #> # A tibble: 160 × 18

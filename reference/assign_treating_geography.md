@@ -277,7 +277,7 @@ residence.
 ed_clean <- essence_raw |>
   dedupe(order_by = Arrived_Date_Time) |>
   filter_care_setting()
-#> The following `FacilityType` values are not in `keep_types` and will be excluded:
+#> The following `facility_type` values are not in `keep_types` and will be excluded:
 #>   - Urgent Care
 #>   - Primary Care
 #>   - Medical Specialty
