@@ -236,14 +236,16 @@ calls them:
 
 `long_from_has_been_flags()` pivots the `HasBeen_` flags to long format.
 It preserves a copy of each pivoted column under an `_orig` name first,
-since `pivot_longer()` consumes the columns it pivots on. Every
-synthetic row produced from one original record describes that same
-record, so each should keep that record's true `has_been_*` values
-regardless of which flag triggered its own creation: an "Admitted-\>ED"
-escalation splits one row (`HasBeenE = 1`, `HasBeenAdmitted = 1`) into
-two synthetic rows (`ED` and `Admitted`), and both must still show
-`has_been_e = 1` and `has_been_admitted = 1`. Without this, `has_been_*`
-end up `NA` (or, worse, silently wrong after cross-pull
+since `pivot_longer()` consumes the columns it pivots on, and puts the
+restored columns back in their input positions afterwards (the pivot
+itself would leave them after every other column). Every synthetic row
+produced from one original record describes that same record, so each
+should keep that record's true `has_been_*` values regardless of which
+flag triggered its own creation: an "Admitted-\>ED" escalation splits
+one row (`HasBeenE = 1`, `HasBeenAdmitted = 1`) into two synthetic rows
+(`ED` and `Admitted`), and both must still show `has_been_e = 1` and
+`has_been_admitted = 1`. Without this, `has_been_*` end up `NA` (or,
+worse, silently wrong after cross-pull
 [`max()`](https://rdrr.io/r/base/Extremes.html) reconciliation) for any
 row that never came from `inpatient_admission_data` directly.
 `HasBeenI`, when excluded to prefer `HasBeenAdmitted`, is deliberately

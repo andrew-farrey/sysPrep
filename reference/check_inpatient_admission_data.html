@@ -269,7 +269,9 @@ record from the same pull.</p></li>
 (<code>return_format = "collapsed"</code> only).</p></li>
 </ol><p><code>long_from_has_been_flags()</code> pivots the <code>HasBeen_</code> flags to long format.
 It preserves a copy of each pivoted column under an <code>_orig</code> name first,
-since <code>pivot_longer()</code> consumes the columns it pivots on. Every synthetic
+since <code>pivot_longer()</code> consumes the columns it pivots on, and puts the
+restored columns back in their input positions afterwards (the pivot
+itself would leave them after every other column). Every synthetic
 row produced from one original record describes that same record, so each
 should keep that record's true <code>has_been_*</code> values regardless of which
 flag triggered its own creation: an "Admitted-&gt;ED" escalation splits one
