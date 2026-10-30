@@ -198,7 +198,9 @@ record from the same pull.
 
 \code{long_from_has_been_flags()} pivots the \code{HasBeen_} flags to long format.
 It preserves a copy of each pivoted column under an \verb{_orig} name first,
-since \code{pivot_longer()} consumes the columns it pivots on. Every synthetic
+since \code{pivot_longer()} consumes the columns it pivots on, and puts the
+restored columns back in their input positions afterwards (the pivot
+itself would leave them after every other column). Every synthetic
 row produced from one original record describes that same record, so each
 should keep that record's true \verb{has_been_*} values regardless of which
 flag triggered its own creation: an "Admitted->ED" escalation splits one

@@ -2016,3 +2016,29 @@ test_that("merge_concat() does not repeat a value already present as whole words
   )
   expect_identical(merge_concat(c("Chest Pain", "chest pain"), "Chest Pain"), "Chest Pain")
 })
+
+test_that("link_encounters() keeps the input column order", {
+  ed <- essence_ed_raw
+  ip <- essence_inp_raw
+  out <- suppressMessages(link_encounters(ed, ip, clean_names = FALSE))
+  expect_equal(
+    names(out),
+    c(names(ed), "patient_class", ".episode_id", ".patient_class_sequence",
+      ".episode_n_rows", ".index_encounter")
+  )
+})
+
+test_that("link_encounters() tracks a reordered input for both return formats", {
+  front <- function(d) {
+    d[, c("HasBeenE", "HasBeenAdmitted",
+          setdiff(names(d), c("HasBeenE", "HasBeenAdmitted")))]
+  }
+  ed <- front(essence_ed_raw)
+  ip <- front(essence_inp_raw)
+  for (fmt in c("collapsed", "long")) {
+    out <- suppressMessages(
+      link_encounters(ed, ip, return_format = fmt, clean_names = FALSE)
+    )
+    expect_equal(names(out)[seq_along(ed)], names(ed))
+  }
+})

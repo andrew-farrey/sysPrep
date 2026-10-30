@@ -40,7 +40,9 @@
 #'
 #' `long_from_has_been_flags()` pivots the `HasBeen_` flags to long format.
 #' It preserves a copy of each pivoted column under an `_orig` name first,
-#' since `pivot_longer()` consumes the columns it pivots on. Every synthetic
+#' since `pivot_longer()` consumes the columns it pivots on, and puts the
+#' restored columns back in their input positions afterwards (the pivot
+#' itself would leave them after every other column). Every synthetic
 #' row produced from one original record describes that same record, so each
 #' should keep that record's true `has_been_*` values regardless of which
 #' flag triggered its own creation: an "Admitted->ED" escalation splits one
@@ -404,6 +406,10 @@ long_from_has_been_flags <- function(ed_data, exclude_from_pivot, verbose) {
   pivot_cols      <- setdiff(has_been_cols, exclude_from_pivot)
   pivot_orig_cols <- paste0(pivot_cols, "_orig")
 
+  # pivot_longer() appends the restored `_orig` copies after every other
+  # column; the input order is put back afterwards ----
+  input_order <- names(ed_data)
+
   ed_data |>
     dplyr::mutate(
       dplyr::across(
@@ -432,7 +438,8 @@ long_from_has_been_flags <- function(ed_data, exclude_from_pivot, verbose) {
     dplyr::rename_with(
       ~ sub("_orig$", "", .x),
       dplyr::all_of(pivot_orig_cols)
-    )
+    ) |>
+    dplyr::relocate(dplyr::all_of(input_order))
 }
 
 #' @rdname check_inpatient_admission_data

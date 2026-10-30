@@ -21,6 +21,13 @@
   the output is unchanged. This warning and the "values not in `keep_types`"
   message now name the column passed as `facility_type_col` instead of always
   saying `FacilityType`.
+* **Column order:** `link_encounters()` no longer moves `HasBeenE` and
+  `HasBeenAdmitted` to the end of the output when it derives encounters from
+  the `HasBeen_` flags (no `C_Patient_Class_List`). The input columns now keep
+  their input order, followed by `patient_class` and the `.episode_*` columns,
+  as in every other function. Only the column order changes; values, row
+  order and column names are unchanged. A pipeline that selects columns by
+  position (rather than by name) after this call should be rechecked.
 * **Wording:** the package description and the encounter-linkage vignette
   title now say "improved burden estimation" rather than "accurate".
 * **Behavior change:** `link_encounters()` now keeps the most severe
