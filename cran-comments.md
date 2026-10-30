@@ -20,7 +20,10 @@ Local and GitHub Actions: 0 errors | 0 warnings | 0 notes. The win-builder
   version number, which goes away when submitting a release version; the
   same two expected spelling false positives as above). Examples, tests,
   vignettes and the manual all built and passed
-  (<https://win-builder.r-project.org/Nn3MCfWMyEHG/>)
+  (<https://win-builder.r-project.org/Nn3MCfWMyEHG/>); re-checked
+  2026-10-30 (R 4.6.2, Windows Server 2022) with the same result: 1 NOTE of
+  the same three items, everything else OK
+  (<https://win-builder.r-project.org/Qn0Os9RPhf3w/>)
 * R-hub (`rhub::rhub_check()`, workflow in `.github/workflows/rhub.yaml`),
   run 2026-10-27 on version 0.1.0.9000: linux (R-devel), windows (R-devel),
   macos-arm64 (R-devel), ubuntu-release, ubuntu-next, gcc16 and vnu all
@@ -29,7 +32,11 @@ Local and GitHub Actions: 0 errors | 0 warnings | 0 notes. The win-builder
   packages installed) reported one ERROR, and only that one: examples and
   tests ran, but re-building the vignettes failed with "there is no package
   called 'rmarkdown'", because `rmarkdown` (the vignette builder) is in
-  `Suggests` and the container does not have it
+  `Suggests` and the container does not have it. Re-run 2026-10-30 on commit
+  704044b, all 13 platforms (linux, windows, macos, macos-arm64,
+  ubuntu-release, ubuntu-next, ubuntu-clang, gcc16, atlas, nold, m1-san,
+  vnu, nosuggests): 12 passed; `nosuggests` failed again with the same single
+  vignette-rebuild ERROR (no `rmarkdown`), examples and tests OK
 
 ## Downstream dependencies
 
