@@ -12,7 +12,7 @@ Authors@R: c(
     person(
       given   = "Centers for Disease Control and Prevention",
       role    = "fnd",
-      comment = c("Cooperative Agreement 5 NU17CE010182-03-00")
+      comment = c("Supported development since September 2026 in part; Cooperative Agreement 5 NU17CE010182-03-00")
     ))
 Description: Provides a suite of functions for preprocessing and quality
     assurance of syndromic surveillance data obtained from the National

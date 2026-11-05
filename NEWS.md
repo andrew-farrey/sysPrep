@@ -1,7 +1,9 @@
 # sysPrep (development version)
 
-* **Funding:** `sysPrep` is now identified as a Kentucky AVERT product, and the
-  CDC funding statement (Cooperative Agreement Number 5 NU17CE010182-03-00)
+* **Funding:** development since September 2026 is now acknowledged as carried
+  out in part under Kentucky AVERT, and the CDC funding statement
+  (Cooperative Agreement Number 5 NU17CE010182-03-00) is scoped to that work
+  ("supported in part"; the package began as independent work). The statement
   is added to the README, the package help page (`?sysPrep`), the pkgdown site
   footer, and the `DESCRIPTION` (CDC as funder in `Authors@R`). The startup
   message no longer says the package is "not affiliated with" CDC; it now

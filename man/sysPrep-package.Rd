@@ -12,11 +12,14 @@ Provides a suite of functions for preprocessing and quality assurance of syndrom
 }
 \section{Funding}{
 
-\code{sysPrep} is a Kentucky AVERT product. This R package was supported by the
+\code{sysPrep} began as independent work by its author. Development since
+September 2026 has been carried out in part under Kentucky AVERT.
+
+Development of \code{sysPrep} since September 2026 was supported in part by the
 Centers for Disease Control and Prevention (CDC) of the U.S. Department of
 Health and Human Services (HHS) as part of Cooperative Agreement Number 5
 NU17CE010182-03-00 totaling $550,000 with 0\% financed with nongovernmental
-sources. The contents are those of the authors and do not necessarily
+sources. The contents are those of the author and do not necessarily
 represent the official views of, nor an endorsement by, CDC, HHS, or the
 U.S. government. For more information, please visit CDC.gov.
 }
@@ -48,7 +51,7 @@ Authors:
 
 Other contributors:
 \itemize{
-  \item Centers for Disease Control and Prevention (Cooperative Agreement 5 NU17CE010182-03-00) [funder]
+  \item Centers for Disease Control and Prevention (Supported development since September 2026 in part; Cooperative Agreement 5 NU17CE010182-03-00) [funder]
 }
 
 }
