@@ -27,21 +27,6 @@ authors:
   footer:
     roles: [aut, cre]
 
-footer:
-  structure:
-    left: [developed_by, built_with]
-    right: [funding]
-  components:
-    funding: >
-      sysPrep began as independent work by its author. Development since
-      September 2026 has been carried out in part under Kentucky AVERT and
-      supported in part by the Centers for Disease Control and Prevention
-      (CDC) of the U.S. Department of Health and Human Services (HHS) as part
-      of Cooperative Agreement Number 5 NU17CE010182-03-00. The contents are
-      those of the author and do not necessarily represent the official views
-      of, nor an endorsement by, CDC, HHS, or the U.S. government. See the
-      [full funding statement](https://andrew-farrey.github.io/sysPrep/#funding).
-
 home:
   title: "sysPrep: NSSP ESSENCE Preprocessing Methods"
   description: >
