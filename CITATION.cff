@@ -21,8 +21,8 @@ abstract: >-
   linkage for improved burden estimation, and geographic attribution for
   out-of-state and non-residential visits. Methods were developed through
   applied drug overdose surveillance and cluster detection.
-version: 0.1.0
-date-released: '2026-10-23'
+version: 0.2.0
+date-released: '2026-11-05'
 doi: 10.5281/zenodo.23603551
 identifiers:
   - type: doi

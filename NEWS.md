@@ -1,4 +1,8 @@
-# sysPrep (development version)
+# sysPrep 0.2.0
+
+This release follows a substantial refactoring and review of 0.1.0 (a GitHub
+and Zenodo release only; sysPrep is not yet on CRAN). Behavior changes are
+labeled below; read them before upgrading a pipeline.
 
 * **Funding:** development since September 2026 is now acknowledged as carried
   out in part under Kentucky AVERT, and the CDC funding statement
