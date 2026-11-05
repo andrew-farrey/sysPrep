@@ -9,10 +9,10 @@
   independent work). The statement is added to the README, the package
   help page
   ([`?sysPrep`](https://andrew-farrey.github.io/sysPrep/reference/sysPrep-package.md)),
-  the pkgdown site footer, and the `DESCRIPTION` (CDC as funder in
-  `Authors@R`). The startup message no longer says the package is “not
-  affiliated with” CDC; it now names the cooperative agreement and
-  states that the package is not an official CDC, HHS or NSSP product.
+  and the `DESCRIPTION` (CDC as funder in `Authors@R`). The startup
+  message no longer says the package is “not affiliated with” CDC; it
+  now names the cooperative agreement and states that the package is not
+  an official CDC, HHS or NSSP product.
 
 - **Behavior change:**
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
