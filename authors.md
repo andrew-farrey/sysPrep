@@ -5,6 +5,10 @@
 - **Andrew Farrey**. Author, maintainer.
   [](https://orcid.org/0000-0003-4279-0998)
 
+- **Centers for Disease Control and Prevention**. Funder.  
+  Supported development since September 2026 in part; Cooperative
+  Agreement 5 NU17CE010182-03-00
+
 ## Citation
 
 Source:

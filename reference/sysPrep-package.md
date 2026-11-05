@@ -14,6 +14,20 @@ ESSENCE 'dataDetails' pulls from the 'va_er' (Patient Location, Full
 Details) and 'va_hosp' (Facility Location, Full Details) data sources,
 which it was developed and tested against.
 
+## Funding
+
+`sysPrep` began as independent work by its author. Development since
+September 2026 has been carried out in part under Kentucky AVERT.
+
+Development of `sysPrep` since September 2026 was supported in part by
+the Centers for Disease Control and Prevention (CDC) of the U.S.
+Department of Health and Human Services (HHS) as part of Cooperative
+Agreement Number 5 NU17CE010182-03-00 totaling \$550,000 with 0%
+financed with nongovernmental sources. The contents are those of the
+author and do not necessarily represent the official views of, nor an
+endorsement by, CDC, HHS, or the U.S. government. For more information,
+please visit CDC.gov.
+
 ## Package Options
 
 `options(sysPrep.quiet = TRUE)` suppresses the startup message shown on
@@ -41,3 +55,9 @@ Authors:
 
 - Andrew Farrey <afarrey11@outlook.com>
   ([ORCID](https://orcid.org/0000-0003-4279-0998))
+
+Other contributors:
+
+- Centers for Disease Control and Prevention (Supported development
+  since September 2026 in part; Cooperative Agreement 5
+  NU17CE010182-03-00) \[funder\]

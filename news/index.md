@@ -2,6 +2,18 @@
 
 ## sysPrep (development version)
 
+- **Funding:** development since September 2026 is now acknowledged as
+  carried out in part under Kentucky AVERT, and the CDC funding
+  statement (Cooperative Agreement Number 5 NU17CE010182-03-00) is
+  scoped to that work (“supported in part”; the package began as
+  independent work). The statement is added to the README, the package
+  help page
+  ([`?sysPrep`](https://andrew-farrey.github.io/sysPrep/reference/sysPrep-package.md)),
+  the pkgdown site footer, and the `DESCRIPTION` (CDC as funder in
+  `Authors@R`). The startup message no longer says the package is “not
+  affiliated with” CDC; it now names the cooperative agreement and
+  states that the package is not an official CDC, HHS or NSSP product.
+
 - **Behavior change:**
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   now stops with an error when `ed_data` and `inpatient_admission_data`
@@ -13,6 +25,7 @@
   on mismatched pulls now errors; calls whose pulls match are unchanged.
   The documentation gains a “Required fields” section listing what each
   pull must carry.
+
 - **New message:** with `verbose = TRUE`,
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   reports how many episodes hold more than one record from the same pull
@@ -20,6 +33,7 @@
   merged into one episode; run
   [`dedupe()`](https://andrew-farrey.github.io/sysPrep/reference/dedupe.md)
   on each pull first. It changes no output.
+
 - **Clearer warning:** when
   [`filter_care_setting()`](https://andrew-farrey.github.io/sysPrep/reference/filter_care_setting.md)
   leaves no rows, the warning now says why. It lists the `FacilityType`
@@ -30,6 +44,7 @@
   This warning and the “values not in `keep_types`” message now name the
   column passed as `facility_type_col` instead of always saying
   `FacilityType`.
+
 - **Column order:**
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   no longer moves `HasBeenE` and `HasBeenAdmitted` to the end of the
@@ -39,9 +54,11 @@
   other function. Only the column order changes; values, row order and
   column names are unchanged. A pipeline that selects columns by
   position (rather than by name) after this call should be rechecked.
+
 - **Wording:** the package description and the encounter-linkage
   vignette title now say “improved burden estimation” rather than
   “accurate”.
+
 - **Behavior change:**
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   now keeps the most severe `DispositionCategory` in a linked episode,
@@ -69,6 +86,7 @@
   and the two can differ). Episodes whose records agree are unchanged.
   To keep the old behavior, pass `merge_fields` with
   `"prefer_admission"` for these fields.
+
 - **Bug fix:**
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   split a record with a missing `facility_col` or `visit_col` value into
@@ -78,6 +96,7 @@
   the missing-key message counts records. Records with a single patient
   class, and every record with a key, are unchanged; only the numeric
   suffix of `.episode_id` after such a record can shift.
+
 - **Bug fix:** numeric identifiers of 16 or more digits were written in
   scientific notation and rounded when held as text, so two different
   `Visit_ID` values could link as one visit in
@@ -89,11 +108,13 @@
   [`as.character()`](https://rdrr.io/r/base/character.html) writes as
   `"1e+05"`) now matches a text `Hospital` column instead of silently
   matching nothing.
+
 - **Improvement:** when `ed_data` and `inpatient_admission_data` hold
   the same column in incompatible types,
   [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
   now stops with a message that names the function and the two pulls
   instead of a `bind_rows()` error.
+
 - **Documentation:**
   [`review_facility_ed_visits()`](https://andrew-farrey.github.io/sysPrep/reference/review_facility_ed_visits.md)
   now states that `visits_per_day` is the count divided by one number of
