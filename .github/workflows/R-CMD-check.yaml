@@ -12,6 +12,7 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
