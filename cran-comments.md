@@ -23,7 +23,11 @@ Local and GitHub Actions: 0 errors | 0 warnings | 0 notes. The win-builder
   (<https://win-builder.r-project.org/Nn3MCfWMyEHG/>); re-checked
   2026-10-30 (R 4.6.2, Windows Server 2022) with the same result: 1 NOTE of
   the same three items, everything else OK
-  (<https://win-builder.r-project.org/Qn0Os9RPhf3w/>)
+  (<https://win-builder.r-project.org/Qn0Os9RPhf3w/>); re-checked
+  2026-11-05 (R 4.6.2, Windows Server 2022) after the funding statement was
+  added: the same 1 NOTE of the same three items, examples (10 s), tests
+  (70 s), vignettes and both manuals OK
+  (<https://win-builder.r-project.org/9vZnH9luCXQc/>)
 * R-hub (`rhub::rhub_check()`, workflow in `.github/workflows/rhub.yaml`),
   run 2026-10-27 on version 0.1.0.9000: linux (R-devel), windows (R-devel),
   macos-arm64 (R-devel), ubuntu-release, ubuntu-next, gcc16 and vnu all
@@ -36,7 +40,10 @@ Local and GitHub Actions: 0 errors | 0 warnings | 0 notes. The win-builder
   704044b, all 13 platforms (linux, windows, macos, macos-arm64,
   ubuntu-release, ubuntu-next, ubuntu-clang, gcc16, atlas, nold, m1-san,
   vnu, nosuggests): 12 passed; `nosuggests` failed again with the same single
-  vignette-rebuild ERROR (no `rmarkdown`), examples and tests OK
+  vignette-rebuild ERROR (no `rmarkdown`), examples and tests OK. Re-run
+  2026-11-05 on commit b02e643 (funding statement added), all 13 platforms:
+  again 12 passed and `nosuggests` failed with the same single vignette-rebuild
+  ERROR (no `rmarkdown`), examples and tests OK
 
 ## Downstream dependencies
 
