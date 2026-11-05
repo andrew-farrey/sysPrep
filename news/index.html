@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,8 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="sysprep-development-version">sysPrep (development version)<a class="anchor" aria-label="anchor" href="#sysprep-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="sysprep-020">sysPrep 0.2.0<a class="anchor" aria-label="anchor" href="#sysprep-020"></a></h2>
+<p>This release follows a substantial refactoring and review of 0.1.0 (a GitHub and Zenodo release only; sysPrep is not yet on CRAN). Behavior changes are labeled below; read them before upgrading a pipeline.</p>
 <ul><li><p><strong>Funding:</strong> development since September 2026 is now acknowledged as carried out in part under Kentucky AVERT, and the CDC funding statement (Cooperative Agreement Number 5 NU17CE010182-03-00) is scoped to that work (“supported in part”; the package began as independent work). The statement is added to the README, the package help page (<code><a href="../reference/sysPrep-package.html">?sysPrep</a></code>), and the <code>DESCRIPTION</code> (CDC as funder in <code>Authors@R</code>). The startup message no longer says the package is “not affiliated with” CDC; it now names the cooperative agreement and states that the package is not an official CDC, HHS or NSSP product.</p></li>
 <li><p><strong>Behavior change:</strong> <code><a href="../reference/link_encounters.html">link_encounters()</a></code> now stops with an error when <code>ed_data</code> and <code>inpatient_admission_data</code> carry different <code>HasBeen_</code> flag columns (for example <code>HasBeenAdmitted</code> in one pull and only <code>HasBeenI</code> in the other). The other pull’s rows would hold <code>NA</code> in a flag that ESSENCE never leaves missing, which silently corrupted flag counts and the admission-flag choice. Query both pulls with the same <code>HasBeen_</code> fields. A call that previously ran on mismatched pulls now errors; calls whose pulls match are unchanged. The documentation gains a “Required fields” section listing what each pull must carry.</p></li>
 <li><p><strong>New message:</strong> with <code>verbose = TRUE</code>, <code><a href="../reference/link_encounters.html">link_encounters()</a></code> reports how many episodes hold more than one record from the same pull (the same facility and visit more than once in a pull), which are merged into one episode; run <code><a href="../reference/dedupe.html">dedupe()</a></code> on each pull first. It changes no output.</p></li>
