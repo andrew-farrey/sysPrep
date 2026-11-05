@@ -10,6 +10,17 @@
 
 Provides a suite of functions for preprocessing and quality assurance of syndromic surveillance data obtained from the National Syndromic Surveillance Program (NSSP) Electronic Surveillance System for the Early Notification of Community-based Epidemics (ESSENCE) API. Functions address common data quality challenges including visit-level deduplication with mechanism classification, care setting filtering with facility type correction, emergency department to inpatient encounter linkage for improved burden estimation, and geographic attribution for out-of-state and non-residential visits. Methods were developed through applied drug overdose surveillance and cluster detection. Designed for ESSENCE 'dataDetails' pulls from the 'va_er' (Patient Location, Full Details) and 'va_hosp' (Facility Location, Full Details) data sources, which it was developed and tested against.
 }
+\section{Funding}{
+
+\code{sysPrep} is a Kentucky AVERT product. This R package was supported by the
+Centers for Disease Control and Prevention (CDC) of the U.S. Department of
+Health and Human Services (HHS) as part of Cooperative Agreement Number 5
+NU17CE010182-03-00 totaling $550,000 with 0\% financed with nongovernmental
+sources. The contents are those of the authors and do not necessarily
+represent the official views of, nor an endorsement by, CDC, HHS, or the
+U.S. government. For more information, please visit CDC.gov.
+}
+
 \section{Package Options}{
 
 \code{options(sysPrep.quiet = TRUE)} suppresses the startup message shown on
@@ -33,6 +44,11 @@ Useful links:
 Authors:
 \itemize{
   \item Andrew Farrey \email{afarrey11@outlook.com} (\href{https://orcid.org/0000-0003-4279-0998}{ORCID})
+}
+
+Other contributors:
+\itemize{
+  \item Centers for Disease Control and Prevention (Cooperative Agreement 5 NU17CE010182-03-00) [funder]
 }
 
 }

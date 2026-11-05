@@ -194,6 +194,18 @@ explicit credit:
 The methods formalized in `sysPrep` were developed through applied drug
 overdose surveillance and cluster detection work using NSSP ESSENCE data.
 
+## Funding
+
+`sysPrep` is a Kentucky AVERT product.
+
+This R package was supported by the Centers for Disease Control and
+Prevention (CDC) of the U.S. Department of Health and Human Services (HHS) as
+part of Cooperative Agreement Number 5 NU17CE010182-03-00 totaling $550,000
+with 0% financed with nongovernmental sources. The contents are those of the
+authors and do not necessarily represent the official views of, nor an
+endorsement by, CDC, HHS, or the U.S. government. For more information,
+please visit [CDC.gov](https://www.cdc.gov/).
+
 ## Citation
 
 If you use `sysPrep` in published work, please cite the package directly:

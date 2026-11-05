@@ -1,4 +1,13 @@
 
+#' @section Funding:
+#' `sysPrep` is a Kentucky AVERT product. This R package was supported by the
+#' Centers for Disease Control and Prevention (CDC) of the U.S. Department of
+#' Health and Human Services (HHS) as part of Cooperative Agreement Number 5
+#' NU17CE010182-03-00 totaling $550,000 with 0% financed with nongovernmental
+#' sources. The contents are those of the authors and do not necessarily
+#' represent the official views of, nor an endorsement by, CDC, HHS, or the
+#' U.S. government. For more information, please visit CDC.gov.
+#'
 #' @section Package Options:
 #' `options(sysPrep.quiet = TRUE)` suppresses the startup message shown on
 #' `library(sysPrep)`. Set it in your `.Rprofile` to disable it permanently,
