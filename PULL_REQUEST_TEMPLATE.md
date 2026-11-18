@@ -17,6 +17,7 @@ Roxygen updated and `devtools::document()` run
 
 `lintr::lint_package()` and `spelling::spell_check_package()` are clean
 
-Coverage is still 100% (`covr::package_coverage()`)
+Coverage is still 100%
+([`covr::package_coverage()`](https://covr.r-lib.org/reference/package_coverage.html))
 
 No real patient, facility, or geographic data added anywhere

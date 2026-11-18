@@ -1,5 +1,17 @@
 # Changelog
 
+## sysPrep (development version)
+
+- **Bug fix:**
+  [`classify_duplicates()`](https://andrew-farrey.github.io/sysPrep/reference/classify_duplicates.md)
+  now accepts the record ID column spelled `c_biosense_id`, as its
+  documentation already said. It looked the column up by its
+  [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
+  form, `c_bio_sense_id` (the capital S in `C_BioSense_ID` splits the
+  word), so a data frame whose column was already `c_biosense_id`
+  aborted with “required columns are missing”. `C_BioSense_ID` and
+  `c_bio_sense_id` work as before.
+
 ## sysPrep 0.2.0
 
 This release follows a substantial refactoring and review of 0.1.0 (a

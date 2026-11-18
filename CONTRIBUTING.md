@@ -98,7 +98,7 @@ The change is described in `NEWS.md` (user-facing changes only).
 
 New behavior has tests in `tests/testthat/`, and a bug fix has a test
 that fails without the fix. Coverage is kept at 100%; check with
-`covr::package_coverage()`.
+[`covr::package_coverage()`](https://covr.r-lib.org/reference/package_coverage.html).
 
 Roxygen documentation is updated and `devtools::document()` has been
 run. Internal helpers are documented with `@keywords internal`, not

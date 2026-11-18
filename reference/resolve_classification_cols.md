@@ -87,7 +87,12 @@ calls them:
     (`C_BioSense_ID`, `Date`, `C_Unique_Patient_ID`), accepting raw
     ESSENCE names,
     [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
-    output, or variants, and aborts listing every missing one.
+    output, or variants, and aborts listing every missing one. The
+    record ID is also accepted as `c_biosense_id`:
+    [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html)
+    writes `C_BioSense_ID` as `c_bio_sense_id` (the capital S splits the
+    word), so a column already spelled `c_biosense_id` would otherwise
+    never match.
 
 2.  `resolve_patient_class_col()` resolves the optional
     `C_Patient_Class` column; without it patient class change detection
