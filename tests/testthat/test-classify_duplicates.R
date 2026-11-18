@@ -63,6 +63,27 @@ test_that("classify_duplicates() aborts with informative message for missing col
   expect_error(classify_duplicates(data), "required columns are missing")
 })
 
+test_that("classify_duplicates() resolves the record ID under every spelling", {
+  # Regression: resolve_col() matches on janitor::make_clean_names(), which
+  # writes C_BioSense_ID as c_bio_sense_id (the capital S splits the word), so
+  # a column already named c_biosense_id - the single-word spelling downstream
+  # pipelines commonly use - was reported missing even though the
+  # documentation says it is accepted.
+  data      <- make_data_with_dups()
+  reference <- classify_duplicates(data, return_format = "tibble")
+
+  for (nm in c("c_bio_sense_id", "c_biosense_id")) {
+    renamed <- dplyr::rename(data, !!nm := C_BioSense_ID)
+    result  <- classify_duplicates(renamed, return_format = "tibble")
+    expect_equal(result$dup_type, reference$dup_type, info = nm)
+  }
+})
+
+test_that("classify_duplicates() still names C_BioSense_ID when no spelling of it is present", {
+  data <- dplyr::select(make_data_with_dups(), -C_BioSense_ID)
+  expect_error(classify_duplicates(data), "C_BioSense_ID")
+})
+
 test_that("classify_duplicates() informs when c_patient_class absent", {
   data <- make_data_with_dups()
   expect_message(classify_duplicates(data), "c_patient_class")

@@ -67,7 +67,10 @@ The stages, in the order \code{classify_duplicates()} calls them:
 \item \code{resolve_classification_cols()} resolves the three required
 columns (\code{C_BioSense_ID}, \code{Date}, \code{C_Unique_Patient_ID}), accepting
 raw ESSENCE names, \code{\link[janitor:clean_names]{janitor::clean_names()}} output, or variants, and
-aborts listing every missing one.
+aborts listing every missing one. The record ID is also accepted as
+\code{c_biosense_id}: \code{\link[janitor:clean_names]{janitor::clean_names()}} writes \code{C_BioSense_ID} as
+\code{c_bio_sense_id} (the capital S splits the word), so a column already
+spelled \code{c_biosense_id} would otherwise never match.
 \item \code{resolve_patient_class_col()} resolves the optional
 \code{C_Patient_Class} column; without it patient class change detection is
 skipped.

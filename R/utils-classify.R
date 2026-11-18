@@ -9,7 +9,10 @@
 #'   \item `resolve_classification_cols()` resolves the three required
 #'     columns (`C_BioSense_ID`, `Date`, `C_Unique_Patient_ID`), accepting
 #'     raw ESSENCE names, [janitor::clean_names()] output, or variants, and
-#'     aborts listing every missing one.
+#'     aborts listing every missing one. The record ID is also accepted as
+#'     `c_biosense_id`: [janitor::clean_names()] writes `C_BioSense_ID` as
+#'     `c_bio_sense_id` (the capital S splits the word), so a column already
+#'     spelled `c_biosense_id` would otherwise never match.
 #'   \item `resolve_patient_class_col()` resolves the optional
 #'     `C_Patient_Class` column; without it patient class change detection is
 #'     skipped.
@@ -60,9 +63,25 @@ resolve_classification_cols <- function(data_clean,
     date     = "Date",
     pid      = "C_Unique_Patient_ID"
   )
+
+  # Candidate spellings per required column, tried in order; the first that
+  # resolves wins. resolve_col() matches on janitor::make_clean_names(), which
+  # turns "C_BioSense_ID" into "c_bio_sense_id" - never "c_biosense_id" - so
+  # the single-word spelling needs its own candidate ----
+  candidates <- list(
+    biosense = c("C_BioSense_ID", "c_biosense_id"),
+    date     = "Date",
+    pid      = "C_Unique_Patient_ID"
+  )
   resolved_cols <- lapply(
-    required_cols,
-    function(col) resolve_col_optional(data_clean, rlang::sym(col))
+    candidates,
+    function(cols) {
+      for (col in cols) {
+        resolved <- resolve_col_optional(data_clean, rlang::sym(col))
+        if (!is.null(resolved)) return(resolved)
+      }
+      NULL
+    }
   )
 
   missing_cols <- required_cols[vapply(resolved_cols, is.null, logical(1L))]
