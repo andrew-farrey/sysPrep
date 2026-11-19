@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,9 +33,27 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="sysprep-development-version">sysPrep (development version)<a class="anchor" aria-label="anchor" href="#sysprep-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.1" id="sysprep-021">sysPrep 0.2.1<a class="anchor" aria-label="anchor" href="#sysprep-021"></a></h2>
+<p>This release changes how <code><a href="../reference/link_encounters.html">link_encounters()</a></code> reconciles the two records of a linked episode, and fixes the record ID spelling <code><a href="../reference/classify_duplicates.html">classify_duplicates()</a></code> accepts. Behavior changes are labeled below; read them before upgrading a pipeline. Version 0.2.0 was tagged on GitHub but never released or submitted to CRAN; sysPrep is not yet on CRAN.</p>
 <ul><li>
 <strong>Bug fix:</strong> <code><a href="../reference/classify_duplicates.html">classify_duplicates()</a></code> now accepts the record ID column spelled <code>c_biosense_id</code>, as its documentation already said. It looked the column up by its <code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> form, <code>c_bio_sense_id</code> (the capital S in <code>C_BioSense_ID</code> splits the word), so a data frame whose column was already <code>c_biosense_id</code> aborted with “required columns are missing”. <code>C_BioSense_ID</code> and <code>c_bio_sense_id</code> work as before.</li>
+<li>
+<strong>Status:</strong> <code><a href="../reference/link_encounters.html">link_encounters()</a></code> is documented as experimental (a “Status” section in <code><a href="../reference/link_encounters.html">?link_encounters</a></code>), even though it is in active use for Kentucky surveillance: the rules that reconcile the two records of one encounter are still being refined against real ESSENCE pulls.</li>
+<li>
+<strong>Behavior change:</strong> every column of a linked episode now keeps what either record holds. Only the <code>HasBeen_</code> flags, <code>C_Death</code> and <code>DispositionCategory</code> are collapsed to one value so the row reflects the whole encounter of care; nothing else is dropped. Until now a column not named in <code>merge_fields</code> took the ED row’s value and silently lost the other record’s. The rule for each field follows the NSSP ESSENCE data dictionary (see <code>data-raw/merge_field_classification.csv</code>):
+<ul><li>Text and codes (chief complaint, discharge diagnosis, <code>Discharge_Disposition</code>, triage notes, the physician and insurance company identifiers, and any column the package does not know) keep both records’ values, joined with <code>"; "</code> and without repeating a value one record already holds. <code>Discharge_Disposition</code> was previously taken from the record that supplied <code>DispositionCategory</code>; <code>"follow_severity"</code> is still available.</li>
+<li>Scalars and times (age, vitals, record timestamps, <code>Admit_Date_Time</code>, identifiers such as <code>C_BioSense_ID</code>, patient class, demographics, any number, date or time) take the ED record’s value, or the first informative value from the other record when that one is missing, blank or a placeholder such as <code>"None"</code> or <code>"Unknown"</code> (<code>"U"</code> for <code>Sex</code>). <code>Discharge_Date_Time</code> and <code>Death_Date_Time</code> instead follow the record that won <code>DispositionCategory</code>.</li>
+<li>A value and what describes it always come from one record: weight and its units, age and its units and age group, zip code and its region and state, race and its derived fields, and the visit-to-discharge durations.</li>
+<li>Derived fields: the delimited code lists (<code>ICD_*_Flat</code>, <code>DDParsed</code>, …) are united and keep a delimiter at both ends (<code>;12;9;</code>) when every value had one; the informative and available indicators (<code>CCInformative</code>, <code>DDAvailable</code>, …) are 1 when either record says so; <code>FirstDateTimeAdded</code> is the earlier time; <code>DeathIndicator</code> is <code>Yes</code> when either record says so; and <code>CCOrig_Length</code>, <code>CCParsed_Length</code> and <code>DD_Length</code> are recomputed from the merged text, separators included (with a warning, and the winning record’s value kept, when a length column is present without its text column).</li>
+<li>
+<code>merge_fields</code> now defaults to <code>NULL</code> and overrides the rule for the columns it names; every other column keeps its rule. Previously it replaced the defaults entirely. <code>"prefer_primary"</code>, <code>"prefer_informative"</code>, <code>"earliest"</code> and <code>"max"</code> are new strategies.</li>
+<li>A record that is not linked is never changed.</li>
+</ul></li>
+<li>
+<strong>Behavior change:</strong> <code>DispositionCategory</code> ranking. ESSENCE returns a sixth value, lowercase <code>none</code> (no disposition reported), which now ranks with <code>UNKNOWN</code> and a missing value, so it never replaces a known category on the other record. <code>TRANSFERRED</code> now ties with <code>ADMIT</code> and <code>DISCHARGED</code> (it ranked above them in 0.2.0) because an ED <code>TRANSFERRED</code> is frequently revised to <code>DISCHARGED</code> as the encounter unfolds; ties go to the inpatient pull’s record. <code>DECEASED</code> stays the only outcome that outranks the rest.</li>
+<li>
+<strong>Behavior change:</strong> deaths hold under any merge strategy. For every linked episode in which either record has <code>C_Death</code> affirmative or a <code>DECEASED</code> category, the kept row has <code>C_Death</code> affirmative (<code>"Yes"</code> for ESSENCE’s own <code>Yes</code>/<code>No</code>; <code>"1"</code> or <code>1</code> when the column is already 0/1) and <code>DispositionCategory = "DECEASED"</code>, so the two fields never disagree about a death. This derives each field from the other, so it can change a <code>"No"</code> or a category that both records carried, and a record that is not linked is never changed.</li>
+<li>The <code>"concat"</code> strategy no longer keeps or appends blank text or placeholders such as <code>"None"</code>.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="sysprep-020">sysPrep 0.2.0<a class="anchor" aria-label="anchor" href="#sysprep-020"></a></h2>

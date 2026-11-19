@@ -97,7 +97,11 @@ clean <- essence_raw |>
 clean |> review_facility_ed_visits(method = "both", date_col = Date)
 ```
 
-For encounter linkage with a separate inpatient pull:
+For encounter linkage with a separate inpatient pull
+([`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+is the package’s most complex function and should be considered
+experimental, even though it is in active use in Kentucky; see
+[`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)):
 
 ``` r
 

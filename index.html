@@ -29,7 +29,7 @@
 
     <a class="navbar-brand me-2" href="index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -167,7 +167,7 @@
 <span></span>
 <span><span class="co"># Check for facility-level anomalies</span></span>
 <span><span class="va">clean</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/review_facility_ed_visits.html">review_facility_ed_visits</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"both"</span>, date_col <span class="op">=</span> <span class="va">Date</span><span class="op">)</span></span></code></pre></div>
-<p>For encounter linkage with a separate inpatient pull:</p>
+<p>For encounter linkage with a separate inpatient pull (<code><a href="reference/link_encounters.html">link_encounters()</a></code> is the package’s most complex function and should be considered experimental, even though it is in active use in Kentucky; see <code><a href="reference/link_encounters.html">?link_encounters</a></code>):</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Deduplicate both pulls (essence_ed_raw and essence_inp_raw are the</span></span>
 <span><span class="co"># package's paired example pulls: HasBeenE = 1 and HasBeenAdmitted = 1)</span></span>

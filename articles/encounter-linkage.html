@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -192,7 +192,7 @@ the same ESSENCE ID. For a patient who was registered in the ED
 contains <code>"EI"</code>.</p>
 <p>The patient class codes follow the HL7 Patient Class standard as
 adopted by the Public Health Information Network (PHIN). The full value
-set is maintained by the <a href="https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">CDC
+set is maintained by the <a href="https://www.cdc.gov/phin/php/phinvads/index.html?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">CDC
 PHIN Vocabulary Access and Distribution System (PHIN VADS)</a>, whose
 preferred concept names are shown below.
 <code><a href="../reference/link_encounters.html">link_encounters()</a></code>’s own derived <code>patient_class</code>
@@ -369,29 +369,48 @@ filtered afterward. Rows with <code>HasBeenE = 1</code> in the admission
 pull are automatically removed first (they are already present in the ED
 pull); the remainder are labeled
 <code>patient_class = "Direct Admit"</code> and combined with the ED
-pull’s own rows. Within a merged episode, <code>HasBeen_</code> flags
-are taken as the max across the episode’s rows, and fields named in
-<code>merge_fields</code> (<code>CCDD</code>, <code>CCDDParsed</code>,
-<code>CCDDCategory_flat</code>, <code>C_Death</code>,
-<code>Discharge_Disposition</code>, and <code>DispositionCategory</code>
-by default) are reconciled using a strategy suited to that field, so
-information recorded only on the admission row is not silently discarded
-when the ED row is kept as the surviving primary row. For
-<code>DispositionCategory</code> the strategy is
+pull’s own rows. Within a merged episode, only the <code>HasBeen_</code>
+flags, <code>C_Death</code> and <code>DispositionCategory</code> are
+collapsed to one value, so the row reflects the whole encounter of care;
+every other field keeps what either record holds. Text and codes (chief
+complaint, discharge diagnosis, <code>Discharge_Disposition</code>,
+triage notes) keep both records’ values, joined with <code>"; "</code>
+and without repeating a value one record already holds. Scalars and
+times (age, vitals, record timestamps, <code>Admit_Date_Time</code>,
+identifiers such as <code>C_BioSense_ID</code>, patient class) take the
+ED record’s value, or the first informative value from the admission
+record when the ED value is missing, blank, or a placeholder such as
+<code>"Unknown"</code>. A value and what describes it always come from
+one record (a weight and its units, an age and its age group, a zip code
+and its region), and the discharge and death times come from the record
+that reported the outcome. Derived fields are kept consistent with the
+merged text: code lists are united, the
+<code>*Available</code>/<code>*Informative</code> indicators are 1 when
+either record says so, and the <code>CCOrig_Length</code>,
+<code>CCParsed_Length</code> and <code>DD_Length</code> columns are
+recomputed. The rule for each ESSENCE field follows the NSSP data
+dictionary and is listed in <code><a href="../reference/link_encounters.html">?link_encounters</a></code>;
+<code>merge_fields</code> overrides it for the columns it names.</p>
+<p>For <code>DispositionCategory</code> the strategy is
 <code>"prefer_severity"</code>: the most severe value in the episode is
 kept, whichever record carries it (<code>DECEASED</code>, then
-<code>TRANSFERRED</code>, then <code>DISCHARGED</code> and
-<code>ADMIT</code> as equals, then <code>UNKNOWN</code>), and
-<code>C_Death</code> is set to affirmative whenever the merged value is
-<code>DECEASED</code>. An ED record closed as <code>DISCHARGED</code>
-therefore cannot hide a death or a transfer that the linked inpatient
-record reports. <code>DISCHARGED</code> and <code>ADMIT</code> rank
-equally and the tie goes to the inpatient pull’s record, which reflects
-the whole encounter of care: an ED <code>ADMIT</code> gives way to the
-inpatient record’s <code>DISCHARGED</code>.
-<code>Discharge_Disposition</code> takes its value from that same
-record, so the two fields agree whenever that record has a value for
-it.</p>
+<code>TRANSFERRED</code>, <code>DISCHARGED</code> and <code>ADMIT</code>
+as equals, then <code>UNKNOWN</code> and <code>none</code>, ESSENCE’s
+value for no reported disposition). Deaths do not depend on the strategy
+chosen for either field: whenever either record has <code>C_Death</code>
+affirmative or a <code>DECEASED</code> category, the kept row has
+<code>C_Death</code> affirmative and
+<code>DispositionCategory = "DECEASED"</code>, so the two fields agree
+about a death. An ED record closed as <code>DISCHARGED</code> therefore
+cannot hide a death or a transfer that the linked inpatient record
+reports. <code>TRANSFERRED</code>, <code>DISCHARGED</code> and
+<code>ADMIT</code> rank equally and the tie goes to the inpatient pull’s
+record, which reflects the whole encounter of care: an ED
+<code>ADMIT</code> or <code>TRANSFERRED</code> gives way to the
+inpatient record’s <code>DISCHARGED</code>. Only a death is protected
+from being overridden, because a recorded death is rarely revised away
+in later updates to a record, whereas <code>TRANSFERRED</code> is
+revised to <code>DISCHARGED</code> (and the reverse) far more often.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">episodes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/link_encounters.html">link_encounters</a></span><span class="op">(</span><span class="va">ed_clean</span>, <span class="va">inpatient_clean</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Both `HasBeenAdmitted` and `HasBeenI` found in `ed_data`. `HasBeenAdmitted` will be used preferentially as it is discharge-disposition aware and inclusive of ED-to-inpatient escalations.</span></span>

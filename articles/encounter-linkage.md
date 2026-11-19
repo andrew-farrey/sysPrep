@@ -123,7 +123,7 @@ The patient class codes follow the HL7 Patient Class standard as adopted
 by the Public Health Information Network (PHIN). The full value set is
 maintained by the [CDC PHIN Vocabulary Access and Distribution System
 (PHIN
-VADS)](https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A),
+VADS)](https://www.cdc.gov/phin/php/phinvads/index.html?id=564F8F8B-E1DE-E411-8970-0017A477041A),
 whose preferred concept names are shown below.
 [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)’s
 own derived `patient_class` output values (`"ED"`, `"Inpatient"`,
@@ -262,24 +262,43 @@ returning long-format duplicates that must be filtered afterward. Rows
 with `HasBeenE = 1` in the admission pull are automatically removed
 first (they are already present in the ED pull); the remainder are
 labeled `patient_class = "Direct Admit"` and combined with the ED pull’s
-own rows. Within a merged episode, `HasBeen_` flags are taken as the max
-across the episode’s rows, and fields named in `merge_fields` (`CCDD`,
-`CCDDParsed`, `CCDDCategory_flat`, `C_Death`, `Discharge_Disposition`,
-and `DispositionCategory` by default) are reconciled using a strategy
-suited to that field, so information recorded only on the admission row
-is not silently discarded when the ED row is kept as the surviving
-primary row. For `DispositionCategory` the strategy is
-`"prefer_severity"`: the most severe value in the episode is kept,
-whichever record carries it (`DECEASED`, then `TRANSFERRED`, then
-`DISCHARGED` and `ADMIT` as equals, then `UNKNOWN`), and `C_Death` is
-set to affirmative whenever the merged value is `DECEASED`. An ED record
-closed as `DISCHARGED` therefore cannot hide a death or a transfer that
-the linked inpatient record reports. `DISCHARGED` and `ADMIT` rank
-equally and the tie goes to the inpatient pull’s record, which reflects
-the whole encounter of care: an ED `ADMIT` gives way to the inpatient
-record’s `DISCHARGED`. `Discharge_Disposition` takes its value from that
-same record, so the two fields agree whenever that record has a value
-for it.
+own rows. Within a merged episode, only the `HasBeen_` flags, `C_Death`
+and `DispositionCategory` are collapsed to one value, so the row
+reflects the whole encounter of care; every other field keeps what
+either record holds. Text and codes (chief complaint, discharge
+diagnosis, `Discharge_Disposition`, triage notes) keep both records’
+values, joined with `"; "` and without repeating a value one record
+already holds. Scalars and times (age, vitals, record timestamps,
+`Admit_Date_Time`, identifiers such as `C_BioSense_ID`, patient class)
+take the ED record’s value, or the first informative value from the
+admission record when the ED value is missing, blank, or a placeholder
+such as `"Unknown"`. A value and what describes it always come from one
+record (a weight and its units, an age and its age group, a zip code and
+its region), and the discharge and death times come from the record that
+reported the outcome. Derived fields are kept consistent with the merged
+text: code lists are united, the `*Available`/`*Informative` indicators
+are 1 when either record says so, and the `CCOrig_Length`,
+`CCParsed_Length` and `DD_Length` columns are recomputed. The rule for
+each ESSENCE field follows the NSSP data dictionary and is listed in
+[`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md);
+`merge_fields` overrides it for the columns it names.
+
+For `DispositionCategory` the strategy is `"prefer_severity"`: the most
+severe value in the episode is kept, whichever record carries it
+(`DECEASED`, then `TRANSFERRED`, `DISCHARGED` and `ADMIT` as equals,
+then `UNKNOWN` and `none`, ESSENCE’s value for no reported disposition).
+Deaths do not depend on the strategy chosen for either field: whenever
+either record has `C_Death` affirmative or a `DECEASED` category, the
+kept row has `C_Death` affirmative and
+`DispositionCategory = "DECEASED"`, so the two fields agree about a
+death. An ED record closed as `DISCHARGED` therefore cannot hide a death
+or a transfer that the linked inpatient record reports. `TRANSFERRED`,
+`DISCHARGED` and `ADMIT` rank equally and the tie goes to the inpatient
+pull’s record, which reflects the whole encounter of care: an ED `ADMIT`
+or `TRANSFERRED` gives way to the inpatient record’s `DISCHARGED`. Only
+a death is protected from being overridden, because a recorded death is
+rarely revised away in later updates to a record, whereas `TRANSFERRED`
+is revised to `DISCHARGED` (and the reverse) far more often.
 
 ``` r
 

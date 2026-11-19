@@ -17,7 +17,7 @@ so information present on only one source row isn't discarded."><meta property="
 
     <a class="navbar-brand me-2" href="../index.html">sysPrep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,9 +60,7 @@ so information present on only one source row isn't discarded.</p>
 <span>  facility_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  visit_col <span class="op">=</span> <span class="va">Visit_ID</span>,</span>
 <span>  fallback_visit_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  merge_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>CCDD <span class="op">=</span> <span class="st">"union_ccdd"</span>, CCDDParsed <span class="op">=</span> <span class="st">"union_ccdd"</span>, CCDDCategory_flat <span class="op">=</span></span>
-<span>    <span class="st">"union_delimited"</span>, C_Death <span class="op">=</span> <span class="st">"prefer_yes"</span>, Discharge_Disposition <span class="op">=</span> <span class="st">"follow_severity"</span>,</span>
-<span>    DispositionCategory <span class="op">=</span> <span class="st">"prefer_severity"</span><span class="op">)</span>,</span>
+<span>  merge_fields <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  merge_delimiter <span class="op">=</span> <span class="st">";"</span>,</span>
 <span>  return_format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"collapsed"</span>, <span class="st">"long"</span><span class="op">)</span>,</span>
 <span>  clean_names <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -128,14 +126,14 @@ because they share a missing <code>visit_col</code>; see Details.</p></dd>
 
 
 <dt id="arg-merge-fields">merge_fields<a class="anchor" aria-label="anchor" href="#arg-merge-fields"></a></dt>
-<dd><p>Named character vector mapping column names (raw
-ESSENCE names or post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code> equivalents) to a merge
-strategy: one of <code>"concat"</code>, <code>"union_delimited"</code>, <code>"union_ccdd"</code>,
-<code>"prefer_yes"</code>, <code>"prefer_admission"</code>, <code>"prefer_severity"</code>, or
-<code>"follow_severity"</code>. Only used when <code>return_format = "collapsed"</code>.
-Defaults to a curated set of ESSENCE fields known to carry information
-only visible in the direct-admit record; see Details. Extend or override
-for other fields as needed.</p></dd>
+<dd><p><code>NULL</code> (the default), or a named character vector
+mapping column names (raw ESSENCE names or post-<code><a href="https://sfirke.github.io/janitor/reference/clean_names.html" class="external-link">janitor::clean_names()</a></code>
+equivalents) to a merge strategy: one of <code>"concat"</code>, <code>"union_delimited"</code>,
+<code>"union_ccdd"</code>, <code>"prefer_yes"</code>, <code>"prefer_primary"</code>,
+<code>"prefer_informative"</code>, <code>"earliest"</code>, <code>"max"</code>, <code>"prefer_admission"</code>,
+<code>"prefer_severity"</code>, or <code>"follow_severity"</code>. Only used when
+<code>return_format = "collapsed"</code>. Each entry replaces the built-in rule for
+that column; every other column keeps its rule (see "Merge behavior").</p></dd>
 
 
 <dt id="arg-merge-delimiter">merge_delimiter<a class="anchor" aria-label="anchor" href="#arg-merge-delimiter"></a></dt>
@@ -169,7 +167,7 @@ Defaults to <code>TRUE</code>.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>When <code>return_format = "collapsed"</code> (default), a data frame with
 one row per true care episode, <code>HasBeen_</code> flags reconciled via max, and
-<code>merge_fields</code> columns reconciled per their assigned strategy. When
+every other column reconciled by its merge rule. When
 <code>return_format = "long"</code>, a data frame in long format with one row per
 visit per patient class, unmerged. Both include episode metadata
 columns <code>.episode_id</code>, <code>.patient_class_sequence</code>, <code>.episode_n_rows</code>,
@@ -177,6 +175,22 @@ and <code>.index_encounter</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+
+<div class="section">
+<h3 id="status-experimental">Status: experimental<a class="anchor" aria-label="anchor" href="#status-experimental"></a></h3>
+
+
+<p><code>link_encounters()</code> is the most complex function in the package and should
+be considered experimental, even though it is in active use for Kentucky
+surveillance. Its linkage contract (which records are merged, and that
+unlinked records are never changed) is tested, but the rules that reconcile
+two records of one encounter, above all which <code>DispositionCategory</code> is kept
+and when <code>C_Death</code> is set, are still being refined against real ESSENCE
+pulls, and a later version may change them. Review the linked output (for
+example the <code>.episode_*</code> columns and any <code>DECEASED</code> episodes) before relying
+on it for counts or anomaly detection, and read the Behavior-change entries
+in <code>NEWS.md</code> when upgrading.</p>
+</div>
 
 <div class="section">
 <h3 id="why-this-matters-for-case-counts">Why this matters for case counts<a class="anchor" aria-label="anchor" href="#why-this-matters-for-case-counts"></a></h3>
@@ -241,23 +255,121 @@ discarded.</p>
 <h3 id="merge-behavior-return-format-collapsed-the-default-">Merge behavior (<code>return_format = "collapsed"</code>, the default)<a class="anchor" aria-label="anchor" href="#merge-behavior-return-format-collapsed-the-default-"></a></h3>
 
 
-<p>Every column matching <code>has_been_*</code> is reconciled by taking the max across
-the episode's rows: e.g., if the ED row has <code>HasBeenAdmitted = 0</code> and the
-direct-admit row has <code>HasBeenAdmitted = 1</code>, the merged row correctly shows
-<code>HasBeenAdmitted = 1</code>.</p>
-<p>Columns named in <code>merge_fields</code> are reconciled using the strategy assigned
-to them:</p><dl><dt><code>"concat"</code></dt>
+<p>One principle decides how the records of an episode are combined: <strong>only
+the <code>HasBeen_</code> flags, <code>C_Death</code> and <code>DispositionCategory</code> are collapsed to
+one value, so the kept row reflects the whole encounter of care (just as a
+correctly submitted record with <code>HasBeenE = 1</code> and <code>HasBeenAdmitted = 1</code>
+would). Every other field keeps what either record holds.</strong> A visit can
+always be pulled again through the API to compare, but the linked row should
+not lose clinical information on its way there.</p>
+<p>The <strong>primary row</strong> is the <code>"ED"</code>-class row of the episode if there is one,
+otherwise its first row. A value is <strong>informative</strong> unless it is missing,
+blank, or a placeholder such as <code>"None"</code>, <code>"Unknown"</code>, <code>"N/A"</code> or <code>"Not Reported"</code> (<code>"U"</code> as well, for <code>Sex</code>); a number or time is informative
+unless missing, so a zero is a real value.</p>
+<p>Each ESSENCE field has a rule, taken from the NSSP ESSENCE data dictionary
+(the table is <code>data-raw/merge_field_classification.csv</code> in the source
+repository, and a column is matched by its <code><a href="https://sfirke.github.io/janitor/reference/make_clean_names.html" class="external-link">janitor::make_clean_names()</a></code>
+name). A column the table does not know follows its type: text keeps both
+records' values, and anything else takes the first informative value.</p><dl><dt>Flags and outcomes</dt>
+<dd><p><code>HasBeen_</code> flags take the maximum, so the
+merged row shows <code>HasBeenAdmitted = 1</code> when either record does.
+<code>DispositionCategory</code> and <code>C_Death</code> follow the rules in the next
+section.</p></dd>
+
+<dt>Text and codes</dt>
+<dd><p>Chief complaint, discharge diagnosis,
+<code>Discharge_Disposition</code>, triage notes, procedure, medication and
+problem lists, the physician and insurance company identifiers (which
+belong to the encounter, not the patient), and similar fields keep
+<strong>both</strong> records' values, joined
+with <code>"; "</code> and without repeating a value one record already holds (the
+<code>"concat"</code> strategy).</p></dd>
+
+<dt>Scalars and times</dt>
+<dd><p>Age, vitals, record timestamps,
+<code>Admit_Date_Time</code>, identifiers such as <code>C_BioSense_ID</code>, patient class,
+demographics, and any number, date or time take the primary row's
+value, or the first informative value from the other record when that
+one is not informative (<code>"prefer_informative"</code>). <code>Discharge_Date_Time</code>
+and <code>Death_Date_Time</code> instead use the record that won
+<code>DispositionCategory</code> as their first choice, so a discharge or death
+time comes from the record that reported the outcome.</p></dd>
+
+<dt>Values that belong together</dt>
+<dd><p>A value and what describes it come
+from one record: a weight and its units, an age with its units and age
+group, a zip code with its region and state, race with the fields
+derived from it, and the visit-to-discharge durations with
+<code>Discharge_Date_Time</code>. The described field takes that record's value
+even when it is missing, so units are never mixed with another
+record's number. If the field it follows is absent from the data, it
+takes the first informative value.</p></dd>
+
+<dt>Derived lists and indicators</dt>
+<dd><p>Delimited code lists computed from
+the diagnosis text (<code>ICD_*_Flat</code>, <code>C_DiagnosisCode_*_Flat</code>, <code>DDParsed</code>,
+<code>CCDDCategory_flat</code>) are united, and keep a delimiter at both ends
+(<code>;12;9;</code>) when every value had one. The indicators
+<code>CCInformative</code>, <code>CCAvailable</code>, <code>DDInformative</code>, <code>DDAvailable</code> and
+<code>DDProcessed</code> are <code>1</code> when either record says so. <code>FirstDateTimeAdded</code>
+is the earlier time, as ESSENCE defines it. <code>DeathIndicator</code> is <code>Yes</code>
+when either record says so. <code>CCDD</code> and <code>CCDDParsed</code> are united
+half by half.</p></dd>
+
+<dt>Lengths</dt>
+<dd><p><code>CCOrig_Length</code>, <code>CCParsed_Length</code> and <code>DD_Length</code> are
+recomputed from the merged <code>ChiefComplaintOrig</code>,
+<code>ChiefComplaintParsed</code> and <code>DischargeDiagnosis</code>, separators included.
+When a length column is present but its text column is not, the
+winning record's value is kept and a warning says the length was not
+recomputed.</p></dd>
+
+
+</dl><p>A record that is not linked to another is never changed.</p><div class="section">
+<h4 id="deaths-and-the-disposition">Deaths and the disposition<a class="anchor" aria-label="anchor" href="#deaths-and-the-disposition"></a></h4>
+
+
+<p><code>DispositionCategory</code> (ESSENCE values <code>ADMIT</code>, <code>DECEASED</code>, <code>DISCHARGED</code>,
+<code>TRANSFERRED</code>, <code>UNKNOWN</code>, and a lowercase <code>none</code> returned when no
+disposition was reported) keeps the most severe value of the episode,
+whichever record carries it (<code>"prefer_severity"</code>): <code>DECEASED</code> ranks above
+<code>TRANSFERRED</code>, <code>DISCHARGED</code> and <code>ADMIT</code> (equal), which rank above <code>UNKNOWN</code>,
+<code>none</code> and a missing value, so an unknown outcome never replaces a known
+one. <code>TRANSFERRED</code> ranks with <code>ADMIT</code> and <code>DISCHARGED</code> because an ED
+<code>TRANSFERRED</code> is frequently revised to <code>DISCHARGED</code> as the encounter
+unfolds. Among equally severe values the inpatient pull's record wins,
+because it reflects the whole encounter of care: an ED <code>ADMIT</code> or
+<code>TRANSFERRED</code> gives way to the inpatient record's <code>DISCHARGED</code>, and the
+result does not depend on whether the ED record also carries
+<code>HasBeenAdmitted</code>. Then another admission-class row's value is kept.</p>
+<p>Deaths are handled the same way whatever strategies are chosen. For every
+linked episode in which either record has <code>C_Death</code> affirmative or a
+<code>DECEASED</code> <code>DispositionCategory</code>, the kept row has <code>C_Death</code> affirmative
+(<code>"Yes"</code> for ESSENCE's own <code>Yes</code>/<code>No</code>; <code>"1"</code> or <code>1</code> when the column is
+already 0/1, read from the whole column) <strong>and</strong>
+<code>DispositionCategory = "DECEASED"</code>, so the two fields never disagree about
+a death. Each field is derived from the other, so this can change a <code>"No"</code>
+or a category that both records carried.</p>
+</div>
+
+<div class="section">
+<h4 id="choosing-a-different-rule">Choosing a different rule<a class="anchor" aria-label="anchor" href="#choosing-a-different-rule"></a></h4>
+
+
+<p><code>merge_fields</code> replaces the rule for the columns it names and leaves every
+other column on its rule. The strategies are:</p><dl><dt><code>"concat"</code></dt>
 <dd><p>Starting from the primary row's value, appends each
-other row's non-empty value unless the accumulated text (<code>"; "</code>-
+other row's informative value unless the accumulated text (<code>"; "</code>-
 separated) already contains it as whole words or whole codes, so
 complaint text or a diagnosis or SNOMED code present in one record but
 not the other is kept (<code>"fall"</code> is not found in <code>"waterfall"</code>, nor
-<code>"R10.9"</code> in <code>"R10.90"</code>). Generic free text.</p></dd>
+<code>"R10.9"</code> in <code>"R10.90"</code>).</p></dd>
 
 <dt><code>"union_delimited"</code></dt>
 <dd><p>Splits each row's value on <code>merge_delimiter</code>,
 takes the union of unique parts (preserving order of first
-appearance), rejoins with the same delimiter.</p></dd>
+appearance), rejoins with the same delimiter, keeping a delimiter at
+both ends when every value had one.</p></dd>
 
 <dt><code>"union_ccdd"</code></dt>
 <dd><p>Specific to ESSENCE's <code>CC-values|DD-values</code>
@@ -272,6 +384,21 @@ separately, rejoins.</p></dd>
 that row's affirmative value. Otherwise falls back to the primary
 row's value.</p></dd>
 
+<dt><code>"prefer_primary"</code></dt>
+<dd><p>The primary row's value, even when it is empty.</p></dd>
+
+<dt><code>"prefer_informative"</code></dt>
+<dd><p>The primary row's value when it is
+informative, otherwise the first informative value from another row.</p></dd>
+
+<dt><code>"earliest"</code></dt>
+<dd><p>The earliest time (text times in ISO or <code>MM/DD/YYYY</code>
+form are parsed); the primary row's value when none can be read.</p></dd>
+
+<dt><code>"max"</code></dt>
+<dd><p>The largest number, with the value kept as it was written;
+the primary row's value when none is a number.</p></dd>
+
 <dt><code>"prefer_admission"</code></dt>
 <dd><p>Uses the value from whichever row's
 <code>patient_class</code> is <code>"Inpatient"</code>, <code>"Direct Admit"</code>, or <code>"Admitted"</code>,
@@ -279,42 +406,24 @@ if such a row has a non-missing value for the field. Otherwise falls
 back to the primary row's value.</p></dd>
 
 <dt><code>"prefer_severity"</code></dt>
-<dd><p>For <code>DispositionCategory</code>, keeps the most
-severe value in the episode, whichever record carries it: <code>DECEASED</code>
-ranks above <code>TRANSFERRED</code>, which ranks above <code>DISCHARGED</code> and <code>ADMIT</code>
-(equal), which rank above <code>UNKNOWN</code> and a missing value. This is
-the default for <code>DispositionCategory</code>, so an ED record closed as
-<code>DISCHARGED</code> does not hide a death or a transfer recorded on the linked
-inpatient record, whichever of the two records has the
-<code>HasBeenAdmitted</code> flag. Whenever the merged value is <code>DECEASED</code>,
-<code>C_Death</code> is also set to affirmative for that episode (using the form
-already in the column, read from the whole column: <code>"Yes"</code>, <code>"1"</code>, or
-<code>1</code>). This derives <code>C_Death</code> from the merged category, so it can
-change a <code>"No"</code> that both records carried; it applies only to linked
-episodes, and a record that is not linked is never changed. Among
-equally severe values the inpatient pull's record wins, because it
-reflects the whole encounter of care: an ED <code>ADMIT</code> gives way to the
-inpatient record's <code>DISCHARGED</code>, and the result does not depend on
-whether the ED record also carries <code>HasBeenAdmitted</code>. Then another
-admission-class row's value is kept.</p></dd>
+<dd><p>The <code>DispositionCategory</code> rule described
+above.</p></dd>
 
 <dt><code>"follow_severity"</code></dt>
 <dd><p>Takes the value from the same record whose
-<code>prefer_severity</code> field won (the first such field in <code>merge_fields</code>).
-This is the default for <code>Discharge_Disposition</code>, so it comes from the
-record that supplied <code>DispositionCategory</code> and the two agree whenever
-that record has a value for it. If that record has no value for the
-field, or no <code>prefer_severity</code> field is present, the
+<code>prefer_severity</code> field won, so a companion field such as
+<code>Discharge_Disposition</code> agrees with the category. If that record has no
+value for the field, or no <code>prefer_severity</code> field is present, the
 <code>"prefer_admission"</code> value is used instead (so the two can then
 differ, rather than dropping a value that is known).</p></dd>
 
 
-</dl><p>Any column not a <code>HasBeen_</code> flag and not listed in <code>merge_fields</code> takes
-its value from the <strong>primary row</strong>: the <code>"ED"</code>-class row if one exists in
-the episode, else the first row in original order.</p>
-<p>Set <code>return_format = "long"</code> to get the diagnostic long-format output
+</dl><p>Set <code>return_format = "long"</code> to get the diagnostic long-format output
 instead: one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.</p>
+</div>
+
+
 </div>
 
 <div class="section">
@@ -342,10 +451,9 @@ sequence; <code>C_Patient_Class_MDT_Updates</code> orders it by time.</p></li>
 <li><p><code>C_Visit_Date_Time</code> (or <code>Date</code> and <code>Time</code>) orders classes when no
 <code>C_Patient_Class_MDT_Updates</code> is present; without any of them the order is
 alphabetical and carries no clinical meaning.</p></li>
-<li><p>The <code>merge_fields</code> columns (by default <code>CCDD</code>, <code>CCDDParsed</code>,
-<code>CCDDCategory_flat</code>, <code>C_Death</code>, <code>Discharge_Disposition</code>, and
-<code>DispositionCategory</code>) are merged only when present; without
-<code>DispositionCategory</code> no disposition is ranked by severity.</p></li>
+<li><p>The fields with a merge rule (see "Merge behavior") are merged only when
+present; without <code>DispositionCategory</code> no disposition is ranked by
+severity, and the discharge and death times fall back to the primary row.</p></li>
 </ul></div>
 
 <div class="section">
@@ -427,7 +535,7 @@ For more granular and informative output, add <code>C_Patient_Class_List</code> 
 ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
 "Patient Class (Syndromic Surveillance)" value set (concept codes and
 preferred names, verified against
-<a href="https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A</a>).
+<a href="https://www.cdc.gov/phin/php/phinvads/index.html?id=564F8F8B-E1DE-E411-8970-0017A477041A" class="external-link">https://www.cdc.gov/phin/php/phinvads/index.html?id=564F8F8B-E1DE-E411-8970-0017A477041A</a>).
 <code>link_encounters()</code>'s own derived <code>patient_class</code> output values (<code>"ED"</code>,
 <code>"Inpatient"</code>, <code>"Direct Admit"</code>, etc.) are shortened working labels, not
 required to match these preferred names verbatim:</p><table class="table table"><tr><td>Code</td><td>PHIN VADS preferred name</td></tr><tr><td><code>D</code></td><td>Direct admit</td></tr><tr><td><code>E</code></td><td>Emergency</td></tr><tr><td><code>I</code></td><td>Inpatient</td></tr><tr><td><code>V</code></td><td>Observation patient</td></tr><tr><td><code>B</code></td><td>Obstetrics</td></tr><tr><td><code>O</code></td><td>Outpatient</td></tr><tr><td><code>P</code></td><td>Preadmit</td></tr><tr><td><code>R</code></td><td>Recurring patient</td></tr></table></div>
@@ -592,7 +700,7 @@ long format).</p></dd>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">episodes_full</span> <span class="op">&lt;-</span> <span class="fu">link_encounters</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">ed_clean</span>, <span class="va">inpatient_clean</span>,</span></span>
-<span class="r-in"><span>  merge_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>TriageNotes <span class="op">=</span> <span class="st">"concat"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  merge_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Discharge_Disposition <span class="op">=</span> <span class="st">"follow_severity"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
