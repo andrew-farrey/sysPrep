@@ -1,4 +1,10 @@
-# sysPrep (development version)
+# sysPrep 0.2.1
+
+This release changes how `link_encounters()` reconciles the two records of a
+linked episode, and fixes the record ID spelling `classify_duplicates()`
+accepts. Behavior changes are labeled below; read them before upgrading a
+pipeline. Version 0.2.0 was tagged on GitHub but never released or submitted
+to CRAN; sysPrep is not yet on CRAN.
 
 * **Bug fix:** `classify_duplicates()` now accepts the record ID column spelled
   `c_biosense_id`, as its documentation already said. It looked the column up
@@ -6,7 +12,6 @@
   `C_BioSense_ID` splits the word), so a data frame whose column was already
   `c_biosense_id` aborted with "required columns are missing". `C_BioSense_ID`
   and `c_bio_sense_id` work as before.
-
 * **Status:** `link_encounters()` is documented as experimental (a "Status"
   section in `?link_encounters`), even though it is in active use for Kentucky
   surveillance: the rules that reconcile the two records of one encounter are
