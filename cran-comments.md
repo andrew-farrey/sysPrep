@@ -25,17 +25,15 @@ refactoring and independent review of 0.1.0 (see `NEWS.md`).
   coverage
 * GitHub Actions (`.github/workflows/R-CMD-check.yaml`, every push):
   ubuntu-latest (release, devel, oldrel-1), macOS-latest (release),
-  windows-latest (release)
-* win-builder (R-release): not yet run on 0.2.1; the result will be recorded
-  here before submission. The last run, on 0.2.0 (R 4.6.2, 2026-11-05,
-  <https://win-builder.r-project.org/6oaB661MfgJV/>), had 1 NOTE (new
-  submission; the spelling false positives described above) and examples,
-  tests, vignettes and both manuals OK.
+  windows-latest (release); green on the 0.2.1 commit
+* win-builder (R-release, R 4.6.2 (2026-10-29 ucrt), Windows Server 2022):
+  checked 2026-11-18 on 0.2.1, 1 NOTE (new submission; the spelling false
+  positives described above); examples, tests, vignettes and both manuals
+  OK (<https://win-builder.r-project.org/YU2I1AuJc330/>)
 * R-hub (`rhub::rhub_check()`, `.github/workflows/rhub.yaml`), 12 platforms
   (linux, windows, macos, macos-arm64, ubuntu-release, ubuntu-next,
-  ubuntu-clang, gcc16, atlas, nold, m1-san, vnu): run on 0.2.1 started
-  2026-11-18; the result will be recorded here before submission. The last
-  complete run, on 0.2.0 (2026-11-05), passed all 12.
+  ubuntu-clang, gcc16, atlas, nold, m1-san, vnu): all 12 passed on 0.2.1
+  (run of 2026-11-18 on the commit that carries the 0.2.1 version bump).
   The R-hub `nosuggests` platform (a container with none of the `Suggests`
   packages installed) is deliberately not run: it fails every time at
   "re-building of vignette outputs" ("there is no package called
