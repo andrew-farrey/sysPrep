@@ -11,6 +11,8 @@ inst/doc
 .DS_Store
 Thumbs.db
 /data-raw/*.csv
+# the link_encounters() merge-rule spec: field names and strategies only, no data
+!/data-raw/merge_field_classification.csv
 /data-raw/*.xlsx
 revdep/
 Rplots.pdf

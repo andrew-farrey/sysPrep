@@ -7,6 +7,64 @@
   `c_biosense_id` aborted with "required columns are missing". `C_BioSense_ID`
   and `c_bio_sense_id` work as before.
 
+* **Status:** `link_encounters()` is documented as experimental (a "Status"
+  section in `?link_encounters`), even though it is in active use for Kentucky
+  surveillance: the rules that reconcile the two records of one encounter are
+  still being refined against real ESSENCE pulls.
+* **Behavior change:** every column of a linked episode now keeps what either
+  record holds. Only the `HasBeen_` flags, `C_Death` and `DispositionCategory`
+  are collapsed to one value so the row reflects the whole encounter of care;
+  nothing else is dropped. Until now a column not named in `merge_fields` took
+  the ED row's value and silently lost the other record's. The rule for each
+  field follows the NSSP ESSENCE data dictionary (see
+  `data-raw/merge_field_classification.csv`):
+  * Text and codes (chief complaint, discharge diagnosis, `Discharge_Disposition`,
+    triage notes, the physician and insurance company identifiers, and any
+    column the package does not know) keep both records' values, joined with `"; "` and without repeating a value one record already
+    holds. `Discharge_Disposition` was previously taken from the record that
+    supplied `DispositionCategory`; `"follow_severity"` is still available.
+  * Scalars and times (age, vitals, record timestamps, `Admit_Date_Time`,
+    identifiers such as `C_BioSense_ID`, patient class, demographics, any
+    number, date or time) take the ED record's value, or the first informative
+    value from the other record when that one is missing, blank or a
+    placeholder such as `"None"` or `"Unknown"` (`"U"` for `Sex`).
+    `Discharge_Date_Time` and `Death_Date_Time` instead follow the record that
+    won `DispositionCategory`.
+  * A value and what describes it always come from one record: weight and its
+    units, age and its units and age group, zip code and its region and state,
+    race and its derived fields, and the visit-to-discharge durations.
+  * Derived fields: the delimited code lists (`ICD_*_Flat`, `DDParsed`, ...)
+    are united and keep a delimiter at both ends (`;12;9;`) when every value
+    had one; the informative and available indicators (`CCInformative`,
+    `DDAvailable`, ...) are 1 when either record says so; `FirstDateTimeAdded`
+    is the earlier time; `DeathIndicator` is `Yes` when either record says so;
+    and `CCOrig_Length`, `CCParsed_Length` and `DD_Length` are recomputed from
+    the merged text, separators included (with a warning, and the winning
+    record's value kept, when a length column is present without its text
+    column).
+  * `merge_fields` now defaults to `NULL` and overrides the rule for the
+    columns it names; every other column keeps its rule. Previously it
+    replaced the defaults entirely. `"prefer_primary"`, `"prefer_informative"`,
+    `"earliest"` and `"max"` are new strategies.
+  * A record that is not linked is never changed.
+* **Behavior change:** `DispositionCategory` ranking. ESSENCE returns a sixth
+  value, lowercase `none` (no disposition reported), which now ranks with
+  `UNKNOWN` and a missing value, so it never replaces a known category on the
+  other record. `TRANSFERRED` now ties with `ADMIT` and `DISCHARGED` (it ranked
+  above them in 0.2.0) because an ED `TRANSFERRED` is frequently revised to
+  `DISCHARGED` as the encounter unfolds; ties go to the inpatient pull's
+  record. `DECEASED` stays the only outcome that outranks the rest.
+* **Behavior change:** deaths hold under any merge strategy. For every linked
+  episode in which either record has `C_Death` affirmative or a `DECEASED`
+  category, the kept row has `C_Death` affirmative (`"Yes"` for ESSENCE's own
+  `Yes`/`No`; `"1"` or `1` when the column is already 0/1) and
+  `DispositionCategory = "DECEASED"`, so the two fields never disagree about a
+  death. This derives each field from the other, so it can change a `"No"` or
+  a category that both records carried, and a record that is not linked is
+  never changed.
+* The `"concat"` strategy no longer keeps or appends blank text or placeholders
+  such as `"None"`.
+
 # sysPrep 0.2.0
 
 This release follows a substantial refactoring and review of 0.1.0 (a GitHub

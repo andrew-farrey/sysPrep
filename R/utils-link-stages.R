@@ -773,72 +773,48 @@ add_episode_metadata <- function(ed_long, episode_id_vec) {
 #' @rdname check_inpatient_admission_data
 collapse_episodes <- function(result, merge_fields, merge_delimiter) {
   has_been_cols <- grep("^has_been_", names(result), value = TRUE)
-  merge_cols    <- intersect(names(merge_fields), names(result))
+
+  # Every column gets a rule: the caller's `merge_fields`, else the table of
+  # ESSENCE fields, else its type (see resolve_merge_rules()) ----
+  rules <- resolve_merge_rules(result, merge_fields)
+
+  # A text strategy chosen for a column that is not text needs it as text in
+  # every row, so the single-row and merged episodes bind together ----
+  text_rules <- rules$strategy %in% c("concat", "union_delimited", "union_ccdd")
+  for (col in rules$column[text_rules]) {
+    if (!is.character(result[[col]])) {
+      result[[col]] <- as.character(result[[col]])
+    }
+  }
 
   # Episodes with exactly one row need no reconciliation; the "merged"
-  # result is trivially that row's own value. Isolating them skips
-  # merge_field_value() (and the has_been_ max()) entirely for what is, in
-  # real ESSENCE data, the large majority of visits (only episodes with an
-  # actual ED-to-inpatient transition or direct-admit linkage have >1 row).
-  # Only that smaller multi-row subset needs the grouped reconciliation
-  # below ----
+  # result is trivially that row's own value. Isolating them skips the merge
+  # entirely for what is, in real ESSENCE data, the large majority of visits
+  # (only episodes with an actual ED-to-inpatient transition or direct-admit
+  # linkage have >1 row). Only that smaller multi-row subset needs the
+  # reconciliation below ----
   single_row <- dplyr::filter(result, .data[[".episode_n_rows"]] == 1L)
   multi_row  <- dplyr::filter(result, .data[[".episode_n_rows"]] > 1L)
 
   # The first field merged with prefer_severity decides which record's values
-  # the follow_severity fields take; NA when no such field is present ----
-  severity_col <- intersect(
-    names(merge_fields)[merge_fields == "prefer_severity"], names(result)
-  )[1L]
-
-  # Which pull each row came from breaks ties between equally severe values
-  # in favor of the inpatient pull's record ----
-  has_pull <- ".link_pull" %in% names(result)
+  # the follow_severity fields, and the discharge and death times, take; NA
+  # when no such field is present ----
+  severity_col <- rules$column[rules$strategy == "prefer_severity"][1L]
 
   if (nrow(multi_row) > 0L) {
-    multi_row <- multi_row |>
-      dplyr::mutate(
-        .primary_idx = pick_primary_row_index(patient_class),
-        .from_inpatient = if (has_pull) {
-          .data[[".link_pull"]] == "inpatient"
-        } else {
-          FALSE
-        },
-        .severity_row = if (is.na(severity_col)) {
-          NA_integer_
-        } else {
-          severity_row_index(
-            .data[[severity_col]], patient_class,
-            .data[[severity_col]][.data[[".primary_idx"]][1L]],
-            .data[[".from_inpatient"]]
-          )
-        },
-        dplyr::across(
-          dplyr::all_of(has_been_cols),
-          ~ if (all(is.na(.x))) .x else max(.x, na.rm = TRUE)
-        ),
-        dplyr::across(
-          dplyr::all_of(merge_cols),
-          ~ merge_field_value(
-            values          = .x,
-            patient_classes = patient_class,
-            primary_value   = .x[.primary_idx[1L]],
-            strategy        = merge_fields[[dplyr::cur_column()]],
-            delimiter       = merge_delimiter,
-            severity_row    = .severity_row[1L],
-            from_inpatient  = .from_inpatient
-          )
-        ),
-        .row_in_group = dplyr::row_number(),
-        .by = .episode_id
-      ) |>
-      dplyr::filter(.data[[".row_in_group"]] == .data[[".primary_idx"]]) |>
-      dplyr::select(
-        -dplyr::all_of(c(
-          ".primary_idx", ".severity_row", ".from_inpatient", ".row_in_group"
-        ))
-      ) |>
-      mark_death_from_disposition(merge_fields, reference = result)
+    # A death named by any record of the episode, in C_Death or in a
+    # DECEASED disposition, is flagged before the rows are reconciled, so it
+    # holds under any merge strategy ----
+    disposition_cols <- union(
+      "disposition_category", severity_col[!is.na(severity_col)]
+    )
+    multi_row$.episode_died <- episode_died_flag(multi_row, disposition_cols)
+    multi_row <- merge_linked_episodes(
+      multi_row, rules, merge_delimiter, severity_col, has_been_cols
+    )
+    multi_row <- mark_episode_deaths(
+      multi_row, reference = result, disposition_cols = disposition_cols
+    )
   }
 
   dplyr::bind_rows(single_row, multi_row) |>

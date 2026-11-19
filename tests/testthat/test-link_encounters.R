@@ -767,23 +767,33 @@ test_that("link_encounters() applies prefer_yes to c_death in collapsed output",
   expect_equal(result$c_death, "Yes")
 })
 
-test_that("link_encounters() applies follow_severity to discharge_disposition and prefer_severity to disposition_category", {
+test_that("link_encounters() keeps both Discharge_Disposition texts by default, and follow_severity on request", {
   fixture <- make_readmit_merge_data()
   result  <- suppressMessages(
     link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
   )
-  expect_equal(result$discharge_disposition, "Expired")
+  # every field except the flags, C_Death and the category keeps what both
+  # records hold
+  expect_equal(result$discharge_disposition, "Discharged to home; Expired")
   expect_equal(result$disposition_category, "DECEASED")
+
+  followed <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(Discharge_Disposition = "follow_severity")
+    )
+  )
+  expect_equal(followed$discharge_disposition, "Expired")
 })
 
 # prefer_severity: the more severe DispositionCategory wins, whichever record has it ----
 
-test_that("disposition_severity() ranks DECEASED above TRANSFERRED above ADMIT = DISCHARGED above UNKNOWN", {
+test_that("disposition_severity() ranks DECEASED above TRANSFERRED = ADMIT = DISCHARGED above UNKNOWN", {
   expect_identical(
     disposition_severity(c(
       "DECEASED", "ADMIT", "TRANSFERRED", "DISCHARGED", "UNKNOWN", NA, ""
     )),
-    c(3L, 1L, 2L, 1L, 0L, 0L, 0L)
+    c(2L, 1L, 1L, 1L, 0L, 0L, 0L)
   )
   expect_identical(disposition_severity(character(0)), integer(0))
 })
@@ -791,8 +801,47 @@ test_that("disposition_severity() ranks DECEASED above TRANSFERRED above ADMIT =
 test_that("disposition_severity() ignores case and surrounding spaces, and ranks other values with DISCHARGED", {
   expect_identical(
     disposition_severity(c(" deceased ", "Admit", "transferred", "Home")),
-    c(3L, 1L, 2L, 1L)
+    c(2L, 1L, 1L, 1L)
   )
+})
+
+test_that("disposition_severity() ranks ESSENCE's lowercase 'none' with UNKNOWN and missing", {
+  # ESSENCE returns a sixth DispositionCategory value, "none", when no
+  # disposition was reported; it is not a known outcome
+  expect_identical(
+    disposition_severity(c("none", "None", " NONE ", "DISCHARGED", "UNKNOWN")),
+    c(0L, 0L, 0L, 1L, 0L)
+  )
+})
+
+test_that("severity_row_index() returns NA when every value is 'none' or UNKNOWN", {
+  expect_true(is.na(
+    severity_row_index(c("none", "UNKNOWN"), c("ED", "Direct Admit"), "none")
+  ))
+})
+
+test_that("an inpatient 'none' never overrides a known category on the ED record", {
+  for (ed_value in c("DISCHARGED", "ADMIT", "TRANSFERRED")) {
+    fixture <- make_readmit_merge_data()
+    fixture$ed_data$DispositionCategory <- ed_value
+    fixture$inpatient_admission_data$DispositionCategory <- "none"
+    fixture$inpatient_admission_data$C_Death <- "No"
+    result <- suppressMessages(
+      link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    )
+    expect_equal(result$disposition_category, ed_value)
+  }
+})
+
+test_that("an ED 'none' gives way to a known category on the inpatient record", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$DispositionCategory <- "none"
+  fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+  fixture$inpatient_admission_data$C_Death <- "No"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  expect_equal(result$disposition_category, "DISCHARGED")
 })
 
 test_that("merge_prefer_severity() keeps DECEASED on the ED record over an inpatient DISCHARGED", {
@@ -806,18 +855,22 @@ test_that("merge_prefer_severity() keeps DECEASED on the ED record over an inpat
   expect_equal(result, "DECEASED")
 })
 
-test_that("merge_prefer_severity() keeps TRANSFERRED over DISCHARGED from either record", {
+test_that("merge_prefer_severity() ranks TRANSFERRED with DISCHARGED, so the inpatient record's value wins either way", {
+  # an ED transfer label is revised as the encounter unfolds, so it does not
+  # outrank the inpatient record's account of how the encounter ended
   expect_equal(
     merge_prefer_severity(
-      c("DISCHARGED", "TRANSFERRED"), c("ED", "Direct Admit"), "DISCHARGED"
+      c("DISCHARGED", "TRANSFERRED"), c("ED", "Direct Admit"), "DISCHARGED",
+      from_inpatient = c(FALSE, TRUE)
     ),
     "TRANSFERRED"
   )
   expect_equal(
     merge_prefer_severity(
-      c("TRANSFERRED", "DISCHARGED"), c("ED", "Direct Admit"), "TRANSFERRED"
+      c("TRANSFERRED", "DISCHARGED"), c("ED", "Direct Admit"), "TRANSFERRED",
+      from_inpatient = c(FALSE, TRUE)
     ),
-    "TRANSFERRED"
+    "DISCHARGED"
   )
 })
 
@@ -986,10 +1039,14 @@ test_that("merge_follow_severity() takes the value from the winning record, else
 test_that("Discharge_Disposition comes from the record that supplied DispositionCategory", {
   fixture <- make_readmit_merge_data()
   fixture$inpatient_admission_data$DispositionCategory <- "TRANSFERRED"
+  fixture$inpatient_admission_data$C_Death <- "No"
   fixture$inpatient_admission_data$Discharge_Disposition <-
     "Transferred to another facility"
   result <- suppressMessages(
-    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(Discharge_Disposition = "follow_severity")
+    )
   )
   expect_equal(result$disposition_category, "TRANSFERRED")
   expect_equal(result$discharge_disposition, "Transferred to another facility")
@@ -1004,7 +1061,10 @@ test_that("Discharge_Disposition follows DispositionCategory to the ED record wh
   fixture$inpatient_admission_data$Discharge_Disposition <-
     "Discharged to home"
   result <- suppressMessages(
-    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(Discharge_Disposition = "follow_severity")
+    )
   )
   expect_equal(result$disposition_category, "DECEASED")
   expect_equal(result$discharge_disposition, "Expired")
@@ -1065,7 +1125,9 @@ test_that("an ED ADMIT gives way to the inpatient record's DISCHARGED whatever t
       link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
     )
     expect_equal(result$disposition_category, "DISCHARGED")
-    expect_equal(result$discharge_disposition, "Discharged home")
+    expect_equal(
+      result$discharge_disposition, "Admitted to inpatient; Discharged home"
+    )
   }
 })
 
@@ -1079,21 +1141,299 @@ test_that("an ED DISCHARGED followed by an inpatient ADMIT merges to ADMIT", {
     link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
   )
   expect_equal(result$disposition_category, "ADMIT")
-  expect_equal(result$discharge_disposition, "Admitted to inpatient")
+  expect_equal(
+    result$discharge_disposition, "Discharged to home; Admitted to inpatient"
+  )
 })
 
-test_that("a TRANSFERRED on either record outranks an ADMIT or DISCHARGED on the other", {
-  for (side in c("ed_data", "inpatient_admission_data")) {
+test_that("an inpatient TRANSFERRED is kept over an ED ADMIT or DISCHARGED", {
+  for (ed_value in c("ADMIT", "DISCHARGED")) {
     fixture <- make_readmit_merge_data()
-    fixture$ed_data$DispositionCategory <- "ADMIT"
-    fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+    fixture$ed_data$DispositionCategory <- ed_value
+    fixture$inpatient_admission_data$DispositionCategory <- "TRANSFERRED"
     fixture$inpatient_admission_data$C_Death <- "No"
-    fixture[[side]]$DispositionCategory <- "TRANSFERRED"
     result <- suppressMessages(
       link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
     )
     expect_equal(result$disposition_category, "TRANSFERRED")
   }
+})
+
+test_that("an ED TRANSFERRED gives way to the inpatient record's ADMIT or DISCHARGED", {
+  # the ED record holds what was known at ED discharge; the inpatient record
+  # reflects the whole encounter of care
+  for (inpatient_value in c("ADMIT", "DISCHARGED")) {
+    fixture <- make_readmit_merge_data()
+    fixture$ed_data$DispositionCategory <- "TRANSFERRED"
+    fixture$inpatient_admission_data$DispositionCategory <- inpatient_value
+    fixture$inpatient_admission_data$C_Death <- "No"
+    result <- suppressMessages(
+      link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    )
+    expect_equal(result$disposition_category, inpatient_value)
+  }
+})
+
+test_that("DECEASED on either record outranks TRANSFERRED on the other", {
+  for (side in c("ed_data", "inpatient_admission_data")) {
+    other <- setdiff(c("ed_data", "inpatient_admission_data"), side)
+    fixture <- make_readmit_merge_data()
+    fixture[[side]]$DispositionCategory <- "DECEASED"
+    fixture[[other]]$DispositionCategory <- "TRANSFERRED"
+    fixture$inpatient_admission_data$C_Death <- "No"
+    result <- suppressMessages(
+      link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    )
+    expect_equal(result$disposition_category, "DECEASED")
+    expect_equal(result$c_death, "Yes")
+  }
+})
+
+test_that("a death on either record sets C_Death whatever merge_fields says", {
+  # merge_fields replaces the defaults, so a caller who lists only some fields
+  # must still get every death counted
+  custom <- c(CCDD = "union_ccdd")
+  cases <- list(
+    list(ed_c = "Yes", ed_d = "DISCHARGED", ip_c = "No", ip_d = "DISCHARGED"),
+    list(ed_c = "No", ed_d = "DISCHARGED", ip_c = "Yes", ip_d = "DISCHARGED"),
+    list(ed_c = "No", ed_d = "DECEASED", ip_c = "No", ip_d = "DISCHARGED"),
+    list(ed_c = "No", ed_d = "DISCHARGED", ip_c = "No", ip_d = "DECEASED")
+  )
+  for (case in cases) {
+    fixture <- make_readmit_merge_data()
+    fixture$ed_data$C_Death <- case$ed_c
+    fixture$ed_data$DispositionCategory <- case$ed_d
+    fixture$inpatient_admission_data$C_Death <- case$ip_c
+    fixture$inpatient_admission_data$DispositionCategory <- case$ip_d
+    result <- suppressMessages(
+      link_encounters(
+        fixture$ed_data, fixture$inpatient_admission_data,
+        merge_fields = custom
+      )
+    )
+    expect_equal(result$c_death, "Yes")
+  }
+})
+
+test_that("a DECEASED record sets C_Death and wins the category even under prefer_admission", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$DispositionCategory <- "DECEASED"
+  fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+  fixture$inpatient_admission_data$C_Death <- "No"
+  result <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(
+        C_Death = "prefer_yes", DispositionCategory = "prefer_admission"
+      )
+    )
+  )
+  # the death rule holds whatever strategy the caller chose for the category
+  expect_equal(result$disposition_category, "DECEASED")
+  expect_equal(result$c_death, "Yes")
+})
+
+test_that("C_Death stays as recorded when neither record names a death, whatever merge_fields says", {
+  fixture <- make_readmit_merge_data()
+  fixture$inpatient_admission_data$C_Death <- "No"
+  fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+  result <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(CCDD = "union_ccdd")
+    )
+  )
+  expect_equal(result$c_death, "No")
+})
+
+test_that("a death overrides an explicit concat strategy on C_Death", {
+  fixture <- make_readmit_merge_data()
+  result  <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(C_Death = "concat")
+    )
+  )
+  # "No; Yes" would not be counted as a death by anything downstream
+  expect_equal(result$c_death, "Yes")
+})
+
+test_that("a death in a text 0/1 C_Death column is written as 1 under custom merge_fields", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$C_Death <- "0"
+  fixture$inpatient_admission_data$C_Death <- "0"
+  result <- suppressMessages(
+    link_encounters(
+      fixture$ed_data, fixture$inpatient_admission_data,
+      merge_fields = c(CCDD = "union_ccdd")
+    )
+  )
+  expect_equal(result$c_death, "1")
+})
+
+test_that("C_Death affirmative on either record sets DispositionCategory to DECEASED", {
+  for (side in c("ed_data", "inpatient_admission_data")) {
+    other <- setdiff(c("ed_data", "inpatient_admission_data"), side)
+    fixture <- make_readmit_merge_data()
+    fixture[[side]]$C_Death <- "Yes"
+    fixture[[side]]$DispositionCategory <- "DISCHARGED"
+    fixture[[other]]$C_Death <- "No"
+    fixture[[other]]$DispositionCategory <- "DISCHARGED"
+    result <- suppressMessages(
+      link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+    )
+    expect_equal(result$c_death, "Yes")
+    expect_equal(result$disposition_category, "DECEASED")
+  }
+})
+
+test_that("a death sets DispositionCategory to DECEASED under any merge_fields", {
+  strategies <- list(
+    c(CCDD = "union_ccdd"),
+    c(C_Death = "prefer_yes", DispositionCategory = "prefer_admission")
+  )
+  for (merge_fields in strategies) {
+    fixture <- make_readmit_merge_data()
+    fixture$ed_data$C_Death <- "Yes"
+    fixture$ed_data$DispositionCategory <- "TRANSFERRED"
+    fixture$inpatient_admission_data$C_Death <- "No"
+    fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+    result <- suppressMessages(
+      link_encounters(
+        fixture$ed_data, fixture$inpatient_admission_data,
+        merge_fields = merge_fields
+      )
+    )
+    expect_equal(result$c_death, "Yes")
+    expect_equal(result$disposition_category, "DECEASED")
+  }
+})
+
+test_that("a record with no linked counterpart keeps its own C_Death and DispositionCategory", {
+  fixture <- make_readmit_merge_data()
+  fixture$ed_data$C_Death <- "Yes"
+  fixture$ed_data$DispositionCategory <- "DISCHARGED"
+  fixture$inpatient_admission_data$Visit_ID <- "V00000099"
+  fixture$inpatient_admission_data$C_Death <- "No"
+  fixture$inpatient_admission_data$DispositionCategory <- "DISCHARGED"
+  result <- suppressMessages(
+    link_encounters(fixture$ed_data, fixture$inpatient_admission_data)
+  )
+  ed_row <- result[result$visit_id == "V00000001", ]
+  expect_equal(ed_row$c_death, "Yes")
+  expect_equal(ed_row$disposition_category, "DISCHARGED")
+})
+
+test_that("mark_episode_deaths() sets the disposition of a flagged episode to DECEASED", {
+  result <- tibble::tibble(
+    c_death = c("Yes", "No"),
+    disposition_category = c("DISCHARGED", "ADMIT"),
+    .episode_died = c(TRUE, FALSE)
+  )
+  marked <- mark_episode_deaths(result)
+  expect_equal(marked$disposition_category, c("DECEASED", "ADMIT"))
+  expect_equal(marked$c_death, c("Yes", "No"))
+  # a missing category is filled, and the column may be the only one present
+  only_category <- tibble::tibble(
+    disposition_category = c(NA, "none"), .episode_died = c(TRUE, TRUE)
+  )
+  expect_equal(
+    mark_episode_deaths(only_category)$disposition_category,
+    c("DECEASED", "DECEASED")
+  )
+  # named disposition columns are the ones set
+  other <- tibble::tibble(x = "ADMIT", .episode_died = TRUE)
+  expect_equal(mark_episode_deaths(other, disposition_cols = "x")$x, "DECEASED")
+})
+
+test_that("episode_died_flag() marks a whole episode when any row names a death", {
+  rows <- tibble::tibble(
+    .episode_id = c("a", "a", "b", "b", "c", "c", "d", "d"),
+    c_death = c("No", "Yes", "No", "No", "1", "0", NA, NA),
+    disposition_category = c(
+      "DISCHARGED", "DISCHARGED", "DISCHARGED", " deceased ",
+      "DISCHARGED", "DISCHARGED", "none", NA
+    )
+  )
+  expect_identical(
+    episode_died_flag(rows, "disposition_category"),
+    c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE)
+  )
+})
+
+test_that("episode_died_flag() works without a C_Death column, a disposition column, or both", {
+  rows <- tibble::tibble(
+    .episode_id = c("a", "a", "b", "b"),
+    disposition_category = c("DISCHARGED", "DECEASED", "ADMIT", "DISCHARGED")
+  )
+  expect_identical(
+    episode_died_flag(rows, "disposition_category"), c(TRUE, TRUE, FALSE, FALSE)
+  )
+  flags_only <- tibble::tibble(
+    .episode_id = c("a", "a", "b", "b"), c_death = c("No", "Yes", "No", "No")
+  )
+  expect_identical(
+    episode_died_flag(flags_only, character(0)), c(TRUE, TRUE, FALSE, FALSE)
+  )
+  neither <- tibble::tibble(.episode_id = c("a", "a"))
+  expect_identical(episode_died_flag(neither, character(0)), c(FALSE, FALSE))
+})
+
+test_that("episode_died_flag() reads every disposition column it is given", {
+  rows <- tibble::tibble(
+    .episode_id = c("a", "a"),
+    disposition_category = c("DISCHARGED", "DISCHARGED"),
+    other_disposition = c("DISCHARGED", "DECEASED")
+  )
+  expect_identical(
+    episode_died_flag(rows, c("disposition_category", "other_disposition")),
+    c(TRUE, TRUE)
+  )
+})
+
+test_that("mark_episode_deaths() writes C_Death in the form the column already uses", {
+  as_text <- tibble::tibble(c_death = "No", .episode_died = TRUE)
+  expect_equal(mark_episode_deaths(as_text)$c_death, "Yes")
+
+  as_flag_text <- tibble::tibble(
+    c_death = c("0", "1"), .episode_died = c(TRUE, FALSE)
+  )
+  expect_equal(mark_episode_deaths(as_flag_text)$c_death, c("1", "1"))
+
+  as_int <- tibble::tibble(c_death = 0L, .episode_died = TRUE)
+  expect_identical(mark_episode_deaths(as_int)$c_death, 1L)
+
+  as_dbl <- tibble::tibble(c_death = 0, .episode_died = TRUE)
+  expect_identical(mark_episode_deaths(as_dbl)$c_death, 1)
+})
+
+test_that("mark_episode_deaths() reads the C_Death coding from the reference column", {
+  linked    <- tibble::tibble(c_death = "0", .episode_died = TRUE)
+  reference <- tibble::tibble(c_death = c("0", "1"))
+  expect_equal(mark_episode_deaths(linked, reference)$c_death, "1")
+  # a Yes/No reference keeps Yes
+  yes_no <- tibble::tibble(c_death = c("No", "Yes"))
+  expect_equal(
+    mark_episode_deaths(
+      tibble::tibble(c_death = "No", .episode_died = TRUE), yes_no
+    )$c_death,
+    "Yes"
+  )
+})
+
+test_that("mark_episode_deaths() leaves C_Death alone when there is nothing to mark", {
+  no_death <- tibble::tibble(c_death = "No", .episode_died = FALSE)
+  expect_identical(
+    mark_episode_deaths(no_death), tibble::tibble(c_death = "No")
+  )
+  # an unknown answer is not a death
+  unknown <- tibble::tibble(c_death = "No", .episode_died = NA)
+  expect_identical(mark_episode_deaths(unknown), tibble::tibble(c_death = "No"))
+  # nothing to write to without a C_Death column
+  no_c_death <- tibble::tibble(x = "DECEASED", .episode_died = TRUE)
+  expect_identical(
+    mark_episode_deaths(no_c_death), tibble::tibble(x = "DECEASED")
+  )
 })
 
 test_that(".link_pull and .link_src_row never appear in the output", {
@@ -1149,31 +1489,6 @@ test_that("a text 0/1 C_Death column stays 0/1 coded when a linked episode is ma
   )
 })
 
-test_that("mark_death_from_disposition() reads the C_Death coding from the reference column", {
-  merge_fields <- c(
-    disposition_category = "prefer_severity", c_death = "prefer_yes"
-  )
-  linked <- tibble::tibble(disposition_category = "DECEASED", c_death = "0")
-  reference <- tibble::tibble(
-    disposition_category = c("DECEASED", "DISCHARGED"), c_death = c("0", "1")
-  )
-  expect_equal(
-    mark_death_from_disposition(linked, merge_fields, reference)$c_death, "1"
-  )
-  # a Yes/No reference keeps Yes
-  yes_no <- tibble::tibble(
-    disposition_category = c("DECEASED", "DISCHARGED"),
-    c_death = c("No", "Yes")
-  )
-  expect_equal(
-    mark_death_from_disposition(
-      tibble::tibble(disposition_category = "DECEASED", c_death = "No"),
-      merge_fields, yes_no
-    )$c_death,
-    "Yes"
-  )
-})
-
 test_that("link_encounters() leaves a record with no linked counterpart unchanged", {
   ed <- make_readmit_merge_data()$ed_data
   ip <- make_readmit_merge_data()$inpatient_admission_data
@@ -1186,63 +1501,12 @@ test_that("link_encounters() leaves a record with no linked counterpart unchange
   expect_equal(result$c_death[result$visit_id == "V00000001"], "No")
 })
 
-test_that("mark_death_from_disposition() writes C_Death in the form the column already uses", {
-  merge_fields <- c(
-    disposition_category = "prefer_severity", c_death = "prefer_yes"
-  )
-  dead <- "DECEASED"
-  as_text <- tibble::tibble(disposition_category = dead, c_death = "No")
-  expect_equal(
-    mark_death_from_disposition(as_text, merge_fields)$c_death, "Yes"
-  )
-  as_flag_text <- tibble::tibble(
-    disposition_category = c(dead, "DISCHARGED"), c_death = c("0", "1")
-  )
-  expect_equal(
-    mark_death_from_disposition(as_flag_text, merge_fields)$c_death,
-    c("1", "1")
-  )
-  as_int <- tibble::tibble(disposition_category = dead, c_death = 0L)
-  expect_identical(
-    mark_death_from_disposition(as_int, merge_fields)$c_death, 1L
-  )
-  as_dbl <- tibble::tibble(disposition_category = dead, c_death = 0)
-  expect_identical(
-    mark_death_from_disposition(as_dbl, merge_fields)$c_death, 1
-  )
-})
-
-test_that("mark_death_from_disposition() leaves C_Death alone when there is nothing to mark", {
-  merge_fields <- c(
-    disposition_category = "prefer_severity", c_death = "prefer_yes"
-  )
-  no_death <- tibble::tibble(
-    disposition_category = "DISCHARGED", c_death = "No"
-  )
-  expect_identical(
-    mark_death_from_disposition(no_death, merge_fields), no_death
-  )
-
-  no_c_death <- tibble::tibble(disposition_category = "DECEASED")
-  expect_identical(
-    mark_death_from_disposition(no_c_death, merge_fields), no_c_death
-  )
-
-  old_strategy <- c(
-    disposition_category = "prefer_admission", c_death = "prefer_yes"
-  )
-  dead_no_flag <- tibble::tibble(
-    disposition_category = "DECEASED", c_death = "No"
-  )
-  expect_identical(
-    mark_death_from_disposition(dead_no_flag, old_strategy), dead_no_flag
-  )
-})
-
 test_that("prefer_admission is still available and takes the first admission-class row", {
   fixture <- make_readmit_merge_data()
   # the ED record's own "Admitted" row comes first, so its value is kept
   fixture$ed_data$HasBeenAdmitted <- 1L
+  fixture$inpatient_admission_data$C_Death <- "No"
+  fixture$inpatient_admission_data$DispositionCategory <- "ADMIT"
   result <- suppressMessages(
     link_encounters(
       fixture$ed_data, fixture$inpatient_admission_data,
@@ -1295,17 +1559,6 @@ test_that("link_encounters() return_format = 'long' still shows both original ro
     )
   )
   expect_equal(nrow(result), 2L)
-})
-
-test_that("link_encounters() custom merge_fields strategy is respected", {
-  fixture <- make_readmit_merge_data()
-  result  <- suppressMessages(
-    link_encounters(
-      fixture$ed_data, fixture$inpatient_admission_data,
-      merge_fields = c(C_Death = "concat")
-    )
-  )
-  expect_equal(result$c_death, "No; Yes")
 })
 
 test_that("link_encounters() preserves true has_been_ values (not NA or -Inf) for ED-only episodes with no direct-admit match (two-pull)", {
@@ -1454,7 +1707,7 @@ test_that("a linked row combines clinical information and carries every flag tha
   expect_equal(c(v3$has_been_e, v3$has_been_admitted), c(1L, 1L))
   expect_equal(v3$ccdd, "cc_c;cc_x|dd_c;dd_x")
   expect_equal(v3$c_death, "Yes")
-  expect_equal(v3$discharge_disposition, "Expired")
+  expect_equal(v3$discharge_disposition, "Discharged; Expired")
 })
 
 test_that("a HasBeen_ flag is never NA, and a 1 on either side is never lost", {

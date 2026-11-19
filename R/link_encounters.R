@@ -10,6 +10,19 @@
 #' so information present on only one source row isn't discarded.
 #'
 #' @details
+#' ## Status: experimental
+#'
+#' `link_encounters()` is the most complex function in the package and should
+#' be considered experimental, even though it is in active use for Kentucky
+#' surveillance. Its linkage contract (which records are merged, and that
+#' unlinked records are never changed) is tested, but the rules that reconcile
+#' two records of one encounter, above all which `DispositionCategory` is kept
+#' and when `C_Death` is set, are still being refined against real ESSENCE
+#' pulls, and a later version may change them. Review the linked output (for
+#' example the `.episode_*` columns and any `DECEASED` episodes) before relying
+#' on it for counts or anomaly detection, and read the Behavior-change entries
+#' in `NEWS.md` when upgrading.
+#'
 #' ## Why this matters for case counts
 #'
 #' Adding `HasBeenE = 0` to the inpatient query does not stop an ED visit
@@ -68,23 +81,112 @@
 #'
 #' ## Merge behavior (`return_format = "collapsed"`, the default)
 #'
-#' Every column matching `has_been_*` is reconciled by taking the max across
-#' the episode's rows: e.g., if the ED row has `HasBeenAdmitted = 0` and the
-#' direct-admit row has `HasBeenAdmitted = 1`, the merged row correctly shows
-#' `HasBeenAdmitted = 1`.
+#' One principle decides how the records of an episode are combined: **only
+#' the `HasBeen_` flags, `C_Death` and `DispositionCategory` are collapsed to
+#' one value, so the kept row reflects the whole encounter of care (just as a
+#' correctly submitted record with `HasBeenE = 1` and `HasBeenAdmitted = 1`
+#' would). Every other field keeps what either record holds.** A visit can
+#' always be pulled again through the API to compare, but the linked row should
+#' not lose clinical information on its way there.
 #'
-#' Columns named in `merge_fields` are reconciled using the strategy assigned
-#' to them:
+#' The **primary row** is the `"ED"`-class row of the episode if there is one,
+#' otherwise its first row. A value is **informative** unless it is missing,
+#' blank, or a placeholder such as `"None"`, `"Unknown"`, `"N/A"` or `"Not
+#' Reported"` (`"U"` as well, for `Sex`); a number or time is informative
+#' unless missing, so a zero is a real value.
+#'
+#' Each ESSENCE field has a rule, taken from the NSSP ESSENCE data dictionary
+#' (the table is `data-raw/merge_field_classification.csv` in the source
+#' repository, and a column is matched by its [janitor::make_clean_names()]
+#' name). A column the table does not know follows its type: text keeps both
+#' records' values, and anything else takes the first informative value.
+#' \describe{
+#'   \item{Flags and outcomes}{`HasBeen_` flags take the maximum, so the
+#'     merged row shows `HasBeenAdmitted = 1` when either record does.
+#'     `DispositionCategory` and `C_Death` follow the rules in the next
+#'     section.}
+#'   \item{Text and codes}{Chief complaint, discharge diagnosis,
+#'     `Discharge_Disposition`, triage notes, procedure, medication and
+#'     problem lists, the physician and insurance company identifiers (which
+#'     belong to the encounter, not the patient), and similar fields keep
+#'     **both** records' values, joined
+#'     with `"; "` and without repeating a value one record already holds (the
+#'     `"concat"` strategy).}
+#'   \item{Scalars and times}{Age, vitals, record timestamps,
+#'     `Admit_Date_Time`, identifiers such as `C_BioSense_ID`, patient class,
+#'     demographics, and any number, date or time take the primary row's
+#'     value, or the first informative value from the other record when that
+#'     one is not informative (`"prefer_informative"`). `Discharge_Date_Time`
+#'     and `Death_Date_Time` instead use the record that won
+#'     `DispositionCategory` as their first choice, so a discharge or death
+#'     time comes from the record that reported the outcome.}
+#'   \item{Values that belong together}{A value and what describes it come
+#'     from one record: a weight and its units, an age with its units and age
+#'     group, a zip code with its region and state, race with the fields
+#'     derived from it, and the visit-to-discharge durations with
+#'     `Discharge_Date_Time`. The described field takes that record's value
+#'     even when it is missing, so units are never mixed with another
+#'     record's number. If the field it follows is absent from the data, it
+#'     takes the first informative value.}
+#'   \item{Derived lists and indicators}{Delimited code lists computed from
+#'     the diagnosis text (`ICD_*_Flat`, `C_DiagnosisCode_*_Flat`, `DDParsed`,
+#'     `CCDDCategory_flat`) are united, and keep a delimiter at both ends
+#'     (`;12;9;`) when every value had one. The indicators
+#'     `CCInformative`, `CCAvailable`, `DDInformative`, `DDAvailable` and
+#'     `DDProcessed` are `1` when either record says so. `FirstDateTimeAdded`
+#'     is the earlier time, as ESSENCE defines it. `DeathIndicator` is `Yes`
+#'     when either record says so. `CCDD` and `CCDDParsed` are united
+#'     half by half.}
+#'   \item{Lengths}{`CCOrig_Length`, `CCParsed_Length` and `DD_Length` are
+#'     recomputed from the merged `ChiefComplaintOrig`,
+#'     `ChiefComplaintParsed` and `DischargeDiagnosis`, separators included.
+#'     When a length column is present but its text column is not, the
+#'     winning record's value is kept and a warning says the length was not
+#'     recomputed.}
+#' }
+#'
+#' A record that is not linked to another is never changed.
+#'
+#' ### Deaths and the disposition
+#'
+#' `DispositionCategory` (ESSENCE values `ADMIT`, `DECEASED`, `DISCHARGED`,
+#' `TRANSFERRED`, `UNKNOWN`, and a lowercase `none` returned when no
+#' disposition was reported) keeps the most severe value of the episode,
+#' whichever record carries it (`"prefer_severity"`): `DECEASED` ranks above
+#' `TRANSFERRED`, `DISCHARGED` and `ADMIT` (equal), which rank above `UNKNOWN`,
+#' `none` and a missing value, so an unknown outcome never replaces a known
+#' one. `TRANSFERRED` ranks with `ADMIT` and `DISCHARGED` because an ED
+#' `TRANSFERRED` is frequently revised to `DISCHARGED` as the encounter
+#' unfolds. Among equally severe values the inpatient pull's record wins,
+#' because it reflects the whole encounter of care: an ED `ADMIT` or
+#' `TRANSFERRED` gives way to the inpatient record's `DISCHARGED`, and the
+#' result does not depend on whether the ED record also carries
+#' `HasBeenAdmitted`. Then another admission-class row's value is kept.
+#'
+#' Deaths are handled the same way whatever strategies are chosen. For every
+#' linked episode in which either record has `C_Death` affirmative or a
+#' `DECEASED` `DispositionCategory`, the kept row has `C_Death` affirmative
+#' (`"Yes"` for ESSENCE's own `Yes`/`No`; `"1"` or `1` when the column is
+#' already 0/1, read from the whole column) **and**
+#' `DispositionCategory = "DECEASED"`, so the two fields never disagree about
+#' a death. Each field is derived from the other, so this can change a `"No"`
+#' or a category that both records carried.
+#'
+#' ### Choosing a different rule
+#'
+#' `merge_fields` replaces the rule for the columns it names and leaves every
+#' other column on its rule. The strategies are:
 #' \describe{
 #'   \item{`"concat"`}{Starting from the primary row's value, appends each
-#'     other row's non-empty value unless the accumulated text (`"; "`-
+#'     other row's informative value unless the accumulated text (`"; "`-
 #'     separated) already contains it as whole words or whole codes, so
 #'     complaint text or a diagnosis or SNOMED code present in one record but
 #'     not the other is kept (`"fall"` is not found in `"waterfall"`, nor
-#'     `"R10.9"` in `"R10.90"`). Generic free text.}
+#'     `"R10.9"` in `"R10.90"`).}
 #'   \item{`"union_delimited"`}{Splits each row's value on `merge_delimiter`,
 #'     takes the union of unique parts (preserving order of first
-#'     appearance), rejoins with the same delimiter.}
+#'     appearance), rejoins with the same delimiter, keeping a delimiter at
+#'     both ends when every value had one.}
 #'   \item{`"union_ccdd"`}{Specific to ESSENCE's `CC-values|DD-values`
 #'     structure (`CCDD`/`CCDDParsed`). Splits on `|` into CC/DD halves
 #'     (fixed by the ESSENCE convention, not configurable), splits each half
@@ -94,41 +196,26 @@
 #'     `"Yes"`, or `1`/`"1"` for 0/1-coded flag columns), the merged value is
 #'     that row's affirmative value. Otherwise falls back to the primary
 #'     row's value.}
+#'   \item{`"prefer_primary"`}{The primary row's value, even when it is empty.}
+#'   \item{`"prefer_informative"`}{The primary row's value when it is
+#'     informative, otherwise the first informative value from another row.}
+#'   \item{`"earliest"`}{The earliest time (text times in ISO or `MM/DD/YYYY`
+#'     form are parsed); the primary row's value when none can be read.}
+#'   \item{`"max"`}{The largest number, with the value kept as it was written;
+#'     the primary row's value when none is a number.}
 #'   \item{`"prefer_admission"`}{Uses the value from whichever row's
 #'     `patient_class` is `"Inpatient"`, `"Direct Admit"`, or `"Admitted"`,
 #'     if such a row has a non-missing value for the field. Otherwise falls
 #'     back to the primary row's value.}
-#'   \item{`"prefer_severity"`}{For `DispositionCategory`, keeps the most
-#'     severe value in the episode, whichever record carries it: `DECEASED`
-#'     ranks above `TRANSFERRED`, which ranks above `DISCHARGED` and `ADMIT`
-#'     (equal), which rank above `UNKNOWN` and a missing value. This is
-#'     the default for `DispositionCategory`, so an ED record closed as
-#'     `DISCHARGED` does not hide a death or a transfer recorded on the linked
-#'     inpatient record, whichever of the two records has the
-#'     `HasBeenAdmitted` flag. Whenever the merged value is `DECEASED`,
-#'     `C_Death` is also set to affirmative for that episode (using the form
-#'     already in the column, read from the whole column: `"Yes"`, `"1"`, or
-#'     `1`). This derives `C_Death` from the merged category, so it can
-#'     change a `"No"` that both records carried; it applies only to linked
-#'     episodes, and a record that is not linked is never changed. Among
-#'     equally severe values the inpatient pull's record wins, because it
-#'     reflects the whole encounter of care: an ED `ADMIT` gives way to the
-#'     inpatient record's `DISCHARGED`, and the result does not depend on
-#'     whether the ED record also carries `HasBeenAdmitted`. Then another
-#'     admission-class row's value is kept.}
+#'   \item{`"prefer_severity"`}{The `DispositionCategory` rule described
+#'     above.}
 #'   \item{`"follow_severity"`}{Takes the value from the same record whose
-#'     `prefer_severity` field won (the first such field in `merge_fields`).
-#'     This is the default for `Discharge_Disposition`, so it comes from the
-#'     record that supplied `DispositionCategory` and the two agree whenever
-#'     that record has a value for it. If that record has no value for the
-#'     field, or no `prefer_severity` field is present, the
+#'     `prefer_severity` field won, so a companion field such as
+#'     `Discharge_Disposition` agrees with the category. If that record has no
+#'     value for the field, or no `prefer_severity` field is present, the
 #'     `"prefer_admission"` value is used instead (so the two can then
 #'     differ, rather than dropping a value that is known).}
 #' }
-#'
-#' Any column not a `HasBeen_` flag and not listed in `merge_fields` takes
-#' its value from the **primary row**: the `"ED"`-class row if one exists in
-#' the episode, else the first row in original order.
 #'
 #' Set `return_format = "long"` to get the diagnostic long-format output
 #' instead: one row per patient-class per episode, with no merge applied.
@@ -162,10 +249,9 @@
 #' * `C_Visit_Date_Time` (or `Date` and `Time`) orders classes when no
 #'   `C_Patient_Class_MDT_Updates` is present; without any of them the order is
 #'   alphabetical and carries no clinical meaning.
-#' * The `merge_fields` columns (by default `CCDD`, `CCDDParsed`,
-#'   `CCDDCategory_flat`, `C_Death`, `Discharge_Disposition`, and
-#'   `DispositionCategory`) are merged only when present; without
-#'   `DispositionCategory` no disposition is ranked by severity.
+#' * The fields with a merge rule (see "Merge behavior") are merged only when
+#'   present; without `DispositionCategory` no disposition is ranked by
+#'   severity, and the discharge and death times fall back to the primary row.
 #'
 #' ## Why `inpatient_admission_data` is required
 #'
@@ -236,7 +322,7 @@
 #' ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
 #' "Patient Class (Syndromic Surveillance)" value set (concept codes and
 #' preferred names, verified against
-#' <https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A>).
+#' <https://www.cdc.gov/phin/php/phinvads/index.html?id=564F8F8B-E1DE-E411-8970-0017A477041A>).
 #' `link_encounters()`'s own derived `patient_class` output values (`"ED"`,
 #' `"Inpatient"`, `"Direct Admit"`, etc.) are shortened working labels, not
 #' required to match these preferred names verbatim:
@@ -382,14 +468,14 @@
 #'   `visit_col` is missing on both rows. Defaults to `NULL`,
 #'   which preserves the default behavior of never merging rows solely
 #'   because they share a missing `visit_col`; see Details.
-#' @param merge_fields Named character vector mapping column names (raw
-#'   ESSENCE names or post-[janitor::clean_names()] equivalents) to a merge
-#'   strategy: one of `"concat"`, `"union_delimited"`, `"union_ccdd"`,
-#'   `"prefer_yes"`, `"prefer_admission"`, `"prefer_severity"`, or
-#'   `"follow_severity"`. Only used when `return_format = "collapsed"`.
-#'   Defaults to a curated set of ESSENCE fields known to carry information
-#'   only visible in the direct-admit record; see Details. Extend or override
-#'   for other fields as needed.
+#' @param merge_fields `NULL` (the default), or a named character vector
+#'   mapping column names (raw ESSENCE names or post-[janitor::clean_names()]
+#'   equivalents) to a merge strategy: one of `"concat"`, `"union_delimited"`,
+#'   `"union_ccdd"`, `"prefer_yes"`, `"prefer_primary"`,
+#'   `"prefer_informative"`, `"earliest"`, `"max"`, `"prefer_admission"`,
+#'   `"prefer_severity"`, or `"follow_severity"`. Only used when
+#'   `return_format = "collapsed"`. Each entry replaces the built-in rule for
+#'   that column; every other column keeps its rule (see "Merge behavior").
 #' @param merge_delimiter Character string. Delimiter used by the
 #'   `"union_delimited"` and `"union_ccdd"` strategies. Defaults to `";"`,
 #'   matching ESSENCE's convention for `CCDDCategory_flat` and the
@@ -398,7 +484,7 @@
 #'   `"long"`. See Details.
 #' @return When `return_format = "collapsed"` (default), a data frame with
 #'   one row per true care episode, `HasBeen_` flags reconciled via max, and
-#'   `merge_fields` columns reconciled per their assigned strategy. When
+#'   every other column reconciled by its merge rule. When
 #'   `return_format = "long"`, a data frame in long format with one row per
 #'   visit per patient class, unmerged. Both include episode metadata
 #'   columns `.episode_id`, `.patient_class_sequence`, `.episode_n_rows`,
@@ -439,7 +525,7 @@
 #'
 #' episodes_full <- link_encounters(
 #'   ed_clean, inpatient_clean,
-#'   merge_fields = c(TriageNotes = "concat")
+#'   merge_fields = c(Discharge_Disposition = "follow_severity")
 #' )
 #' }
 #'
@@ -452,14 +538,7 @@ link_encounters <- function(ed_data,
                             facility_col = NULL,
                             visit_col = Visit_ID,
                             fallback_visit_col = NULL,
-                            merge_fields = c(
-                              CCDD = "union_ccdd",
-                              CCDDParsed = "union_ccdd",
-                              CCDDCategory_flat = "union_delimited",
-                              C_Death = "prefer_yes",
-                              Discharge_Disposition = "follow_severity",
-                              DispositionCategory = "prefer_severity"
-                            ),
+                            merge_fields = NULL,
                             merge_delimiter = ";",
                             return_format = c("collapsed", "long"),
                             clean_names = TRUE,
@@ -485,7 +564,9 @@ link_encounters <- function(ed_data,
 
   check_merge_fields(merge_fields)
 
-  names(merge_fields) <- janitor::make_clean_names(names(merge_fields))
+  if (length(merge_fields) > 0L) {
+    names(merge_fields) <- janitor::make_clean_names(names(merge_fields))
+  }
 
   # Normalize ed_data and resolve the key columns ----
   original_names <- names(ed_data)

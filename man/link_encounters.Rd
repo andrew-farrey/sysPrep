@@ -10,9 +10,7 @@ link_encounters(
   facility_col = NULL,
   visit_col = Visit_ID,
   fallback_visit_col = NULL,
-  merge_fields = c(CCDD = "union_ccdd", CCDDParsed = "union_ccdd", CCDDCategory_flat =
-    "union_delimited", C_Death = "prefer_yes", Discharge_Disposition = "follow_severity",
-    DispositionCategory = "prefer_severity"),
+  merge_fields = NULL,
   merge_delimiter = ";",
   return_format = c("collapsed", "long"),
   clean_names = TRUE,
@@ -63,14 +61,14 @@ before it reaches the function.}
 which preserves the default behavior of never merging rows solely
 because they share a missing \code{visit_col}; see Details.}
 
-\item{merge_fields}{Named character vector mapping column names (raw
-ESSENCE names or post-\code{\link[janitor:clean_names]{janitor::clean_names()}} equivalents) to a merge
-strategy: one of \code{"concat"}, \code{"union_delimited"}, \code{"union_ccdd"},
-\code{"prefer_yes"}, \code{"prefer_admission"}, \code{"prefer_severity"}, or
-\code{"follow_severity"}. Only used when \code{return_format = "collapsed"}.
-Defaults to a curated set of ESSENCE fields known to carry information
-only visible in the direct-admit record; see Details. Extend or override
-for other fields as needed.}
+\item{merge_fields}{\code{NULL} (the default), or a named character vector
+mapping column names (raw ESSENCE names or post-\code{\link[janitor:clean_names]{janitor::clean_names()}}
+equivalents) to a merge strategy: one of \code{"concat"}, \code{"union_delimited"},
+\code{"union_ccdd"}, \code{"prefer_yes"}, \code{"prefer_primary"},
+\code{"prefer_informative"}, \code{"earliest"}, \code{"max"}, \code{"prefer_admission"},
+\code{"prefer_severity"}, or \code{"follow_severity"}. Only used when
+\code{return_format = "collapsed"}. Each entry replaces the built-in rule for
+that column; every other column keeps its rule (see "Merge behavior").}
 
 \item{merge_delimiter}{Character string. Delimiter used by the
 \code{"union_delimited"} and \code{"union_ccdd"} strategies. Defaults to \code{";"},
@@ -94,7 +92,7 @@ Defaults to \code{TRUE}.}
 \value{
 When \code{return_format = "collapsed"} (default), a data frame with
 one row per true care episode, \code{HasBeen_} flags reconciled via max, and
-\code{merge_fields} columns reconciled per their assigned strategy. When
+every other column reconciled by its merge rule. When
 \code{return_format = "long"}, a data frame in long format with one row per
 visit per patient class, unmerged. Both include episode metadata
 columns \code{.episode_id}, \code{.patient_class_sequence}, \code{.episode_n_rows},
@@ -109,6 +107,20 @@ into one composite row per true care episode, reconciling field values
 so information present on only one source row isn't discarded.
 }
 \details{
+\subsection{Status: experimental}{
+
+\code{link_encounters()} is the most complex function in the package and should
+be considered experimental, even though it is in active use for Kentucky
+surveillance. Its linkage contract (which records are merged, and that
+unlinked records are never changed) is tested, but the rules that reconcile
+two records of one encounter, above all which \code{DispositionCategory} is kept
+and when \code{C_Death} is set, are still being refined against real ESSENCE
+pulls, and a later version may change them. Review the linked output (for
+example the \verb{.episode_*} columns and any \code{DECEASED} episodes) before relying
+on it for counts or anomaly detection, and read the Behavior-change entries
+in \code{NEWS.md} when upgrading.
+}
+
 \subsection{Why this matters for case counts}{
 
 Adding \code{HasBeenE = 0} to the inpatient query does not stop an ED visit
@@ -169,23 +181,111 @@ discarded.
 
 \subsection{Merge behavior (\code{return_format = "collapsed"}, the default)}{
 
-Every column matching \verb{has_been_*} is reconciled by taking the max across
-the episode's rows: e.g., if the ED row has \code{HasBeenAdmitted = 0} and the
-direct-admit row has \code{HasBeenAdmitted = 1}, the merged row correctly shows
-\code{HasBeenAdmitted = 1}.
+One principle decides how the records of an episode are combined: \strong{only
+the \code{HasBeen_} flags, \code{C_Death} and \code{DispositionCategory} are collapsed to
+one value, so the kept row reflects the whole encounter of care (just as a
+correctly submitted record with \code{HasBeenE = 1} and \code{HasBeenAdmitted = 1}
+would). Every other field keeps what either record holds.} A visit can
+always be pulled again through the API to compare, but the linked row should
+not lose clinical information on its way there.
 
-Columns named in \code{merge_fields} are reconciled using the strategy assigned
-to them:
+The \strong{primary row} is the \code{"ED"}-class row of the episode if there is one,
+otherwise its first row. A value is \strong{informative} unless it is missing,
+blank, or a placeholder such as \code{"None"}, \code{"Unknown"}, \code{"N/A"} or \code{"Not Reported"} (\code{"U"} as well, for \code{Sex}); a number or time is informative
+unless missing, so a zero is a real value.
+
+Each ESSENCE field has a rule, taken from the NSSP ESSENCE data dictionary
+(the table is \code{data-raw/merge_field_classification.csv} in the source
+repository, and a column is matched by its \code{\link[janitor:make_clean_names]{janitor::make_clean_names()}}
+name). A column the table does not know follows its type: text keeps both
+records' values, and anything else takes the first informative value.
+\describe{
+\item{Flags and outcomes}{\code{HasBeen_} flags take the maximum, so the
+merged row shows \code{HasBeenAdmitted = 1} when either record does.
+\code{DispositionCategory} and \code{C_Death} follow the rules in the next
+section.}
+\item{Text and codes}{Chief complaint, discharge diagnosis,
+\code{Discharge_Disposition}, triage notes, procedure, medication and
+problem lists, the physician and insurance company identifiers (which
+belong to the encounter, not the patient), and similar fields keep
+\strong{both} records' values, joined
+with \code{"; "} and without repeating a value one record already holds (the
+\code{"concat"} strategy).}
+\item{Scalars and times}{Age, vitals, record timestamps,
+\code{Admit_Date_Time}, identifiers such as \code{C_BioSense_ID}, patient class,
+demographics, and any number, date or time take the primary row's
+value, or the first informative value from the other record when that
+one is not informative (\code{"prefer_informative"}). \code{Discharge_Date_Time}
+and \code{Death_Date_Time} instead use the record that won
+\code{DispositionCategory} as their first choice, so a discharge or death
+time comes from the record that reported the outcome.}
+\item{Values that belong together}{A value and what describes it come
+from one record: a weight and its units, an age with its units and age
+group, a zip code with its region and state, race with the fields
+derived from it, and the visit-to-discharge durations with
+\code{Discharge_Date_Time}. The described field takes that record's value
+even when it is missing, so units are never mixed with another
+record's number. If the field it follows is absent from the data, it
+takes the first informative value.}
+\item{Derived lists and indicators}{Delimited code lists computed from
+the diagnosis text (\verb{ICD_*_Flat}, \verb{C_DiagnosisCode_*_Flat}, \code{DDParsed},
+\code{CCDDCategory_flat}) are united, and keep a delimiter at both ends
+(\verb{;12;9;}) when every value had one. The indicators
+\code{CCInformative}, \code{CCAvailable}, \code{DDInformative}, \code{DDAvailable} and
+\code{DDProcessed} are \code{1} when either record says so. \code{FirstDateTimeAdded}
+is the earlier time, as ESSENCE defines it. \code{DeathIndicator} is \code{Yes}
+when either record says so. \code{CCDD} and \code{CCDDParsed} are united
+half by half.}
+\item{Lengths}{\code{CCOrig_Length}, \code{CCParsed_Length} and \code{DD_Length} are
+recomputed from the merged \code{ChiefComplaintOrig},
+\code{ChiefComplaintParsed} and \code{DischargeDiagnosis}, separators included.
+When a length column is present but its text column is not, the
+winning record's value is kept and a warning says the length was not
+recomputed.}
+}
+
+A record that is not linked to another is never changed.
+\subsection{Deaths and the disposition}{
+
+\code{DispositionCategory} (ESSENCE values \code{ADMIT}, \code{DECEASED}, \code{DISCHARGED},
+\code{TRANSFERRED}, \code{UNKNOWN}, and a lowercase \code{none} returned when no
+disposition was reported) keeps the most severe value of the episode,
+whichever record carries it (\code{"prefer_severity"}): \code{DECEASED} ranks above
+\code{TRANSFERRED}, \code{DISCHARGED} and \code{ADMIT} (equal), which rank above \code{UNKNOWN},
+\code{none} and a missing value, so an unknown outcome never replaces a known
+one. \code{TRANSFERRED} ranks with \code{ADMIT} and \code{DISCHARGED} because an ED
+\code{TRANSFERRED} is frequently revised to \code{DISCHARGED} as the encounter
+unfolds. Among equally severe values the inpatient pull's record wins,
+because it reflects the whole encounter of care: an ED \code{ADMIT} or
+\code{TRANSFERRED} gives way to the inpatient record's \code{DISCHARGED}, and the
+result does not depend on whether the ED record also carries
+\code{HasBeenAdmitted}. Then another admission-class row's value is kept.
+
+Deaths are handled the same way whatever strategies are chosen. For every
+linked episode in which either record has \code{C_Death} affirmative or a
+\code{DECEASED} \code{DispositionCategory}, the kept row has \code{C_Death} affirmative
+(\code{"Yes"} for ESSENCE's own \code{Yes}/\code{No}; \code{"1"} or \code{1} when the column is
+already 0/1, read from the whole column) \strong{and}
+\code{DispositionCategory = "DECEASED"}, so the two fields never disagree about
+a death. Each field is derived from the other, so this can change a \code{"No"}
+or a category that both records carried.
+}
+
+\subsection{Choosing a different rule}{
+
+\code{merge_fields} replaces the rule for the columns it names and leaves every
+other column on its rule. The strategies are:
 \describe{
 \item{\code{"concat"}}{Starting from the primary row's value, appends each
-other row's non-empty value unless the accumulated text (\code{"; "}-
+other row's informative value unless the accumulated text (\code{"; "}-
 separated) already contains it as whole words or whole codes, so
 complaint text or a diagnosis or SNOMED code present in one record but
 not the other is kept (\code{"fall"} is not found in \code{"waterfall"}, nor
-\code{"R10.9"} in \code{"R10.90"}). Generic free text.}
+\code{"R10.9"} in \code{"R10.90"}).}
 \item{\code{"union_delimited"}}{Splits each row's value on \code{merge_delimiter},
 takes the union of unique parts (preserving order of first
-appearance), rejoins with the same delimiter.}
+appearance), rejoins with the same delimiter, keeping a delimiter at
+both ends when every value had one.}
 \item{\code{"union_ccdd"}}{Specific to ESSENCE's \code{CC-values|DD-values}
 structure (\code{CCDD}/\code{CCDDParsed}). Splits on \code{|} into CC/DD halves
 (fixed by the ESSENCE convention, not configurable), splits each half
@@ -195,45 +295,32 @@ separately, rejoins.}
 \code{"Yes"}, or \code{1}/\code{"1"} for 0/1-coded flag columns), the merged value is
 that row's affirmative value. Otherwise falls back to the primary
 row's value.}
+\item{\code{"prefer_primary"}}{The primary row's value, even when it is empty.}
+\item{\code{"prefer_informative"}}{The primary row's value when it is
+informative, otherwise the first informative value from another row.}
+\item{\code{"earliest"}}{The earliest time (text times in ISO or \code{MM/DD/YYYY}
+form are parsed); the primary row's value when none can be read.}
+\item{\code{"max"}}{The largest number, with the value kept as it was written;
+the primary row's value when none is a number.}
 \item{\code{"prefer_admission"}}{Uses the value from whichever row's
 \code{patient_class} is \code{"Inpatient"}, \code{"Direct Admit"}, or \code{"Admitted"},
 if such a row has a non-missing value for the field. Otherwise falls
 back to the primary row's value.}
-\item{\code{"prefer_severity"}}{For \code{DispositionCategory}, keeps the most
-severe value in the episode, whichever record carries it: \code{DECEASED}
-ranks above \code{TRANSFERRED}, which ranks above \code{DISCHARGED} and \code{ADMIT}
-(equal), which rank above \code{UNKNOWN} and a missing value. This is
-the default for \code{DispositionCategory}, so an ED record closed as
-\code{DISCHARGED} does not hide a death or a transfer recorded on the linked
-inpatient record, whichever of the two records has the
-\code{HasBeenAdmitted} flag. Whenever the merged value is \code{DECEASED},
-\code{C_Death} is also set to affirmative for that episode (using the form
-already in the column, read from the whole column: \code{"Yes"}, \code{"1"}, or
-\code{1}). This derives \code{C_Death} from the merged category, so it can
-change a \code{"No"} that both records carried; it applies only to linked
-episodes, and a record that is not linked is never changed. Among
-equally severe values the inpatient pull's record wins, because it
-reflects the whole encounter of care: an ED \code{ADMIT} gives way to the
-inpatient record's \code{DISCHARGED}, and the result does not depend on
-whether the ED record also carries \code{HasBeenAdmitted}. Then another
-admission-class row's value is kept.}
+\item{\code{"prefer_severity"}}{The \code{DispositionCategory} rule described
+above.}
 \item{\code{"follow_severity"}}{Takes the value from the same record whose
-\code{prefer_severity} field won (the first such field in \code{merge_fields}).
-This is the default for \code{Discharge_Disposition}, so it comes from the
-record that supplied \code{DispositionCategory} and the two agree whenever
-that record has a value for it. If that record has no value for the
-field, or no \code{prefer_severity} field is present, the
+\code{prefer_severity} field won, so a companion field such as
+\code{Discharge_Disposition} agrees with the category. If that record has no
+value for the field, or no \code{prefer_severity} field is present, the
 \code{"prefer_admission"} value is used instead (so the two can then
 differ, rather than dropping a value that is known).}
 }
 
-Any column not a \code{HasBeen_} flag and not listed in \code{merge_fields} takes
-its value from the \strong{primary row}: the \code{"ED"}-class row if one exists in
-the episode, else the first row in original order.
-
 Set \code{return_format = "long"} to get the diagnostic long-format output
 instead: one row per patient-class per episode, with no merge applied.
 Useful for inspecting the raw linkage mechanism directly.
+}
+
 }
 
 \subsection{Required fields}{
@@ -265,10 +352,9 @@ sequence; \code{C_Patient_Class_MDT_Updates} orders it by time.
 \item \code{C_Visit_Date_Time} (or \code{Date} and \code{Time}) orders classes when no
 \code{C_Patient_Class_MDT_Updates} is present; without any of them the order is
 alphabetical and carries no clinical meaning.
-\item The \code{merge_fields} columns (by default \code{CCDD}, \code{CCDDParsed},
-\code{CCDDCategory_flat}, \code{C_Death}, \code{Discharge_Disposition}, and
-\code{DispositionCategory}) are merged only when present; without
-\code{DispositionCategory} no disposition is ranked by severity.
+\item The fields with a merge rule (see "Merge behavior") are merged only when
+present; without \code{DispositionCategory} no disposition is ranked by
+severity, and the discharge and death times fall back to the primary row.
 }
 }
 
@@ -346,7 +432,7 @@ For more granular and informative output, add \code{C_Patient_Class_List} to you
 ESSENCE API pull fields. Splitting each character maps to the PHIN VADS
 "Patient Class (Syndromic Surveillance)" value set (concept codes and
 preferred names, verified against
-\url{https://phinvads.cdc.gov/vads/ViewValueSet.action?id=564F8F8B-E1DE-E411-8970-0017A477041A}).
+\url{https://www.cdc.gov/phin/php/phinvads/index.html?id=564F8F8B-E1DE-E411-8970-0017A477041A}).
 \code{link_encounters()}'s own derived \code{patient_class} output values (\code{"ED"},
 \code{"Inpatient"}, \code{"Direct Admit"}, etc.) are shortened working labels, not
 required to match these preferred names verbatim:\tabular{ll}{
@@ -493,7 +579,7 @@ inpatient_clean <- essence_inpatient |> dedupe(order_by = Arrived_Date_Time)
 
 episodes_full <- link_encounters(
   ed_clean, inpatient_clean,
-  merge_fields = c(TriageNotes = "concat")
+  merge_fields = c(Discharge_Disposition = "follow_severity")
 )
 }
 

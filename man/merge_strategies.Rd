@@ -14,7 +14,8 @@
 \alias{severity_row_index}
 \alias{merge_prefer_severity}
 \alias{merge_follow_severity}
-\alias{mark_death_from_disposition}
+\alias{episode_died_flag}
+\alias{mark_episode_deaths}
 \title{Merge strategies for link_encounters()}
 \format{
 \code{merge_strategies} is a character vector of the valid strategy
@@ -35,7 +36,12 @@ merge_field_value(
   from_inpatient = rep(FALSE, length(values))
 )
 
-merge_concat(values, primary_value)
+merge_concat(
+  values,
+  primary_value,
+  informative = is_informative(values),
+  primary_informative = is_informative(primary_value)
+)
 
 contains_whole(text, value)
 
@@ -65,7 +71,13 @@ merge_prefer_severity(
 
 merge_follow_severity(values, patient_classes, primary_value, severity_row)
 
-mark_death_from_disposition(result, merge_fields, reference = result)
+episode_died_flag(rows, disposition_cols)
+
+mark_episode_deaths(
+  result,
+  reference = result,
+  disposition_cols = "disposition_category"
+)
 }
 \arguments{
 \item{merge_fields}{A named character vector mapping column names to
@@ -94,17 +106,30 @@ for in it.}
 
 \item{x}{A vector of \code{DispositionCategory} values.}
 
-\item{result}{The collapsed episodes, with cleaned column names.}
+\item{rows}{The episode rows (cleaned column names), with \code{.episode_id}.}
+
+\item{disposition_cols}{Names of the disposition columns whose \code{DECEASED}
+value counts as a death, and which are set to \code{DECEASED} for an episode
+with a death.}
+
+\item{result}{The collapsed episodes, with cleaned column names, and the
+\code{.episode_died} flag column from \code{episode_died_flag()}.}
+
+\item{reference}{The data whose whole \code{C_Death} column gives the coding to
+write (\code{result} itself by default).}
 }
 \value{
 \code{merge_strategies} is a character vector. \code{check_merge_fields()}
 returns \code{merge_fields} invisibly, or aborts. The \verb{merge_*()} functions
 and \code{merge_field_value()} return a single merged value.
 \code{contains_whole()} returns a single logical. \code{disposition_severity()}
-returns an integer rank per value (0 unknown or missing, 1 discharged or
-admit, 2 transferred, 3 deceased). \code{severity_row_index()} returns an
-integer position or \code{NA}. \code{mark_death_from_disposition()} returns
-\code{result}.
+returns an integer rank per value (0 unknown, \code{none} or missing, 1
+discharged, admit, transferred or any other value, 2 deceased).
+\code{severity_row_index()} returns an integer position or \code{NA}.
+\code{episode_died_flag()} returns a logical per row, \code{TRUE} for every row of
+an episode in which any row names a death. \code{mark_episode_deaths()}
+returns \code{result} without the \code{.episode_died} column, and with \code{C_Death}
+affirmative and the disposition \code{DECEASED} for each flagged episode.
 }
 \description{
 Internal helpers that reconcile one field across the rows of a multi-row
@@ -144,19 +169,23 @@ Admitted), if that row has a non-missing value; otherwise
 \code{primary_value}.}
 \item{\code{prefer_severity}}{For \code{DispositionCategory}: the most severe value
 across the episode's rows, whichever record carries it. \code{DECEASED}
-ranks above \code{TRANSFERRED}, which ranks above \code{DISCHARGED} and \code{ADMIT}
-(equal), which rank above \code{UNKNOWN} and a missing value
-(\code{disposition_severity()}, ignoring case). A value outside the five
-ESSENCE categories ranks with \code{DISCHARGED}. Among equally severe
-values the inpatient pull's record wins: it reflects the whole
-encounter of care, so an ED \code{ADMIT} gives way to the inpatient
-record's \code{DISCHARGED}, and the result does not depend on whether the
-ED record also carries \code{HasBeenAdmitted}. Then another admission-class
-row's value is kept, then the primary row's. After the episode
-is merged, \code{mark_death_from_disposition()} sets \code{C_Death} to
-affirmative for any linked episode whose merged value is \code{DECEASED},
-in the coding read from the whole \code{C_Death} column; unlinked records
-are never changed.}
+ranks above \code{TRANSFERRED}, \code{DISCHARGED} and \code{ADMIT} (equal), which
+rank above \code{UNKNOWN}, \code{none} (ESSENCE's lowercase value for no
+reported disposition), and a missing value (\code{disposition_severity()},
+ignoring case). A value outside the six ESSENCE categories ranks with
+\code{DISCHARGED}. Among equally severe values the inpatient pull's record
+wins: it reflects the whole encounter of care, so an ED \code{ADMIT} or
+\code{TRANSFERRED} gives way to the inpatient record's \code{DISCHARGED}, and
+the result does not depend on whether the ED record also carries
+\code{HasBeenAdmitted}. Then another admission-class
+row's value is kept, then the primary row's. Deaths do not depend on
+the strategy chosen for either field: \code{episode_died_flag()} flags a
+linked episode when any of its rows has \code{C_Death} affirmative or a
+\code{DECEASED} \code{DispositionCategory}, and \code{mark_episode_deaths()} then
+sets \code{C_Death} to affirmative (in the coding read from the whole
+\code{C_Death} column) and \code{DispositionCategory} to \code{DECEASED} for the
+episode, so the two fields never disagree; unlinked records are never
+changed.}
 \item{\code{follow_severity}}{The value from the same record whose
 \code{prefer_severity} field won (the first such field in \code{merge_fields}),
 so a companion field such as \code{Discharge_Disposition} comes from the
@@ -164,10 +193,16 @@ record that supplied \code{DispositionCategory}. If that record has no
 value for the field, or there is no \code{prefer_severity} field, the
 \code{prefer_admission} value is used instead, so the two fields can then
 differ.}
+\item{\code{prefer_primary}, \code{prefer_informative}, \code{earliest}, \code{max}}{The
+primary row's value; the primary row's value unless it is
+uninformative (see \code{is_informative()}), then the first informative
+value of another row; the earliest time; and the largest number. Each
+falls back to the primary row's value when nothing qualifies. See
+\code{?resolve_merge_rules} for how every column gets a rule.}
 }
 
-\code{check_merge_fields()} aborts, attributed to \code{\link[=link_encounters]{link_encounters()}}, unless
-\code{merge_fields} is a named character vector (possibly empty) whose values
-are all valid strategies.
+\code{check_merge_fields()} returns \code{NULL} unchanged, and otherwise aborts,
+attributed to \code{\link[=link_encounters]{link_encounters()}}, unless \code{merge_fields} is a named
+character vector (possibly empty) whose values are all valid strategies.
 }
 \keyword{internal}

@@ -101,7 +101,9 @@ clean <- essence_raw |>
 clean |> review_facility_ed_visits(method = "both", date_col = Date)
 ```
 
-For encounter linkage with a separate inpatient pull:
+For encounter linkage with a separate inpatient pull (`link_encounters()` is
+the package's most complex function and should be considered experimental,
+even though it is in active use in Kentucky; see `?link_encounters`):
 
 ```r
 # Deduplicate both pulls (essence_ed_raw and essence_inp_raw are the

@@ -174,9 +174,11 @@ test_that("link_encounters() rejects a malformed merge_fields", {
     ),
     "`merge_fields` must be a named character vector"
   )
-  expect_error(
-    link_encounters(essence_ed_raw, essence_inp_raw, merge_fields = NULL),
-    "`merge_fields` must be a named character vector"
+  # NULL is valid: every column then follows the built-in rules
+  expect_no_error(
+    suppressMessages(
+      link_encounters(essence_ed_raw, essence_inp_raw, merge_fields = NULL)
+    )
   )
 })
 
