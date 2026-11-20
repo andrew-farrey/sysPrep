@@ -654,3 +654,52 @@ test_that("the rule table records the reviewed decisions", {
   )
   expect_equal(rule("dd_converted"), "concat")
 })
+
+# ---- the fields a production Kentucky ETL pulls and links ----
+
+# The pull field list of the author's Kentucky visit-census ETL (ED stream with
+# HasBeenE = 1, direct-admit stream with HasBeenE = 0 and HasBeenAdmitted = 1),
+# whose output passes through link_encounters(). Every one needs an explicit
+# rule: a field the table does not know would silently follow its type, which
+# for text means joining two records' values.
+production_fields <- c(
+  "Year", "C_Visit_Date_Time", "Date", "Time", "QuarterYear", "MonthYear",
+  "WeekYear", "C_BioSense_ID", "C_Unique_Patient_ID", "Visit_ID", "Hospital",
+  "HospitalName", "FacilityType", "HospitalRegion", "HospitalZip", "Age",
+  "C_Patient_Age", "AgeGroup", "Sex", "c_race", "c_ethnicity",
+  "CRace_CEth_Combined_Narrow", "CRace_CEth_Combined_Broad", "Region",
+  "PatientCustomRegion", "FacilityCustomRegion", "ZipCode",
+  "C_Patient_Class_List", "C_Patient_Class", "HasBeenE", "HasBeenI",
+  "HasBeenAdmitted", "HasBeenO", "CCDDCategory_flat", "Category_flat",
+  "SubCategory_flat", "DispositionCategory", "C_Death", "Arrived_Date_Time"
+)
+
+test_that("every field the production ETL pulls has an explicit rule", {
+  clean <- vapply(
+    production_fields, function(x) janitor::make_clean_names(x), character(1L),
+    USE.NAMES = FALSE
+  )
+  # the HasBeen_ flags are always merged by the maximum, whatever the table
+  clean <- clean[!grepl("^has_been_", clean)]
+  expect_equal(setdiff(clean, merge_field_table$name), character(0))
+})
+
+test_that("site-defined custom regions follow the zip code or the facility", {
+  rule <- function(x) merge_field_table$strategy[match(x, merge_field_table$name)]
+  expect_equal(rule("patient_custom_region"), "follow")
+  expect_equal(
+    merge_field_table$follow[match("patient_custom_region", merge_field_table$name)],
+    "zip_code"
+  )
+  expect_equal(rule("facility_custom_region"), "prefer_informative")
+
+  result <- link_rules(rules_pair(
+    ed = list(ZipCode = NA_character_, PatientCustomRegion = "LHD-1",
+              FacilityCustomRegion = "FAC-2"),
+    inp = list(ZipCode = "40202", PatientCustomRegion = "LHD-7",
+               FacilityCustomRegion = "FAC-2b")
+  ))
+  # the zip code comes from the inpatient record, so its region does too
+  expect_equal(result$patient_custom_region, "LHD-7")
+  expect_equal(result$facility_custom_region, "FAC-2")
+})

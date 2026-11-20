@@ -111,14 +111,49 @@ so information present on only one source row isn't discarded.
 
 \code{link_encounters()} is the most complex function in the package and should
 be considered experimental, even though it is in active use for Kentucky
-surveillance. Its linkage contract (which records are merged, and that
-unlinked records are never changed) is tested, but the rules that reconcile
-two records of one encounter, above all which \code{DispositionCategory} is kept
-and when \code{C_Death} is set, are still being refined against real ESSENCE
-pulls, and a later version may change them. Review the linked output (for
-example the \verb{.episode_*} columns and any \code{DECEASED} episodes) before relying
-on it for counts or anomaly detection, and read the Behavior-change entries
-in \code{NEWS.md} when upgrading.
+surveillance and has real operational utility. Its linkage contract (which
+records are merged, and that unlinked records are never changed) is tested,
+but the rules that reconcile two records of one encounter, above all which
+\code{DispositionCategory} is kept and when \code{C_Death} is set, are still being
+refined against real ESSENCE pulls, and a later version may change them.
+Review the linked output (for example the \verb{.episode_*} columns and any
+\code{DECEASED} episodes) before relying on it for counts or anomaly detection,
+and read the Behavior-change entries in \code{NEWS.md} when upgrading.
+
+\strong{The rule applied to every column (see "Merge behavior") is the newest and
+most experimental part.} It is built from the NSSP ESSENCE data dictionary
+and tested against synthetic pulls and independently computed expectations;
+for most fields it has not yet been run on real pulls. What has been
+exercised on real data is the author's Kentucky visit-census pipeline, which
+links an ED pull and a direct-admit pull with \code{return_format = "collapsed"}:
+\describe{
+\item{In production use}{These 39 fields are pulled, linked and used
+downstream by that pipeline: \code{C_BioSense_ID}, \code{C_Unique_Patient_ID},
+\code{Visit_ID}, \code{Hospital}, \code{HospitalName}, \code{FacilityType},
+\code{HospitalRegion}, \code{HospitalZip}, \code{PatientCustomRegion},
+\code{FacilityCustomRegion}; \code{Arrived_Date_Time}, \code{C_Visit_Date_Time},
+\code{Date}, \code{Time}, \code{Year}, \code{QuarterYear}, \code{MonthYear}, \code{WeekYear};
+\code{Age}, \code{C_Patient_Age}, \code{AgeGroup}, \code{Sex}, \code{C_Race}, \code{C_Ethnicity},
+\code{CRace_CEth_Combined_Narrow}, \code{CRace_CEth_Combined_Broad}, \code{Region},
+\code{ZipCode}; \code{C_Patient_Class}, \code{C_Patient_Class_List}, \code{HasBeenE},
+\code{HasBeenI}, \code{HasBeenAdmitted}, \code{HasBeenO}; and \code{CCDDCategory_flat},
+\code{Category_flat}, \code{SubCategory_flat}, \code{DispositionCategory},
+\code{C_Death}. That pipeline ran before the per-column rules existed, taking
+most of these columns from the ED record, so "in production use" means
+the columns are carried through linkage and relied on there, not that
+each rule has been validated.}
+\item{Exercised on real pulls in exploratory comparisons only}{
+\code{Discharge_Disposition}, \code{DischargeDispositionUpdates} and
+\code{Discharge_Date_Time}, pulled alongside \code{DispositionCategory} and
+\code{C_Death} to check the disposition and death logic.}
+\item{Everything else}{The remaining fields that have a rule, including
+chief complaint and discharge diagnosis text, \code{CCDD} and \code{CCDDParsed},
+the \verb{ICD_*_Flat} lists, vitals and the length columns, are implemented
+from the data dictionary and tested on synthetic data only.}
+}
+\code{merge_field_classification.csv} in the source repository records this for
+every field (\code{exercised_on_real_data}). The package makes no claim of formal
+validation; the lists describe operational use.
 }
 
 \subsection{Why this matters for case counts}{

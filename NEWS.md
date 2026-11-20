@@ -15,7 +15,11 @@ to CRAN; sysPrep is not yet on CRAN.
 * **Status:** `link_encounters()` is documented as experimental (a "Status"
   section in `?link_encounters`), even though it is in active use for Kentucky
   surveillance: the rules that reconcile the two records of one encounter are
-  still being refined against real ESSENCE pulls.
+  still being refined against real ESSENCE pulls. The per-column rule for every
+  field is the newest and most experimental part. `?link_encounters` lists the 39
+  fields a Kentucky production pipeline already pulls and links, the fields
+  exercised on real pulls in exploratory comparisons only, and the fields tested
+  on synthetic data only; no claim of formal validation is made.
 * **Behavior change:** every column of a linked episode now keeps what either
   record holds. Only the `HasBeen_` flags, `C_Death` and `DispositionCategory`
   are collapsed to one value so the row reflects the whole encounter of care;
