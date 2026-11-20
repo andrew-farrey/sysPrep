@@ -138,15 +138,58 @@ visit per patient class, unmerged. Both include episode metadata columns
 
 `link_encounters()` is the most complex function in the package and
 should be considered experimental, even though it is in active use for
-Kentucky surveillance. Its linkage contract (which records are merged,
-and that unlinked records are never changed) is tested, but the rules
-that reconcile two records of one encounter, above all which
-`DispositionCategory` is kept and when `C_Death` is set, are still being
-refined against real ESSENCE pulls, and a later version may change them.
-Review the linked output (for example the `.episode_*` columns and any
-`DECEASED` episodes) before relying on it for counts or anomaly
-detection, and read the Behavior-change entries in `NEWS.md` when
-upgrading.
+Kentucky surveillance and has real operational utility. Its linkage
+contract (which records are merged, and that unlinked records are never
+changed) is tested, but the rules that reconcile two records of one
+encounter, above all which `DispositionCategory` is kept and when
+`C_Death` is set, are still being refined against real ESSENCE pulls,
+and a later version may change them. Review the linked output (for
+example the `.episode_*` columns and any `DECEASED` episodes) before
+relying on it for counts or anomaly detection, and read the
+Behavior-change entries in `NEWS.md` when upgrading.
+
+**The rule applied to every column (see "Merge behavior") is the newest
+and most experimental part.** It is built from the NSSP ESSENCE data
+dictionary and tested against synthetic pulls and independently computed
+expectations; for most fields it has not yet been run on real pulls.
+What has been exercised on real data is the author's Kentucky
+visit-census pipeline, which links an ED pull and a direct-admit pull
+with `return_format = "collapsed"`:
+
+- In production use:
+
+  These 39 fields are pulled, linked and used downstream by that
+  pipeline: `C_BioSense_ID`, `C_Unique_Patient_ID`, `Visit_ID`,
+  `Hospital`, `HospitalName`, `FacilityType`, `HospitalRegion`,
+  `HospitalZip`, `PatientCustomRegion`, `FacilityCustomRegion`;
+  `Arrived_Date_Time`, `C_Visit_Date_Time`, `Date`, `Time`, `Year`,
+  `QuarterYear`, `MonthYear`, `WeekYear`; `Age`, `C_Patient_Age`,
+  `AgeGroup`, `Sex`, `C_Race`, `C_Ethnicity`,
+  `CRace_CEth_Combined_Narrow`, `CRace_CEth_Combined_Broad`, `Region`,
+  `ZipCode`; `C_Patient_Class`, `C_Patient_Class_List`, `HasBeenE`,
+  `HasBeenI`, `HasBeenAdmitted`, `HasBeenO`; and `CCDDCategory_flat`,
+  `Category_flat`, `SubCategory_flat`, `DispositionCategory`, `C_Death`.
+  That pipeline ran before the per-column rules existed, taking most of
+  these columns from the ED record, so "in production use" means the
+  columns are carried through linkage and relied on there, not that each
+  rule has been validated.
+
+- Exercised on real pulls in exploratory comparisons only:
+
+  `Discharge_Disposition`, `DischargeDispositionUpdates` and
+  `Discharge_Date_Time`, pulled alongside `DispositionCategory` and
+  `C_Death` to check the disposition and death logic.
+
+- Everything else:
+
+  The remaining fields that have a rule, including chief complaint and
+  discharge diagnosis text, `CCDD` and `CCDDParsed`, the `ICD_*_Flat`
+  lists, vitals and the length columns, are implemented from the data
+  dictionary and tested on synthetic data only.
+
+`merge_field_classification.csv` in the source repository records this
+for every field (`exercised_on_real_data`). The package makes no claim
+of formal validation; the lists describe operational use.
 
 ### Why this matters for case counts
 

@@ -182,14 +182,51 @@ and <code>.index_encounter</code>.</p>
 
 <p><code>link_encounters()</code> is the most complex function in the package and should
 be considered experimental, even though it is in active use for Kentucky
-surveillance. Its linkage contract (which records are merged, and that
-unlinked records are never changed) is tested, but the rules that reconcile
-two records of one encounter, above all which <code>DispositionCategory</code> is kept
-and when <code>C_Death</code> is set, are still being refined against real ESSENCE
-pulls, and a later version may change them. Review the linked output (for
-example the <code>.episode_*</code> columns and any <code>DECEASED</code> episodes) before relying
-on it for counts or anomaly detection, and read the Behavior-change entries
-in <code>NEWS.md</code> when upgrading.</p>
+surveillance and has real operational utility. Its linkage contract (which
+records are merged, and that unlinked records are never changed) is tested,
+but the rules that reconcile two records of one encounter, above all which
+<code>DispositionCategory</code> is kept and when <code>C_Death</code> is set, are still being
+refined against real ESSENCE pulls, and a later version may change them.
+Review the linked output (for example the <code>.episode_*</code> columns and any
+<code>DECEASED</code> episodes) before relying on it for counts or anomaly detection,
+and read the Behavior-change entries in <code>NEWS.md</code> when upgrading.</p>
+<p><strong>The rule applied to every column (see "Merge behavior") is the newest and
+most experimental part.</strong> It is built from the NSSP ESSENCE data dictionary
+and tested against synthetic pulls and independently computed expectations;
+for most fields it has not yet been run on real pulls. What has been
+exercised on real data is the author's Kentucky visit-census pipeline, which
+links an ED pull and a direct-admit pull with <code>return_format = "collapsed"</code>:</p><dl><dt>In production use</dt>
+<dd><p>These 39 fields are pulled, linked and used
+downstream by that pipeline: <code>C_BioSense_ID</code>, <code>C_Unique_Patient_ID</code>,
+<code>Visit_ID</code>, <code>Hospital</code>, <code>HospitalName</code>, <code>FacilityType</code>,
+<code>HospitalRegion</code>, <code>HospitalZip</code>, <code>PatientCustomRegion</code>,
+<code>FacilityCustomRegion</code>; <code>Arrived_Date_Time</code>, <code>C_Visit_Date_Time</code>,
+<code>Date</code>, <code>Time</code>, <code>Year</code>, <code>QuarterYear</code>, <code>MonthYear</code>, <code>WeekYear</code>;
+<code>Age</code>, <code>C_Patient_Age</code>, <code>AgeGroup</code>, <code>Sex</code>, <code>C_Race</code>, <code>C_Ethnicity</code>,
+<code>CRace_CEth_Combined_Narrow</code>, <code>CRace_CEth_Combined_Broad</code>, <code>Region</code>,
+<code>ZipCode</code>; <code>C_Patient_Class</code>, <code>C_Patient_Class_List</code>, <code>HasBeenE</code>,
+<code>HasBeenI</code>, <code>HasBeenAdmitted</code>, <code>HasBeenO</code>; and <code>CCDDCategory_flat</code>,
+<code>Category_flat</code>, <code>SubCategory_flat</code>, <code>DispositionCategory</code>,
+<code>C_Death</code>. That pipeline ran before the per-column rules existed, taking
+most of these columns from the ED record, so "in production use" means
+the columns are carried through linkage and relied on there, not that
+each rule has been validated.</p></dd>
+
+<dt>Exercised on real pulls in exploratory comparisons only</dt>
+<dd><p><code>Discharge_Disposition</code>, <code>DischargeDispositionUpdates</code> and
+<code>Discharge_Date_Time</code>, pulled alongside <code>DispositionCategory</code> and
+<code>C_Death</code> to check the disposition and death logic.</p></dd>
+
+<dt>Everything else</dt>
+<dd><p>The remaining fields that have a rule, including
+chief complaint and discharge diagnosis text, <code>CCDD</code> and <code>CCDDParsed</code>,
+the <code>ICD_*_Flat</code> lists, vitals and the length columns, are implemented
+from the data dictionary and tested on synthetic data only.</p></dd>
+
+
+</dl><p><code>merge_field_classification.csv</code> in the source repository records this for
+every field (<code>exercised_on_real_data</code>). The package makes no claim of formal
+validation; the lists describe operational use.</p>
 </div>
 
 <div class="section">

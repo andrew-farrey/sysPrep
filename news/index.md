@@ -26,7 +26,13 @@ submitted to CRAN; sysPrep is not yet on CRAN.
   [`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)),
   even though it is in active use for Kentucky surveillance: the rules
   that reconcile the two records of one encounter are still being
-  refined against real ESSENCE pulls.
+  refined against real ESSENCE pulls. The per-column rule for every
+  field is the newest and most experimental part.
+  [`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+  lists the 39 fields a Kentucky production pipeline already pulls and
+  links, the fields exercised on real pulls in exploratory comparisons
+  only, and the fields tested on synthetic data only; no claim of formal
+  validation is made.
 - **Behavior change:** every column of a linked episode now keeps what
   either record holds. Only the `HasBeen_` flags, `C_Death` and
   `DispositionCategory` are collapsed to one value so the row reflects

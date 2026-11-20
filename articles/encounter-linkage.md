@@ -300,6 +300,17 @@ a death is protected from being overridden, because a recorded death is
 rarely revised away in later updates to a record, whereas `TRANSFERRED`
 is revised to `DISCHARGED` (and the reverse) far more often.
 
+> **Status.**
+> [`link_encounters()`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+> is experimental. Linkage itself, and the disposition and death logic,
+> have been exercised on real Kentucky pulls; the rule for every other
+> column is newer and has so far been tested on synthetic data, apart
+> from the fields a Kentucky production pipeline already pulls and
+> links.
+> [`?link_encounters`](https://andrew-farrey.github.io/sysPrep/reference/link_encounters.md)
+> lists which, so you can judge which columns to rely on. Review the
+> linked output before using it for counts.
+
 ``` r
 
 episodes <- link_encounters(ed_clean, inpatient_clean)
